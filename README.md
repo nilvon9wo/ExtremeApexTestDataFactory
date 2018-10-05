@@ -84,29 +84,20 @@ List<SObject> templateSObjectList just takes a list of SObject values boiled dow
 
 
 
-XFTY_InsertModeEnum insertMode takes one of the following values
-
-MOCK - creates Ids without touching the database
-
-NEVER - does not create Ids
-
-RELATED_ONLY - inserts the related records, but not (in this instance) the Contacts.
-
-NOW - inserts both the record and the related records
-
-LATER - technically the same as never but can be used to communicate intentions and possibly later prevent conflicts with mock insertions.
+* XFTY_InsertModeEnum insertMode takes one of the following values
+* MOCK - creates Ids without touching the database
+* NEVER - does not create Ids
+* RELATED_ONLY - inserts the related records, but not (in this instance) the Contacts.
+* NOW - inserts both the record and the related records
+* LATER - technically the same as never but can be used to communicate intentions and possibly later prevent conflicts with mock insertions.
 
 
 
-XFTY_InsertInclusivityEnum inclusivity takes one of the following values
-
-ALL - Creates data for all related records.
-
-REQUIRED - Creates data only for required related records
-
-PREVENT_CASCADE - Only creates data for first level of related records.
-
-NONE - Does not create related records.
+* XFTY_InsertInclusivityEnum inclusivity takes one of the following values
+* ALL - Creates data for all related records.
+* REQUIRED - Creates data only for required related records
+* PREVENT_CASCADE - Only creates data for first level of related records.
+* NONE - Does not create related records.
 
 This is really handy since many records are related to other records which you might not care about for your tests, but you may need to create them. This allows that to happen without littering your tests and being done redundantly all over the place. (And what if you need to update 2000 tests because Accounts now require Widgets?
 
@@ -120,20 +111,14 @@ The first value is the SObjectField you need/want to fill.
 
 The second value extends one of two interfaces (hurry polymorphism! You don't need to care about this unless you want to create some more interfaces!), for which the following possibilities are currently supported:
 
-XFTY_DummyDefaultRelationshipRequired - Required Relationships
-
-XFTY_DummyDefaultRelationshipOptional - Optional Relationships
-
-XFTY_DummyDefaultValueExact - Exact values
-
-XFTY_DummyDefaultValueIncrementingString - Incrementing Strings (value can repeat)
-
-XFTY_DummyDefaultValueUniqueEmail - Unique Emails (guaranteed to be unique)
-
-XFTY_DummyDefaultValueUniqueString - Unique Strings (guaranteed to be unique)
+* XFTY_DummyDefaultRelationshipRequired - Required Relationships
+* XFTY_DummyDefaultRelationshipOptional - Optional Relationships
+* XFTY_DummyDefaultValueExact - Exact values
+* XFTY_DummyDefaultValueIncrementingString - Incrementing Strings (value can repeat)
+* XFTY_DummyDefaultValueUniqueEmail - Unique Emails (guaranteed to be unique)
+* XFTY_DummyDefaultValueUniqueString - Unique Strings (guaranteed to be unique)
 
 If you new value wrapper (e.g. incrementing numbers, random numbers, etc.) it's just a new class and very few lines of code.
-
 
 
 It's all actually not that complicated for all the power it gives you to keep your code clean and dry. :-)
