@@ -1,5 +1,7 @@
 @IsTest
 public class SAMPLE_ProofOfConcept {
+	private static final User TEST_ADMIN = SAMPLE_DummyUserFactoryOutlet.TEST_ADMIN_USER;
+	
     @IsTest public static void testContactFactoryCreatesBothContactAndAccountInDatabase() {
     	// Arrange
     	String testName = 'Fred';
@@ -12,12 +14,13 @@ public class SAMPLE_ProofOfConcept {
     	// Act
     	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
-    	// TODO: Implement System.runAs(){}
-    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
-    			templateContactList, 
-    			XFTY_InsertModeEnum.NOW, 
-    			XFTY_InsertInclusivityEnum.ALL
-    		);
+    	System.runAs(TEST_ADMIN){
+	    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
+	    			templateContactList, 
+	    			XFTY_InsertModeEnum.NOW, 
+	    			XFTY_InsertInclusivityEnum.ALL
+	    		);
+    	}
     	Test.stopTest();
     	
     	// Assert
@@ -54,12 +57,13 @@ public class SAMPLE_ProofOfConcept {
     	// Act
     	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
-    	// TODO: Implement System.runAs(){}
-    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
-    			templateContactList, 
-    			XFTY_InsertModeEnum.NOW, 
-    			XFTY_InsertInclusivityEnum.NONE
-    		);
+    	System.runAs(TEST_ADMIN){
+	    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
+	    			templateContactList, 
+	    			XFTY_InsertModeEnum.NOW, 
+	    			XFTY_InsertInclusivityEnum.NONE
+	    		);
+    	}	    		
     	Test.stopTest();
     	
     	// Assert
@@ -86,12 +90,13 @@ public class SAMPLE_ProofOfConcept {
     	// Act
     	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
-    	// TODO: Implement System.runAs(){}
-    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
-    			templateContactList, 
-    			XFTY_InsertModeEnum.MOCK, 
-    			XFTY_InsertInclusivityEnum.ALL
-    		);
+		System.runAs(TEST_ADMIN){
+	    	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
+	    			templateContactList, 
+	    			XFTY_InsertModeEnum.MOCK, 
+	    			XFTY_InsertInclusivityEnum.ALL
+	    		);
+		}
     	Test.stopTest();
     	
     	// Assert
