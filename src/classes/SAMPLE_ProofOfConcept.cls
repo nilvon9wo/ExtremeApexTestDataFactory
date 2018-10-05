@@ -35,6 +35,7 @@ public class SAMPLE_ProofOfConcept {
 
     	System.assertNotEquals(null, resultBundle.getList(Contact.AccountId)[0].Id);
     	System.assert(((Account) resultBundle.getList(Contact.AccountId)[0]).Name.contains(SAMPLE_DummyAccountFactoryOutlet.DEFAULT_NAME_PREFIX));
+    	System.assertEquals(((Account) resultBundle.getList(Contact.AccountId)[0]).Description, SAMPLE_DummyContactFactoryOutlet.DEFAULT_ACCOUNT_DESCRIPTION);
     	
 		System.assertEquals(((Contact) resultBundle.getList(Contact.Id)[0]).AccountId, resultBundle.getList(Contact.AccountId)[0].Id);
 		
@@ -111,6 +112,7 @@ public class SAMPLE_ProofOfConcept {
 
     	System.assertNotEquals(null, resultBundle.getList(Contact.AccountId)[0].Id);
     	System.assert(((Account) resultBundle.getList(Contact.AccountId)[0]).Name.contains(SAMPLE_DummyAccountFactoryOutlet.DEFAULT_NAME_PREFIX));
+    	System.assertEquals(((Account) resultBundle.getList(Contact.AccountId)[0]).Description, SAMPLE_DummyContactFactoryOutlet.DEFAULT_ACCOUNT_DESCRIPTION);
     	
 		System.assertEquals(((Contact) resultBundle.getList(Contact.Id)[0]).AccountId, resultBundle.getList(Contact.AccountId)[0].Id);
 		
