@@ -93,7 +93,7 @@ List<SObject> templateSObjectList just takes a list of SObject values boiled dow
 
 
 
-* XFTY_InsertInclusivityEnum inclusivity takes one of the following values
+XFTY_InsertInclusivityEnum inclusivity takes one of the following values
 * ALL - Creates data for all related records.
 * REQUIRED - Creates data only for required related records
 * PREVENT_CASCADE - Only creates data for first level of related records.
