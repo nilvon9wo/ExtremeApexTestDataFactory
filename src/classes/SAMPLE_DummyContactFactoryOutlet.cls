@@ -1,5 +1,5 @@
 @IsTest
-public class SAMPLE_DummyContactFactoryOutlet implements TEST_DummySObjectFactoryOutletIntf {
+public class SAMPLE_DummyContactFactoryOutlet implements XFTY_DummySObjectFactoryOutletIntf {
 	private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
 	public static final String DEFAULT_FIRST_NAME_PREFIX = 'Contact First Name';
 	public static final String DEFAULT_LAST_NAME_PREFIX = 'Contact Last Name';
@@ -9,18 +9,18 @@ public class SAMPLE_DummyContactFactoryOutlet implements TEST_DummySObjectFactor
     	return PRIMARY_TARGET_FIELD;
     }
     
-    public TEST_DummySObjectBundle createBundle(
+    public XFTY_DummySObjectBundle createBundle(
 	    	List<SObject> templateSObjectList, 
-	    	TEST_InsertModeEnum insertMode, 
-	    	TEST_InsertInclusivityEnum inclusivity
+	    	XFTY_InsertModeEnum insertMode, 
+	    	XFTY_InsertInclusivityEnum inclusivity
 	    ) {
-    	TEST_DummySObjectMasterTemplate masterTemplate = new TEST_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-    		.put(Contact.FirstName, new TEST_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
-    		.put(Contact.LastName, new TEST_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
-    		.put(Contact.Email, new TEST_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
-    		.put(Contact.AccountId, new TEST_DummyDefaultRelationshipRequired(new Account(
+    	XFTY_DummySObjectMasterTemplate masterTemplate = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
+    		.put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
+    		.put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
+    		.put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
+    		.put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account(
     			Description = 'Account for contact'
     		)));
-    	return TEST_DummySObjectFactory.createBundle(masterTemplate, templateSObjectList, insertMode, inclusivity);
+    	return XFTY_DummySObjectFactory.createBundle(masterTemplate, templateSObjectList, insertMode, inclusivity);
     }
-} 
+}

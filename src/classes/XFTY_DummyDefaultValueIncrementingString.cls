@@ -1,9 +1,9 @@
 @IsTest
-public class TEST_DummyDefaultValueIncrementingString implements TEST_DummyDefaultValueIntf {
+public class XFTY_DummyDefaultValueIncrementingString implements XFTY_DummyDefaultValueIntf {
     private String prefix; 
     private Integer counter = 1;
     
-    public TEST_DummyDefaultValueIncrementingString(String prefix) {
+    public XFTY_DummyDefaultValueIncrementingString(String prefix) {
     	this.prefix = prefix;
     } 
     

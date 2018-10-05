@@ -10,13 +10,13 @@ public class SAMPLE_ProofOfConcept {
     	};
     	
     	// Act
-    	TEST_DummySObjectBundle resultBundle;
+    	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
     	// TODO: Implement System.runAs(){}
     	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
     			templateContactList, 
-    			TEST_InsertModeEnum.NOW, 
-    			TEST_InsertInclusivityEnum.ALL
+    			XFTY_InsertModeEnum.NOW, 
+    			XFTY_InsertInclusivityEnum.ALL
     		);
     	Test.stopTest();
     	
@@ -52,13 +52,13 @@ public class SAMPLE_ProofOfConcept {
     	};
     	
     	// Act
-    	TEST_DummySObjectBundle resultBundle;
+    	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
     	// TODO: Implement System.runAs(){}
     	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
     			templateContactList, 
-    			TEST_InsertModeEnum.NOW, 
-    			TEST_InsertInclusivityEnum.NONE
+    			XFTY_InsertModeEnum.NOW, 
+    			XFTY_InsertInclusivityEnum.NONE
     		);
     	Test.stopTest();
     	
@@ -84,13 +84,13 @@ public class SAMPLE_ProofOfConcept {
     	};
     	
     	// Act
-    	TEST_DummySObjectBundle resultBundle;
+    	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
     	// TODO: Implement System.runAs(){}
     	resultBundle = (new SAMPLE_DummyContactFactoryOutlet()).createBundle(
     			templateContactList, 
-    			TEST_InsertModeEnum.MOCK, 
-    			TEST_InsertInclusivityEnum.ALL
+    			XFTY_InsertModeEnum.MOCK, 
+    			XFTY_InsertInclusivityEnum.ALL
     		);
     	Test.stopTest();
     	

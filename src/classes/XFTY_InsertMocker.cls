@@ -1,5 +1,5 @@
 @isTest
-public class TEST_InsertMocker {
+public class XFTY_InsertMocker {
 	private static final Integer LENGTH_OF_SFDC_ID = 15;
 	private static final String ID_CORE = '3E000000nPxz'; 
 	 
