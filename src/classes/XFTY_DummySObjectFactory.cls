@@ -22,6 +22,9 @@ public class XFTY_DummySObjectFactory {
 	      when NOW { 
 	        insert sobjectList; 
 	      }
+	      when RELATED_ONLY {
+	        insert sobjectList;
+	      }
 	      when MOCK {
 	        XFTY_InsertMocker.addIds(sobjectList);
 	      }

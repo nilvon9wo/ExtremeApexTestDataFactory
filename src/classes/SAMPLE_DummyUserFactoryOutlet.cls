@@ -1,18 +1,5 @@
 @IsTest
 public class SAMPLE_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutletIntf {
-	private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
-	
-	private static final String SYSTEM_ADMIN = 'System Administrator';
-	private static final Map<String, Id> PROFILE_ID_BY_PROFILE_NAME_MAP = createProfileIdByProfileNameMap(); 
-	private static final Id SYSTEM_ADMIN_ID = PROFILE_ID_BY_PROFILE_NAME_MAP.get(SYSTEM_ADMIN);
-
-	private static final String CEO = 'CEO';
-	private static final Map<String, Id> USERROLE_ID_BY_USERROLE_NAME_MAP = createUserRoleIdByUserRoleNameMap(); 
-	private static final Id CEO_USERROLE_ID = USERROLE_ID_BY_USERROLE_NAME_MAP.get(CEO);
-
-	private static final Map<Id, User> TEST_USER_BY_PROFILE_MAP = createStandardTestUserByProfileMap();
-	public static final User TEST_ADMIN_USER = TEST_USER_BY_PROFILE_MAP.get(SYSTEM_ADMIN_ID);
-
 	public static final String DEFAULT_FIRST_NAME_PREFIX = 'User First Name';
 	public static final String DEFAULT_LAST_NAME_PREFIX = 'User Last Name';
 	public static final String DEFAULT_FEDERATION_ID_PREFIX = 'User Federation Id';
@@ -23,17 +10,17 @@ public class SAMPLE_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOu
 	public static final String DEFAULT_LANGUAGE_LOCAL = 'en_US';
 	public static final String DEFAULT_LOCALE_SID = 'en_GB';
 	public static final String DEFAULT_TIME_ZONE = 'GMT';
- 
-    public SObjectField getPrimaryTargetField() {
-    	return PRIMARY_TARGET_FIELD; 
-    } 
-    
-    public XFTY_DummySObjectBundle createBundle(
-	    	List<SObject> templateSObjectList, 
-	    	XFTY_InsertModeEnum insertMode, 
-	    	XFTY_InsertInclusivityEnum inclusivity
-	    ) {
-    	XFTY_DummySObjectMasterTemplate masterTemplate = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
+
+	private static final String SYSTEM_ADMIN = 'System Administrator';
+	private static final Map<String, Id> PROFILE_ID_BY_PROFILE_NAME_MAP = createProfileIdByProfileNameMap(); 
+	private static final Id SYSTEM_ADMIN_ID = PROFILE_ID_BY_PROFILE_NAME_MAP.get(SYSTEM_ADMIN);
+
+	private static final String CEO = 'CEO';
+	private static final Map<String, Id> USERROLE_ID_BY_USERROLE_NAME_MAP = createUserRoleIdByUserRoleNameMap(); 
+	private static final Id CEO_USERROLE_ID = USERROLE_ID_BY_USERROLE_NAME_MAP.get(CEO);
+
+	private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
+	private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
     		.put(User.Alias, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_ALIAS_PREFIX))
     		.put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact(DEFAULT_EMAIL_ENCODING))
     		.put(User.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
@@ -45,8 +32,30 @@ public class SAMPLE_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOu
     		.put(User.ProfileId, new XFTY_DummyDefaultValueExact(SYSTEM_ADMIN_ID))
     		.put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_TIME_ZONE))
     		.put(User.Username, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_USERNAME_PREFIX));
-    	
-    	return XFTY_DummySObjectFactory.createBundle(masterTemplate, templateSObjectList, insertMode, inclusivity);
+
+	private static final Map<Id, User> TEST_USER_BY_PROFILE_MAP = createStandardTestUserByProfileMap();
+	public static final User TEST_ADMIN_USER = TEST_USER_BY_PROFILE_MAP.get(SYSTEM_ADMIN_ID);
+
+ 
+    public SObjectField getPrimaryTargetField() {
+    	return PRIMARY_TARGET_FIELD; 
+    } 
+
+    public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+    	return MASTER_TEMPLATE; 
+    }
+    
+    public XFTY_DummySObjectBundle createBundle(
+	    	List<SObject> templateSObjectList, 
+	    	XFTY_InsertModeEnum insertMode, 
+	    	XFTY_InsertInclusivityEnum inclusivity
+	    ) {
+		System.debug('######### MASTER_TEMPLATE: ' + MASTER_TEMPLATE);	    	
+		System.debug('######### templateSObjectList: ' + templateSObjectList);	    	
+		System.debug('######### insertMode: ' + insertMode);	    	
+		System.debug('######### inclusivity: ' + inclusivity);	    	
+	    	
+    	return XFTY_DummySObjectFactory.createBundle(MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
     }
     
 	// Helpers ----------------------------------------------------------------------------------------------
