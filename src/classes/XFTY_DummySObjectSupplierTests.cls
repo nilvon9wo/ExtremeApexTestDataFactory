@@ -13,7 +13,7 @@ public class XFTY_DummySObjectSupplierTests {
     	XFTY_DummySObjectBundle resultBundle; 
     	Test.startTest();
     	System.runAs(TEST_ADMIN){
-	    	resultBundle = (new XFTY_DummySObjectSupplier())
+	    	resultBundle = (new XFTY_DummySObjectSupplier(Contact.SObjectType))
 	    		.setOverrideTemplateList(templateContactList)
 	    		.setInsertMode(XFTY_InsertModeEnum.NOW)
 	    		.setInclusivity(XFTY_InsertInclusivityEnum.NONE)
@@ -39,7 +39,7 @@ public class XFTY_DummySObjectSupplierTests {
     	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
     	System.runAs(TEST_ADMIN){
-	    	resultBundle = (new XFTY_DummySObjectSupplier())
+	    	resultBundle = (new XFTY_DummySObjectSupplier(Contact.SObjectType))
 	    		.setOverrideTemplateList(templateContactList)
 	    		.setInsertMode(XFTY_InsertModeEnum.NOW)
 	    		.setInclusivity(XFTY_InsertInclusivityEnum.ALL)
@@ -72,7 +72,7 @@ public class XFTY_DummySObjectSupplierTests {
     	XFTY_DummySObjectBundle resultBundle;
     	Test.startTest();
 		System.runAs(TEST_ADMIN){
-	    	resultBundle = (new XFTY_DummySObjectSupplier())
+	    	resultBundle = (new XFTY_DummySObjectSupplier(Contact.SObjectType))
 	    		.setOverrideTemplateList(templateContactList)
 	    		.setInsertMode(XFTY_InsertModeEnum.MOCK)
 	    		.setInclusivity(XFTY_InsertInclusivityEnum.ALL)
@@ -111,7 +111,7 @@ public class XFTY_DummySObjectSupplierTests {
     	Contact resultContact; 
     	Test.startTest();
     	System.runAs(TEST_ADMIN){
-	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier())
+	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier(Contact.SObjectType))
 	    		.setOverrideTemplateList(templateContactList)
 	    		.setInsertMode(XFTY_InsertModeEnum.MOCK)
 	    		.supply(); 
@@ -133,8 +133,7 @@ public class XFTY_DummySObjectSupplierTests {
     	Contact resultContact; 
     	Test.startTest();
     	System.runAs(TEST_ADMIN){
-	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier())
-	    		.setSObjectType(Contact.SObjectType)
+	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier(Contact.SObjectType))
 	    		.supply(); 
     	}	    		
     	Test.stopTest();
@@ -154,7 +153,7 @@ public class XFTY_DummySObjectSupplierTests {
     	Test.startTest();
     	System.runAs(TEST_ADMIN){
     		try {
-    			(new XFTY_DummySObjectSupplier()).supply();
+    			(new XFTY_DummySObjectSupplier(null));
     		}
     		catch(XFTY_DummySObjectSupplier.SanityException ex) {
     			caughtException = ex;
@@ -164,7 +163,7 @@ public class XFTY_DummySObjectSupplierTests {
     	 
     	// Assert 
     	System.assertNotEquals(null, caughtException);
-    	System.assert(caughtException.getMessage().contains('SObjectType before requesting supplies'));
+    	System.assert(caughtException.getMessage().contains('SObjectType to request supplies'));
     }
   
    // Helpers ------------------------------------------------------------------------------------

@@ -1,8 +1,16 @@
 @IsTest
 public class XFTY_DummySObjectSupplier {
+	private SObjectType sObjectType;
+
 	private static final Boolean NO_CONFLICT = true;
 	
-	private SObjectType sObjectType;
+	public XFTY_DummySObjectSupplier(SObjectType sObjectType) {
+		if (SObjectType == null) {
+			throw new SanityException('It is required to specify an SObjectType to request supplies!');
+		}
+		this.sObjectType = sObjectType;
+	}
+	
 	private List<SObject> overrideTemplateList;
 	private Integer quantityPerListedTemplate = 1; // If no templates are supplied, a blank one will be created. 
 	private XFTY_InsertModeEnum insertMode = XFTY_InsertModeEnum.NEVER;
@@ -38,12 +46,6 @@ public class XFTY_DummySObjectSupplier {
 	
 	//  Setters -----------------------------------------------------------------------------------------------------------------
 	
-	public XFTY_DummySObjectSupplier setSObjectType(SObjectType sObjectType) {
-		this.checkForSObjectTypeConflict(sObjectType);
-		this.sObjectType = sObjectType;
-		return this;
-	}
-
 	public XFTY_DummySObjectSupplier setQuantityPerTemplate(Integer quantityPerListedTemplate) {
 		if (quantityPerListedTemplate < 1) {
 			throw new SanityException('It makes no sense to supply ' + quantityPerListedTemplate);
@@ -101,10 +103,6 @@ public class XFTY_DummySObjectSupplier {
 	// Supply methods ----------------------------------------------------------------------------------------------------------
 
 	public XFTY_DummySObjectBundle supplyBundle() {
-		if (this.SObjectType == null) {
-			throw new SanityException('It is required to specify an SObjectType before requesting supplies!');
-		}
-		
 		if (this.hasCustomMasterTemplate && this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty()) {
 			System.debug(LoggingLevel.WARN, '!!!  When using both customer master and overrides, overrides will win all conflicts! !!!');
 		}
@@ -144,17 +142,6 @@ public class XFTY_DummySObjectSupplier {
 	
 	// Consistancy checks ----------------------------------------------------------------
 	
-	private Boolean checkForSObjectTypeConflict(SObjectType sObjectType) {
-		if (
-			this.overrideTemplateList != null 
-			&& !this.overrideTemplateList.isEmpty()
-			&& this.overrideTemplateList[0].getSObjectType() != sObjectType
-			) {
-			throw new ConflictException('SObjectType ' + sObjectType + ' is incompatible with template: ' + this.overrideTemplateList[0]);
-		}
-		return NO_CONFLICT;	
-	}
-
 	private Boolean checkForSObjectTypeConflict(List<SObject> overrideTemplateList) {
 		if (
 			this.overrideTemplateList != null 
