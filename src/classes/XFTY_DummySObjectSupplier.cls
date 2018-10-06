@@ -44,7 +44,7 @@ public class XFTY_DummySObjectSupplier {
 		return this;
 	}
 
-	public XFTY_DummySObjectSupplier setQuantityPerListedTemplate(Integer quantityPerListedTemplate) {
+	public XFTY_DummySObjectSupplier setQuantityPerTemplate(Integer quantityPerListedTemplate) {
 		if (quantityPerListedTemplate < 1) {
 			throw new SanityException('It makes no sense to supply ' + quantityPerListedTemplate);
 		}
@@ -60,6 +60,10 @@ public class XFTY_DummySObjectSupplier {
 		this.overrideTemplateList = overrideTemplateList;
 		this.checkForSObjectTypeConflict(overrideTemplateList);
 		return this;
+	}
+
+	public XFTY_DummySObjectSupplier setOverrideTemplate(SObject overrideTemplate) {
+		return this.setOverrideTemplateList(new List<SObject>{overrideTemplate});
 	}
 
 	public XFTY_DummySObjectSupplier setInsertMode(XFTY_InsertModeEnum insertMode) {
