@@ -3,7 +3,9 @@ public class XFTY_DummySObjectSupplierTests {
 	private static final User TEST_ADMIN = SAMPLE_DummyUserFactoryOutlet.TEST_ADMIN_USER;
 	private static final String TEST_CONTACT_FIRST_NAME = 'Fred';
  
-	@IsTest public static void testContactFactoryCreatesOnlyContact() {
+ 	// Create Bundle Tests -------------------------------------------------------------
+ 
+	@IsTest public static void testSupplyBundleShouldCreateOnlyContact() {
     	// Arrange
     	List<Contact> templateContactList = createTestTemplateContactList();
     	
@@ -99,9 +101,76 @@ public class XFTY_DummySObjectSupplierTests {
 		System.assert(caughtException.getMessage().contains('INVALID_CROSS_REFERENCE_KEY'));
     }
 
+ 	// Create Instance Tests -------------------------------------------------------------
+ 
+	@IsTest public static void testSupplyShouldCreateOnlyContactWhenTemplateIsSet() { 
+    	// Arrange
+    	List<Contact> templateContactList = createTestTemplateContactList();
+    	
+    	// Act
+    	Contact resultContact; 
+    	Test.startTest();
+    	System.runAs(TEST_ADMIN){
+	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier())
+	    		.setOverrideTemplateList(templateContactList)
+	    		.setInsertMode(XFTY_InsertModeEnum.MOCK)
+	    		.supply(); 
+    	}	    		
+    	Test.stopTest();
+    	
+    	// Assert 
+    	System.assertNotEquals(null, resultContact);
+    	assertContactCreated(resultContact);
+
+    	System.assertEquals(null, resultContact.AccountId);
+    }
+
+	@IsTest public static void testSupplyShouldCreateOnlyContactWhenTypeIsSet() { 
+    	// Arrange
+    	List<Contact> templateContactList = createTestTemplateContactList();
+    	
+    	// Act
+    	Contact resultContact; 
+    	Test.startTest();
+    	System.runAs(TEST_ADMIN){
+	    	resultContact = (Contact) (new XFTY_DummySObjectSupplier())
+	    		.setSObjectType(Contact.SObjectType)
+	    		.supply(); 
+    	}	    		
+    	Test.stopTest();
+    	
+    	// Assert 
+    	System.assertNotEquals(null, resultContact);
+    	System.assert(resultContact.FirstName.contains(SAMPLE_DummyContactFactoryOutlet.DEFAULT_FIRST_NAME_PREFIX));
+    	System.assert(resultContact.LastName.contains(SAMPLE_DummyContactFactoryOutlet.DEFAULT_LAST_NAME_PREFIX));
+    }
+
+	@IsTest public static void testSupplyShouldThrowFriendlyExceptionWhenNoSObjectTypeProvided() { 
+    	// Arrange
+    	List<Contact> templateContactList = createTestTemplateContactList();
+    	
+    	// Act
+    	XFTY_DummySObjectSupplier.SanityException caughtException; 
+    	Test.startTest();
+    	System.runAs(TEST_ADMIN){
+    		try {
+    			(new XFTY_DummySObjectSupplier()).supply();
+    		}
+    		catch(XFTY_DummySObjectSupplier.SanityException ex) {
+    			caughtException = ex;
+    		}
+    	}	    		
+    	Test.stopTest();
+    	 
+    	// Assert 
+    	System.assertNotEquals(null, caughtException);
+    	System.assert(caughtException.getMessage().contains('SObjectType before requesting supplies'));
+    }
+  
+   // Helpers ------------------------------------------------------------------------------------
 
     private static List<Contact> createTestTemplateContactList() {
-    	return new List<Contact>{
+    	return new List<Contact>{ 
     		new Contact(
     			FirstName = TEST_CONTACT_FIRST_NAME
     		)
@@ -122,8 +191,10 @@ public class XFTY_DummySObjectSupplierTests {
     private static void assertContactsCreated(XFTY_DummySObjectBundle resultBundle) {
     	List<Contact> resultContactList = (List<Contact>) resultBundle.getList(Contact.Id); 
     	System.assertNotEquals(null, resultContactList);
-    	
-    	Contact resultContact = resultContactList[0]; 
+    	assertContactCreated(resultContactList[0]); 
+    }
+    
+    private static void assertContactCreated(Contact resultContact) {
     	System.assertNotEquals(null, resultContact.Id);
     	System.assertEquals(TEST_CONTACT_FIRST_NAME, resultContact.FirstName);
     	System.assert(resultContact.LastName.contains(SAMPLE_DummyContactFactoryOutlet.DEFAULT_LAST_NAME_PREFIX));
