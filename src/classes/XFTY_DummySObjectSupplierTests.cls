@@ -1,6 +1,6 @@
 @IsTest
-public class XFTY_DummySObjectSupplierTests {
-	private static final User TEST_ADMIN = SAMPLE_DummyUserFactoryOutlet.TEST_ADMIN_USER;
+public class SAMPLE_DummySObjectSupplierTests { 
+	private static final User TEST_ADMIN = XFTY_DummyUserFactoryOutlet.TEST_ADMIN_USER;
 	private static final String TEST_CONTACT_FIRST_NAME = 'Fred';
  
  	// Create Bundle Tests -------------------------------------------------------------
@@ -29,7 +29,7 @@ public class XFTY_DummySObjectSupplierTests {
     	System.assertEquals(null, resultBundle.getBundle(Contact.AccountId));
 		System.assertEquals(null, ((Contact) resultBundle.getList(Contact.Id)[0]).AccountId);
     }
-    
+     
 	
     @IsTest public static void testContactFactoryCreatesBothContactAndAccountInDatabase() {
     	// Arrange

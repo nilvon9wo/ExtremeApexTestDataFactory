@@ -1,8 +1,8 @@
 @IsTest
 public class SAMPLE_DummyContactFactoryOutletTests {
-	private static final User TEST_ADMIN = SAMPLE_DummyUserFactoryOutlet.TEST_ADMIN_USER;
+	private static final User TEST_ADMIN = XFTY_DummyUserFactoryOutlet.TEST_ADMIN_USER;
 	private static final String TEST_CONTACT_FIRST_NAME = 'Fred';
- 
+  
 	@IsTest public static void testContactFactoryCreatesOnlyContact() {
     	// Arrange
     	List<Contact> templateContactList = createTestTemplateContactList();

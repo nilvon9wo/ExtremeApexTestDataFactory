@@ -4,7 +4,7 @@ public class XFTY_DummySObjectFactoryOutletLookup {
     	= new Map<SObjectType, Type>{
     		Account.SObjectType => SAMPLE_DummyAccountFactoryOutlet.class,
     		Contact.SObjectType => SAMPLE_DummyContactFactoryOutlet.class,
-    		User.SObjectType => SAMPLE_DummyUserFactoryOutlet.class
+    		User.SObjectType => XFTY_DummyUserFactoryOutlet.class
     }; 
     
     private static final Map<SObjectType, XFTY_DummySObjectFactoryOutletIntf> OUTLET_INSTANCE_BY_SOBJECT_TYPE 
@@ -22,7 +22,7 @@ public class XFTY_DummySObjectFactoryOutletLookup {
     	}
     	return OUTLET_INSTANCE_BY_SOBJECT_TYPE.get(sObjectType);
     }
-	
+	 
 	// --------------------------------------------------------------------------
     
     public class LookupException extends Exception{}
