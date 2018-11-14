@@ -3,7 +3,6 @@ public class XFTY_DummySObjectFactoryOutletLookup {
     private static final Map<SObjectType, Type> OUTLET_TYPE_BY_SOBJECT_TYPE
             = new Map<SObjectType, Type>{
                     Account.SObjectType => XFTY_SMPL_DummyAccountFactoryOutlet.class,
-                    Book__c.SObjectType => STCE_DummyBookFactoryOutlet.class,
                     Contact.SObjectType => XFTY_SMPL_DummyContactFactoryOutlet.class,
                     User.SObjectType => XFTY_DummyUserFactoryOutlet.class
             };
