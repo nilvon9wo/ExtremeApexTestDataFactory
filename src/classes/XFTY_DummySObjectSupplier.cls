@@ -27,7 +27,6 @@ public class XFTY_DummySObjectSupplier {
             }
             return this.factoryOutlet;
         }
-        private set;
     }
 
     private XFTY_DummySObjectMasterTemplate masterTemplate {
@@ -41,7 +40,6 @@ public class XFTY_DummySObjectSupplier {
             }
             return this.masterTemplate;
         }
-        private set;
     }
 
     //  Setters -----------------------------------------------------------------------------------------------------------------
