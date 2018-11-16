@@ -42,7 +42,7 @@ And, even though we can't even use lambdas on SFDC, just reading the book, which
 And, I believe I have come up with a truly elegant solution for creating test factories, so that I can create factories that look like this:
 
 
-
+```
 @IsTest
 public class SAMPLE_DummyContactFactoryOutlet implements TEST_DummySObjectFactoryOutletIntf {
 	private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
@@ -69,6 +69,7 @@ public class SAMPLE_DummyContactFactoryOutlet implements TEST_DummySObjectFactor
     	return TEST_DummySObjectFactory.createBundle(masterTemplate, templateSObjectList, insertMode, inclusivity);
     }
 } 
+```
 
 Right now, public interfaces are still pretty raw since I'm just focused on the core functionality and proof of concept.
 
