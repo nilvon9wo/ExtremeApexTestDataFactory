@@ -1,3 +1,4 @@
 public interface XFTY_DummyDefaultRelationshipIntf {
-    SObject get();
+    SObject getOverrideTemplate();
+    SObjectField getRelatedField();
 }

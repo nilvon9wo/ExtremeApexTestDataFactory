@@ -1,6 +1,6 @@
 @IsTest
 public class XFTY_DummyDefaultValueUniqueString implements XFTY_DummyDefaultValueIntf {
-    private String prefix;
+    private final String prefix;
     private static Integer counter = 1;
 
     public XFTY_DummyDefaultValueUniqueString(String prefix) {

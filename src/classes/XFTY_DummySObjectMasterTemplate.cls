@@ -40,4 +40,11 @@ public class XFTY_DummySObjectMasterTemplate {
         this.optionalRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
         return this;
     }
+
+    public XFTY_DummySObjectMasterTemplate remove(SObjectField sObjectField) {
+        this.defaultBySObjectFieldMap.remove(sObjectField);
+        this.requiredRelationshipBySObjectFieldMap.remove(sObjectField);
+        this.optionalRelationshipBySObjectFieldMap.remove(sObjectField);
+        return this;
+    }
 }

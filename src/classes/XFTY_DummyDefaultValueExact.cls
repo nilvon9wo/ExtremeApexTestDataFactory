@@ -1,6 +1,6 @@
 @IsTest
 public class XFTY_DummyDefaultValueExact implements XFTY_DummyDefaultValueIntf {
-    private Object value;
+    private final Object value;
 
     public XFTY_DummyDefaultValueExact(Object value) {
         this.value = value;

@@ -1,10 +1,10 @@
 @IsTest
-public class XFTY_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutletIntf {
+public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIntf {
     public static final String DEFAULT_FIRST_NAME_PREFIX = 'User First Name';
     public static final String DEFAULT_LAST_NAME_PREFIX = 'User Last Name';
     public static final String DEFAULT_FEDERATION_ID_PREFIX = 'User Federation Id';
     public static final String DEFAULT_EMAIL_PREFIX = 'test.email';
-    public static final String DEFAULT_USERNAME_PREFIX = 'test.username';
+    public static final String DEFAULT_USERNAME_PREFIX = 'test.username.example';
     public static final String DEFAULT_ALIAS_PREFIX = 'a';
     public static final String DEFAULT_EMAIL_ENCODING = 'ISO-8859-1';
     public static final String DEFAULT_LANGUAGE_LOCAL = 'en_US';
@@ -17,25 +17,27 @@ public class XFTY_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutl
 
     private static final String CEO = 'CEO';
     private static final Map<String, Id> USERROLE_ID_BY_USERROLE_NAME_MAP = createUserRoleIdByUserRoleNameMap();
+    //noinspection ApexUnusedDeclaration
     private static final Id CEO_USERROLE_ID = USERROLE_ID_BY_USERROLE_NAME_MAP.get(CEO);
 
     private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
-    private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-            .put(User.Alias, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_ALIAS_PREFIX))
-            .put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact(DEFAULT_EMAIL_ENCODING))
-            .put(User.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
-            .put(User.FederationIdentifier, new XFTY_DummyDefaultValueUniqueString(DEFAULT_FEDERATION_ID_PREFIX))
-            .put(User.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
-            .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact(DEFAULT_LANGUAGE_LOCAL))
-            .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
-            .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_LOCALE_SID))
-            .put(User.ProfileId, new XFTY_DummyDefaultValueExact(SYSTEM_ADMIN_ID))
-            .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_TIME_ZONE))
-            .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_USERNAME_PREFIX));
+    private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
+            = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
+                    .put(User.Alias, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_ALIAS_PREFIX))
+                    .put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact(DEFAULT_EMAIL_ENCODING))
+                    .put(User.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
+                    .put(User.FederationIdentifier, new XFTY_DummyDefaultValueUniqueString(DEFAULT_FEDERATION_ID_PREFIX))
+                    .put(User.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
+                    .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact(DEFAULT_LANGUAGE_LOCAL))
+                    .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
+                    .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_LOCALE_SID))
+                    .put(User.ProfileId, new XFTY_DummyDefaultValueExact(SYSTEM_ADMIN_ID))
+                    .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_TIME_ZONE))
+                    .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_USERNAME_PREFIX));
 
+    private static final XFTY_DummySObjectProviderLookupIntf DEFAULT_SOBJECT_PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final Map<Id, User> TEST_USER_BY_PROFILE_MAP = createStandardTestUserByProfileMap();
     public static final User TEST_ADMIN_USER = TEST_USER_BY_PROFILE_MAP.get(SYSTEM_ADMIN_ID);
-
 
     public SObjectField getPrimaryTargetField() {
         return PRIMARY_TARGET_FIELD;
@@ -46,12 +48,14 @@ public class XFTY_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutl
     }
 
     public XFTY_DummySObjectBundle createBundle(
+            XFTY_DummySObjectProviderLookupIntf providerLookup,
             List<SObject> templateSObjectList,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
-        return XFTY_DummySObjectFactory.createBundle(MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
+        return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
     }
+
 
     // Helpers ----------------------------------------------------------------------------------------------
 
@@ -59,8 +63,8 @@ public class XFTY_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutl
         List<User> templateUserList = new List<User>{
                 new User(ProfileId = SYSTEM_ADMIN_ID)
         };
-
-        List<User> userList = (new XFTY_DummyUserFactoryOutlet()).createBundle(
+        List<User> userList = (new XFTY_DefaultUserDataProvider()).createBundle(
+                DEFAULT_SOBJECT_PROVIDER_LOOKUP,
                 templateUserList,
                 XFTY_InsertModeEnum.NOW,
                 XFTY_InsertInclusivityEnum.REQUIRED
@@ -106,5 +110,4 @@ public class XFTY_DummyUserFactoryOutlet implements XFTY_DummySObjectFactoryOutl
         }
         return userRoleIdByUserRoleNameMap;
     }
-
 }

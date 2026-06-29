@@ -1,14 +1,34 @@
+/**
+ * This class is responsible for providing test data.
+ *
+ * It provides the primary entry point for the Extreme Apex Test Data Factory,
+ * from which this code is adapted.
+ * @see <a href="https://github.com/nilvon9wo/ExtremeApexTestDataFactory/">ExtremeApexTestDataFactory GitHub Repo</a>
+ *
+ * WARNING:
+ * Because Salesforce `@TestSetup` is quirky (and arguably not such a great practice as
+ * Salesforce would have developers believe), using this framework with `@TestSetup`
+ * is not supported.  Specifically, there is a known issue with `@TestSetup` resetting
+ * static variables which this framework depends upon.
+ * (These variables do NOT allow communication between each test ALWAYS runs in separate context!)
+ */
 @IsTest
-public class XFTY_DummySObjectSupplier {
+public class XFTY_DummySObjectProvider {
     private SObjectType sObjectType;
+    private final XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup;
 
     private static final Boolean NO_CONFLICT = true;
 
-    public XFTY_DummySObjectSupplier(SObjectType sObjectType) {
+    public XFTY_DummySObjectProvider(SObjectType sObjectType, XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup) {
         if (sObjectType == null) {
-            throw new SanityException('It is required to specify an SObjectType to request supplies!');
+            throw new SanityException('It is required to specify an SObjectType to request data!');
         }
         this.sObjectType = sObjectType;
+
+        if (sObjectProviderLookup == null) {
+            throw new SanityException('It is required to specify an Dummy SObject Provider Lookup to request data!');
+        }
+        this.sObjectProviderLookup = sObjectProviderLookup;
     }
 
     private List<SObject> overrideTemplateList;
@@ -17,20 +37,20 @@ public class XFTY_DummySObjectSupplier {
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
     private Boolean hasCustomMasterTemplate = false;
 
-    private XFTY_DummySObjectFactoryOutletIntf factoryOutlet {
+    private final XFTY_DummySobjectProviderIntf factoryOutlet {
         get {
             if (this.factoryOutlet == null) {
                 if (this.sObjectType == null) {
                     throw new IndeterminateSObjectTypeException('SObjectType must be set before retrieving its factory.');
                 }
-                this.factoryOutlet = XFTY_DummySObjectFactoryOutletLookup.get(this.sObjectType);
+                this.factoryOutlet = this.sObjectProviderLookup.get(this.sObjectType);
             }
             return this.factoryOutlet;
         }
-        set;
+        private set;
     }
 
-    private XFTY_DummySObjectMasterTemplate masterTemplate {
+    private final XFTY_DummySObjectMasterTemplate masterTemplate {
         get {
             if (this.masterTemplate == null) {
                 if (this.sObjectType == null) {
@@ -41,12 +61,12 @@ public class XFTY_DummySObjectSupplier {
             }
             return this.masterTemplate;
         }
-        set;
+        private set;
     }
 
     //  Setters -----------------------------------------------------------------------------------------------------------------
 
-    public XFTY_DummySObjectSupplier setQuantityPerTemplate(Integer quantityPerListedTemplate) {
+    public XFTY_DummySObjectProvider setQuantityPerTemplate(Integer quantityPerListedTemplate) {
         if (quantityPerListedTemplate < 1) {
             throw new SanityException('It makes no sense to supply ' + quantityPerListedTemplate);
         }
@@ -54,7 +74,7 @@ public class XFTY_DummySObjectSupplier {
         return this;
     }
 
-    public XFTY_DummySObjectSupplier setOverrideTemplateList(List<SObject> overrideTemplateList) {
+    public XFTY_DummySObjectProvider setOverrideTemplateList(List<SObject> overrideTemplateList) {
         if (overrideTemplateList != null && !overrideTemplateList.isEmpty()) {
             this.sObjectType = overrideTemplateList[0].getSObjectType();
         }
@@ -64,41 +84,50 @@ public class XFTY_DummySObjectSupplier {
         return this;
     }
 
-    public XFTY_DummySObjectSupplier setOverrideTemplate(SObject overrideTemplate) {
+    public XFTY_DummySObjectProvider setOverrideTemplate(SObject overrideTemplate) {
         return this.setOverrideTemplateList(new List<SObject>{
                 overrideTemplate
         });
     }
 
-    public XFTY_DummySObjectSupplier setInsertMode(XFTY_InsertModeEnum insertMode) {
+    public XFTY_DummySObjectProvider setInsertMode(XFTY_InsertModeEnum insertMode) {
         this.insertMode = insertMode;
         return this;
     }
 
-    public XFTY_DummySObjectSupplier setInclusivity(XFTY_InsertInclusivityEnum inclusivity) {
+    public XFTY_DummySObjectProvider setInclusivity(XFTY_InsertInclusivityEnum inclusivity) {
         this.inclusivity = inclusivity;
         return this;
     }
 
     // Include methods ----------------------------------------------------------------------------------------------------------
-    // Use these when static templates are insufficent (e.g. because unique values are required).
+    // Use these when static templates are insufficient (e.g. because unique values are required).
     // WARNING: You can use both override templates and include methods, but in the event of conflicting values, override values will win!
 
-    public XFTY_DummySObjectSupplier put(SObjectField sObjectField, XFTY_DummyDefaultValueIntf valueTemplate) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultValueIntf valueTemplate) {
+        this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, valueTemplate);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
-    public XFTY_DummySObjectSupplier put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipRequired relationshipTemplate) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipRequired relationshipTemplate) {
+        this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, relationshipTemplate);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
-    public XFTY_DummySObjectSupplier put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipOptional relationshipTemplate) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipOptional relationshipTemplate) {
+        this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, relationshipTemplate);
         this.hasCustomMasterTemplate = true;
+        return this;
+    }
+
+    //noinspection ApexUnusedDeclaration
+    public XFTY_DummySObjectProvider removeFromMasterTemplate(SObjectField sObjectField){
+        this.masterTemplate.remove(sObjectField);
         return this;
     }
 
@@ -122,9 +151,16 @@ public class XFTY_DummySObjectSupplier {
                 : templateList;
 
         // We can't check this.masterTemplate for null because getting it will set it, so it should never be null.
-        return (this.hasCustomMasterTemplate == null)
-                ? XFTY_DummySObjectFactory.createBundle(this.masterTemplate, multipliedTemplateList, insertMode, inclusivity)
-                : this.factoryOutlet.createBundle(multipliedTemplateList, insertMode, inclusivity);
+        XFTY_DummySObjectBundle bundle = (this.hasCustomMasterTemplate == null)
+                ? XFTY_DummySObjectFactory.createBundle(
+                        this.sObjectProviderLookup,
+                        this.masterTemplate,
+                        multipliedTemplateList,
+                        insertMode,
+                        inclusivity
+                )
+                : this.factoryOutlet.createBundle(this.sObjectProviderLookup, multipliedTemplateList, insertMode, inclusivity);
+        return bundle;
     }
 
     private List<SObject> multiplyByQuantity(List<SObject> templateList) {
@@ -144,13 +180,13 @@ public class XFTY_DummySObjectSupplier {
         return this.supplyList()[0];
     }
 
-    // Consistancy checks ----------------------------------------------------------------
+    // Consistency checks ----------------------------------------------------------------
 
     private Boolean checkForSObjectTypeConflict(List<SObject> overrideTemplateList) {
         if (
                 this.overrideTemplateList != null
                         && !this.overrideTemplateList.isEmpty()
-                ) {
+        ) {
             for (SObject overrideTemplate : overrideTemplateList) {
                 if (overrideTemplate.getSObjectType() != sObjectType) {
                     throw new ConflictException('SObjectType ' + sObjectType + ' is not matched by template: ' + overrideTemplate);

@@ -1,9 +1,9 @@
 @IsTest
 public class XFTY_DummySObjectBundle {
-    private Map<SObjectField, XFTY_DummySObjectBundle> sObjectBundleBySObjectFieldMap
+    private final Map<SObjectField, XFTY_DummySObjectBundle> sObjectBundleBySObjectFieldMap
             = new Map<SObjectField, XFTY_DummySObjectBundle>();
 
-    private Map<SObjectField, List<SObject>> sObjectListBySObjectFieldMap
+    private final Map<SObjectField, List<SObject>> sObjectListBySObjectFieldMap
             = new Map<SObjectField, List<SObject>>();
 
     public XFTY_DummySObjectBundle put(SObjectField sObjectField, List<SObject> sObjectList) {
