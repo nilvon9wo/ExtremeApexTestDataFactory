@@ -336,6 +336,34 @@ This is particularly useful when testing:
 
 ---
 
+# Advanced Example
+
+The methods describe above can be combined.
+
+```apex
+XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER)
+        .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Test'))
+        .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(
+                new Account(Description = 'Integration Test Account')
+        ))
+        .setQuantityPerTemplate(2)
+        .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
+        .setInsertMode(XFTY_InsertModeEnum.MOCK)
+        .supplyBundle();
+```
+
+This example:
+
+* gives each an incrementing first name
+* automatically creates an `Account` for each contact
+* customises the generated `Account`
+* generates two `Contact` records
+* assigns mock Ids without performing any database operations
+
+Several default value strategies are included, including exact values, incrementing strings and unique email generation. Additional strategies can be added simply by implementing `XFTY_DummyDefaultValueIntf`.
+
+---
+
 # Performance Considerations
 
 Override Templates are usually the simplest solution.

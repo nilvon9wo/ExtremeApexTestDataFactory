@@ -6,6 +6,7 @@ public class XFTY_DefaultContactDataProvider implements XFTY_DummySobjectProvide
     public static final String DEFAULT_ACCOUNT_DESCRIPTION = 'Account for contact';
 
     private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
+
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
             .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account(
                     Description = DEFAULT_ACCOUNT_DESCRIPTION
@@ -30,5 +31,4 @@ public class XFTY_DefaultContactDataProvider implements XFTY_DummySobjectProvide
     ) {
         return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
     }
-
 }
