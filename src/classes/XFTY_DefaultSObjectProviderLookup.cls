@@ -13,7 +13,7 @@ public class XFTY_DefaultSObjectProviderLookup implements XFTY_DummySObjectProvi
 	public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
 		if (!OUTLET_INSTANCE_BY_SOBJECT_TYPE.containsKey(sObjectType)) {
 			if (!(OUTLET_TYPE_BY_SOBJECT_TYPE.containsKey(sObjectType))) {
-				new LookupException('No data provider found for : ' + sObjectType);
+				throw new LookupException('No data provider found for : ' + sObjectType);
 			}
 			OUTLET_INSTANCE_BY_SOBJECT_TYPE.put(
 					sObjectType,
