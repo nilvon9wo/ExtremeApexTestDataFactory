@@ -128,6 +128,7 @@ public class XFTY_DummySObjectProvider {
     //noinspection ApexUnusedDeclaration
     public XFTY_DummySObjectProvider removeFromMasterTemplate(SObjectField sObjectField){
         this.masterTemplate.remove(sObjectField);
+        this.hasCustomMasterTemplate = true;
         return this;
     }
 
