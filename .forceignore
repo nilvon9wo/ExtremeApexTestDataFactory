@@ -1,0 +1,15 @@
+# Local tooling / IDE artifacts
+**/.idea/**
+**/.illuminatedCloud/**
+**/IlluminatedCloud/**
+.sf/**
+.sfdx/**
+.localdev/**
+
+# Never deploy an MDAPI manifest from a source-format project
+**/package.xml
+
+# Misc
+**/*.dup
+**/jsconfig.json
+**/.eslintrc.json

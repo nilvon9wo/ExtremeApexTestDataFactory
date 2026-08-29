@@ -2,6 +2,14 @@
 .sf/
 .sfdx/
 .localdev/
+.localdevserver/
+
+# Salesforce CLI
+**/.sf/
+**/.sfdx/
+deploy-options.json
+test-result*.json
+**/lwc/jsconfig.json
 /IlluminatedCloud/
 /out/
 target/
