@@ -1,5 +1,7 @@
 # XFTY (Extreme Apex Test Data Factory)
 
+[![CI](https://github.com/nilvon9wo/ExtremeApexTestDataFactory/actions/workflows/ci.yml/badge.svg)](https://github.com/nilvon9wo/ExtremeApexTestDataFactory/actions/workflows/ci.yml)
+
 XFTY is a declarative test data factory for Salesforce Apex.
 
 Instead of manually constructing complete `SObject` graphs for every test, you describe only the values your test actually cares about. XFTY supplies sensible defaults, automatically creates related records, and optionally inserts them or assigns realistic mock Ids.
@@ -93,7 +95,9 @@ Detailed documentation is available in the `docs` directory.
 | [Testing Modes](docs/testing-modes.md)           | Insert modes and relationship inclusivity. |
 | [Limitations](docs/salesforce-considerations.md) | Current limitations, recommended practices, and known trade-offs. |
 | [Internals](docs/internals.md)                   | Architecture, implementation details, and design decisions. |
-| [Future Ideas](docs/future-ideas.md)                   | Architecture, implementation details, and design decisions. |
+| [Future Ideas](docs/future-ideas.md)             | Enhancements under consideration and their open design questions. |
+| [Packaging & Development](docs/packaging.md)     | Local setup, CI, unlocked-package builds, and the AppExchange roadmap. |
+| [Known Issues](docs/known-issues.md)             | Defects found and fixed, plus open items for triage. |
 
 ---
 

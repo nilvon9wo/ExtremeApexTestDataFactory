@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Serialise scratch org creation so parallel runs don't exhaust the Dev Hub's
+# active scratch org allocation.
+concurrency:
+  group: scratch-org-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  apex-tests:
+    name: Deploy and run Apex tests
+    runs-on: ubuntu-latest
+    env:
+      DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install the Salesforce CLI
+        run: npm install --global @salesforce/cli@latest
+
+      - name: Authenticate the Dev Hub
+        run: |
+          if [ -z "$DEVHUB_SFDX_AUTH_URL" ]; then
+            echo "::error::The DEVHUB_SFDX_AUTH_URL repository secret is not set. See docs/packaging.md."
+            exit 1
+          fi
+          printf '%s' "$DEVHUB_SFDX_AUTH_URL" > ./devhub-auth.txt
+          sf org login sfdx-url --sfdx-url-file ./devhub-auth.txt --set-default-dev-hub --alias devhub
+          rm -f ./devhub-auth.txt
+
+      - name: Create a scratch org
+        run: sf org create scratch --definition-file config/project-scratch-def.json --alias ci --set-default --duration-days 1 --wait 10
+
+      - name: Deploy the source
+        run: sf project deploy start --wait 20
+
+      - name: Run all local Apex tests
+        run: sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 20
+
+      - name: Delete the scratch org
+        if: always()
+        run: sf org delete scratch --target-org ci --no-prompt || true
