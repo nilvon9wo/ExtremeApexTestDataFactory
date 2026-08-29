@@ -41,6 +41,27 @@ public class XFTY_DummySObjectMasterTemplate {
         return this;
     }
 
+    /**
+     * Returns an independent copy of this template.
+     *
+     * The three field maps are recreated so that callers (typically
+     * `XFTY_DummySObjectProvider`) can add or remove entries without mutating the
+     * shared, statically-held Master Template a Provider exposes. The value and
+     * relationship strategy instances themselves are intentionally shared: they
+     * are treated as immutable configuration by the engine.
+     *
+     * The implicit Apex `clone()` is a shallow copy and would leave these maps
+     * aliased to the original, so it must not be used for this purpose.
+     */
+    public XFTY_DummySObjectMasterTemplate copy() {
+        return new XFTY_DummySObjectMasterTemplate(
+                this.primaryTargetField,
+                new Map<SObjectField, XFTY_DummyDefaultValueIntf>(this.defaultBySObjectFieldMap),
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipRequired>(this.requiredRelationshipBySObjectFieldMap),
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipOptional>(this.optionalRelationshipBySObjectFieldMap)
+        );
+    }
+
     public XFTY_DummySObjectMasterTemplate remove(SObjectField sObjectField) {
         this.defaultBySObjectFieldMap.remove(sObjectField);
         this.requiredRelationshipBySObjectFieldMap.remove(sObjectField);

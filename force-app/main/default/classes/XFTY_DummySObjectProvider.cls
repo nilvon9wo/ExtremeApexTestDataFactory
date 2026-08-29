@@ -57,7 +57,7 @@ public class XFTY_DummySObjectProvider {
                     throw new IndeterminateSObjectTypeException('SObjectType must be set before including default values on the master template.');
                 }
                 this.masterTemplate = this.factoryOutlet.getMasterTemplate()
-                        .clone();
+                        .copy();
             }
             return this.masterTemplate;
         }
@@ -150,8 +150,10 @@ public class XFTY_DummySObjectProvider {
                 ? this.multiplyByQuantity(templateList)
                 : templateList;
 
-        // We can't check this.masterTemplate for null because getting it will set it, so it should never be null.
-        XFTY_DummySObjectBundle bundle = (this.hasCustomMasterTemplate == null)
+        // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
+        // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own
+        // generation logic (e.g. selecting a template by record type).
+        XFTY_DummySObjectBundle bundle = this.hasCustomMasterTemplate
                 ? XFTY_DummySObjectFactory.createBundle(
                         this.sObjectProviderLookup,
                         this.masterTemplate,
