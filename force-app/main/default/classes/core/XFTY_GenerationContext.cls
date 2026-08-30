@@ -12,6 +12,7 @@
  * - gives one place to apply the recursion transforms (`RELATED_ONLY` becomes
  *   `NOW` for related records, `PREVENT_CASCADE` becomes `NONE` one level down) -
  *   see {@link #forRelated};
+ * - carries the `includeOptionalAncestor(...)` paths down the graph;
  * - is what a context-aware value strategy reads (see
  *   {@link XFTY_ContextAwareValueIntf}, docs/design/context-aware-values.md).
  *
@@ -41,12 +42,20 @@ public class XFTY_GenerationContext {
     /** Which row of a multi-record generation `recordBeingBuilt` is - the index into every list in `bundleSoFar`. */
     public final Integer rowIndex;
 
+    /**
+     * `includeOptionalAncestor(...)` paths still to apply, each `[relationshipField,
+     * ...deeper fields]`. A path whose head matches a relationship on the master
+     * template being generated forces that relationship; {@link #forRelated} drops
+     * the head and carries the tail into the child.
+     */
+    public final List<List<SObjectField>> forcedRelationshipPaths;
+
     public XFTY_GenerationContext(
             XFTY_DummySObjectProviderLookupIntf providerLookup,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
-        this(providerLookup, insertMode, inclusivity, null, null, -1);
+        this(providerLookup, insertMode, inclusivity, null, null, -1, new List<List<SObjectField>>());
     }
 
     private XFTY_GenerationContext(
@@ -55,7 +64,8 @@ public class XFTY_GenerationContext {
             XFTY_InsertInclusivityEnum inclusivity,
             SObject recordBeingBuilt,
             XFTY_DummySObjectBundle bundleSoFar,
-            Integer rowIndex
+            Integer rowIndex,
+            List<List<SObjectField>> forcedRelationshipPaths
     ) {
         if (providerLookup == null) {
             throw new XFTY_DummySObjectFtyProviderException('A generation context requires a Provider Lookup.');
@@ -66,6 +76,17 @@ public class XFTY_GenerationContext {
         this.recordBeingBuilt = recordBeingBuilt;
         this.bundleSoFar = bundleSoFar;
         this.rowIndex = rowIndex;
+        this.forcedRelationshipPaths = (forcedRelationshipPaths == null)
+                ? new List<List<SObjectField>>()
+                : forcedRelationshipPaths;
+    }
+
+    /** A copy carrying the given `includeOptionalAncestor(...)` paths (top-level entry point). */
+    public XFTY_GenerationContext withForcedRelationshipPaths(List<List<SObjectField>> paths) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths
+        );
     }
 
     /**
@@ -77,9 +98,29 @@ public class XFTY_GenerationContext {
      *   but they do not generate their own.
      *
      * Every other mode / inclusivity is carried through unchanged; the per-record
-     * fields are cleared.
+     * fields are cleared. Forced-relationship paths do not propagate through this
+     * overload - use {@link #forRelated(SObjectField)} from the recursion.
      */
     public XFTY_GenerationContext forRelated() {
+        return this.forRelated(null);
+    }
+
+    /**
+     * As {@link #forRelated()}, but for the child on `relationshipField`: only the
+     * forced-relationship paths that start with `relationshipField` are carried
+     * into it, with their head dropped.
+     */
+    public XFTY_GenerationContext forRelated(SObjectField relationshipField) {
+        List<List<SObjectField>> childPaths = new List<List<SObjectField>>();
+        for (List<SObjectField> path : this.forcedRelationshipPaths) {
+            if (relationshipField != null && path.size() > 1 && path[0] == relationshipField) {
+                List<SObjectField> tail = new List<SObjectField>();
+                for (Integer i = 1; i < path.size(); i++) {
+                    tail.add(path[i]);
+                }
+                childPaths.add(tail);
+            }
+        }
         return new XFTY_GenerationContext(
                 this.providerLookup,
                 XFTY_InsertModeEnum.RELATED_ONLY.equals(this.insertMode)
@@ -87,7 +128,8 @@ public class XFTY_GenerationContext {
                         : this.insertMode,
                 XFTY_InsertInclusivityEnum.PREVENT_CASCADE.equals(this.inclusivity)
                         ? XFTY_InsertInclusivityEnum.NONE
-                        : this.inclusivity
+                        : this.inclusivity,
+                null, null, -1, childPaths
         );
     }
 
@@ -98,7 +140,8 @@ public class XFTY_GenerationContext {
      */
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
-                this.providerLookup, this.insertMode, this.inclusivity, record, bundleSoFar, rowIndex
+                this.providerLookup, this.insertMode, this.inclusivity,
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths
         );
     }
 }

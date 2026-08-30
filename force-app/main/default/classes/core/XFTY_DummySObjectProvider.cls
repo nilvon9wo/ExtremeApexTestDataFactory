@@ -80,6 +80,7 @@ public class XFTY_DummySObjectProvider {
 
     private List<SObject> overrideTemplateList;
     private XFTY_LookupKeyIntf explicitVariantKey;
+    private final List<List<SObjectField>> forcedRelationshipPaths = new List<List<SObjectField>>();
     private Integer quantityPerListedTemplate = 1; // If no templates are supplied, a blank one will be created.
     private XFTY_InsertModeEnum insertMode = XFTY_InsertModeEnum.NEVER;
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
@@ -294,6 +295,27 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    /**
+     * Reach down the graph: force the whole relationship path for this call.
+     * `includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })`
+     * makes the generated Opportunity's Pricebook, and *its* Owner, both required -
+     * for this call only. Each step must be a relationship on the Provider it
+     * resolves to (an unknown step throws during generation). A one-element path
+     * is `includeOptional(...)` for the top-level relationship.
+     */
+    public XFTY_DummySObjectProvider includeOptionalAncestor(List<SObjectField> relationshipPath) {
+        if (relationshipPath == null || relationshipPath.isEmpty()) {
+            throw new SanityException('includeOptionalAncestor(...) needs at least one relationship field.');
+        }
+        for (SObjectField step : relationshipPath) {
+            if (step == null) {
+                throw new SanityException('includeOptionalAncestor(...) path steps cannot be null.');
+            }
+        }
+        this.forcedRelationshipPaths.add(relationshipPath);
+        return this;
+    }
+
     // Supply methods ----------------------------------------------------------------------------------------------------------
 
     public XFTY_DummySObjectBundle supplyBundle() {
@@ -315,7 +337,7 @@ public class XFTY_DummySObjectProvider {
 
         XFTY_GenerationContext context = new XFTY_GenerationContext(
                 this.sObjectProviderLookup, this.insertMode, this.inclusivity
-        );
+        ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
 
         // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
         // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own

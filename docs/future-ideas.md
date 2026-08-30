@@ -7,34 +7,6 @@ For what changed and why, see [migration.md](migration.md).
 
 ---
 
-## More Granular Relationship Generation
-
-Relationship inclusivity (`NONE` / `REQUIRED` / `ALL` / `PREVENT_CASCADE`) is one
-setting for a whole `supply()` call. Sometimes a test wants a single exception:
-
-```apex
-new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
-    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .includeOptional(Opportunity.Pricebook2Id)      // this optional one too
-    .excludeRelationship(Opportunity.OwnerId)        // not this one
-```
-
-Both affect only the instance they are called on. `excludeRelationship(field)`
-makes that relationship non-existent for this Provider instance - not generated,
-not attached, not left as an orphan - and stays inside the instance, so a
-different Provider sharing the same Master Template still generates it.
-
-**Deeper:** an explicit path to reach into the graph -
-`includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })`
-makes the generated Opportunity's Pricebook's Owner required for this call only.
-The engine walks the path and hands the remaining tail down to each child
-Provider as a scoped override.
-
-**Explicit errors:** toggling a relationship whose target `SObjectType` has no
-registered Provider throws, rather than silently doing nothing.
-
----
-
 ## Shared Ancestors
 
 Several children under *one* shared parent, and deep record-type hierarchies that

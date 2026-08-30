@@ -2,9 +2,11 @@
 public class XFTY_DummySObjectFactory {
     public static XFTY_DummySObjectBundle createBundle(
             XFTY_GenerationContext context,
-            XFTY_DummySObjectMasterTemplate masterTemplate,
+            XFTY_DummySObjectMasterTemplate masterTemplateArg,
             List<SObject> testSpecificTemplateList
     ) {
+        XFTY_DummySObjectMasterTemplate masterTemplate = applyForcedRelationshipPaths(context, masterTemplateArg);
+
         XFTY_DummySObjectBundle bundle
                 = createRelatedRecords(context, masterTemplate, testSpecificTemplateList.size());
 
@@ -32,6 +34,41 @@ public class XFTY_DummySObjectFactory {
         // insert is a true no-op - 0 DML statements, 0 rows - so it needs no guard.
         insert insertSObjectList;
         return bundle;
+    }
+
+    /**
+     * If the context carries `includeOptionalAncestor(...)` paths, return a copy
+     * of the master template with each path's head relationship forced (an
+     * optional one promoted to required). Throws if a path head is not a
+     * relationship on this template. Returns the original template untouched when
+     * there is nothing to force.
+     */
+    private static XFTY_DummySObjectMasterTemplate applyForcedRelationshipPaths(
+            XFTY_GenerationContext context,
+            XFTY_DummySObjectMasterTemplate masterTemplate
+    ) {
+        if (context.forcedRelationshipPaths.isEmpty()) {
+            return masterTemplate;
+        }
+        XFTY_DummySObjectMasterTemplate forced = null;
+        for (List<SObjectField> path : context.forcedRelationshipPaths) {
+            SObjectField head = path[0];
+            XFTY_DummyDefaultRelationshipIntf optionalRelationship =
+                    masterTemplate.optionalRelationshipBySObjectFieldMap.get(head);
+            if (optionalRelationship != null) {
+                if (forced == null) {
+                    forced = masterTemplate.copy();
+                }
+                forced.remove(head);
+                forced.putRequired(head, optionalRelationship);
+            } else if (!masterTemplate.requiredRelationshipBySObjectFieldMap.containsKey(head)) {
+                throw new XFTY_DummySObjectFtyProviderException(
+                        'includeOptionalAncestor: ' + head + ' is not a relationship on the Provider for '
+                                + masterTemplate.primaryTargetField + '.'
+                );
+            }
+        }
+        return (forced == null) ? masterTemplate : forced;
     }
 
     // Create related records --------------------------------------------------------------------------------
@@ -85,7 +122,7 @@ public class XFTY_DummySObjectFactory {
                 = context.providerLookup.get(relationshipTemplate.resolveLookupKey(context.providerLookup));
 
         XFTY_DummySObjectBundle innerBundle = factoryOutlet.createBundle(
-                context.forRelated(),
+                context.forRelated(sObjectField),
                 createClonedTemplateList(quantity, sObjectTemplate)
         );
 

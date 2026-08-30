@@ -362,8 +362,20 @@ Both act only on the instance they are called on, so a different Provider using
 the same Master Template still generates the relationship. Call them before any
 `put(...)` (same ordering rule as `withVariant`).
 
-Reaching deeper into the graph - "make the generated Opportunity's Pricebook's
-Owner required, just here" - is [still on the roadmap](future-ideas.md#more-granular-relationship-generation).
+To reach **deeper into the graph**, `includeOptionalAncestor(path)` takes a path
+of relationship fields and forces every step - for this call only:
+
+```apex
+new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })
+```
+
+generates the Opportunity's Pricebook (optional) **and** that Pricebook's Owner
+(optional), leaving everything else at `REQUIRED`. Each step must be a
+relationship on the Provider it resolves to; an unknown step throws during
+generation. A one-element path is `includeOptional(...)` for the top-level
+relationship.
 
 ---
 
