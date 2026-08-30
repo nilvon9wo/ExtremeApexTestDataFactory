@@ -81,14 +81,25 @@ Collecting 'john' surfaces 'acme-hq'.
 For each collected ancestor, run its Provider's `createBundle` with insert mode
 forced to **`NEVER`**, inclusivity as configured. Record graphs, no DML.
 
-### Phase S2 - ordered bulk insert
+### Phase S2 - depth-batched bulk insert
 
-Group the collected top-level ancestor records by `SObjectType` and insert them
-**in dependency order** (an SObjectType whose records point at another group's
-records goes second). The dependency graph among *named* ancestors is small and
-acyclic in practice; a topological sort over "ancestor A's record has a lookup to
-ancestor B's record" is enough. Non-shared records generated underneath an
-ancestor insert with that ancestor's group.
+The goal is the **fewest possible `insert` statements**, so batch by dependency
+*depth*, not by `SObjectType`. Apex allows one `insert` to carry many types -
+`insert new List<SObject>{ account, contact, contract }` - as long as nothing in
+the list points at an un-inserted record in the *same* list.
+
+1. Assign every collected record (shared ancestors *and* the non-shared records
+   generated underneath them in S1) a depth = longest path from it to a leaf via
+   lookup fields that point at another record in the set.
+2. From the deepest level up to depth 0, `insert` **all records at that level in
+   one call, mixed types**. Re-point lookup fields to the freshly-assigned Ids
+   between levels (the existing phase-2/phase-3 split already does this per
+   level - it just needs to stop grouping by type).
+3. A cycle (A points at B, B points at A) can't be one insert either way -
+   detect it and break it with a follow-up `update` of one side, or error.
+
+This is the same batching the main factory could use for the whole graph, not
+just shared ancestors - see "Wider applicability" below.
 
 `RELATED_ONLY` / `LATER` interact here - S2 respects the top-level call's mode.
 
@@ -132,10 +143,12 @@ sub-graph once.
    *reachable* from a Master Template without generating anything - walk the
    relationship maps, resolve each Provider, recurse into its Master Template. A
    second traversal of the template graph. Acceptable?
-3. **Dependency ordering in S2.** Topological sort over named ancestors, or the
-   simpler "insert Accounts before everything else" heuristic people rely on? A
-   cycle (John.Account = HQ, HQ.PrimaryContact = John) - detect and error, or
-   break with a second-pass update?
+3. **Depth batching in S2.** Computing each record's depth means inspecting its
+   populated lookup fields to see which point at another record in the pending
+   set - `getPopulatedFieldsAsMap()` + describe of each field's referenceTo.
+   Feasible; how much describe cost is acceptable? A cycle (John.Account = HQ,
+   HQ.PrimaryContact = John) - detect and error, or break with a second-pass
+   `update`?
 4. **Insert mode.** Does a shared ancestor honour the *first* caller's insert
    mode, or does the registry default to `NOW` (sharing across calls only makes
    sense for inserted records)?
@@ -155,5 +168,22 @@ sub-graph once.
 2. Phase S3 wiring in the factory + a manual
    `XFTY_SharedAncestorRegistry.resolveAll(lookup, insertMode)` a test can call.
 3. Phases S0-S2 automatic from `supplyBundle()`.
-4. Nested ancestors; dependency ordering; cycle detection.
+4. Nested ancestors; depth batching; cycle detection.
 5. `reusing(...)`, `clear()`, docs, worked example.
+
+---
+
+## Wider applicability: depth-batched insert for the whole factory
+
+The S2 batching - one mixed-type `insert` per dependency depth instead of one per
+`SObjectType` per level - is not specific to shared ancestors. Today
+`XFTY_DummySObjectFactory` recurses per Provider and each recursion inserts its
+own single type, so a Contact needing an Account *and* a Campaign costs three
+`insert` statements. A depth-batched flush (collect the whole in-memory graph,
+depth-sort, one `insert` per depth) would cut that to two (or one, when the
+Campaign has no un-inserted dependency).
+
+This is a larger change - it moves insertion out of the recursion into a final
+pass - and would want its own proposal, but shared ancestors and this share the
+same depth-sort + mixed-`insert` primitive, so building that primitive once for
+S2 sets it up.
