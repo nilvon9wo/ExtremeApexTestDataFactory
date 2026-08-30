@@ -213,37 +213,26 @@ private class XFTY_DummySObjectFactoryTest {
     //  In-test Providers and Lookup
     // ---------------------------------------------------------------------------
 
+    /** A tiny mutable map builder over {@link XFTY_ProviderLookups} for tests. */
     private class CustomLookup implements XFTY_DummySObjectProviderLookupIntf {
-        private final Map<String, XFTY_DummySobjectProviderIntf> byKeyHash =
-                new Map<String, XFTY_DummySobjectProviderIntf>();
-        private final List<XFTY_LookupKeyIntf> keys = new List<XFTY_LookupKeyIntf>();
+        private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providers =
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>();
 
-        private CustomLookup register(XFTY_LookupKeyIntf key, XFTY_DummySobjectProviderIntf provider) {
-            this.byKeyHash.put(key.getHashKey(), provider);
-            this.keys.add(key);
+        private CustomLookup register(SObjectType type, XFTY_DummySobjectProviderIntf provider) {
+            this.providers.put(XFTY_LookupKey.get(type), provider);
             return this;
         }
 
-        private CustomLookup register(SObjectType type, XFTY_DummySobjectProviderIntf provider) {
-            return this.register(XFTY_LookupKey.get(type), provider);
-        }
-
         public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
-            return this.get((XFTY_LookupKeyIntf) XFTY_LookupKey.get(sObjectType));
+            return XFTY_ProviderLookups.get(this.providers, XFTY_LookupKey.get(sObjectType));
         }
 
         public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
-            return this.byKeyHash.get(lookupKey.getHashKey());
+            return XFTY_ProviderLookups.get(this.providers, lookupKey);
         }
 
         public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
-            Set<XFTY_LookupKeyIntf> matches = new Set<XFTY_LookupKeyIntf>();
-            for (XFTY_LookupKeyIntf key : this.keys) {
-                if (key.getSObjectType() == sObj.getSObjectType() && key.isInstanceOf(sObj)) {
-                    matches.add(key);
-                }
-            }
-            return matches;
+            return XFTY_ProviderLookups.keysFor(this.providers.keySet(), sObj);
         }
     }
 

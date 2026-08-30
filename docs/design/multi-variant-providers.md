@@ -1,37 +1,39 @@
 # Design: Multi-Variant Providers
 
-Status: **implemented** on the `multi-variant-providers` branch, then revised.
-The rest of this document is the design record; where things ended up:
+Status: **implemented** on the `multi-variant-providers` branch, then revised
+several times. The rest of this document is the original design record; where
+things actually ended up:
 
-- **`keyFor` → `keysFor`** (returns `Set<XFTY_LookupKeyIntf>` - a record can match
-  several variants). `XFTY_LookupKeys.resolve` picks the most specific via
-  `XFTY_LookupKeyIntf.getSpecificity()`; an equally-specific tie is an error.
+- **The lookup is a plain map + a utility, not a registry.** A project's
+  `XFTY_DummySObjectProviderLookupIntf` holds a complete, explicit
+  `Map<XFTY_LookupKeyIntf, Type>` (or `..., provider instance>`) and delegates its
+  three methods to `XFTY_ProviderLookups`. No `register(...)`, no mutation, no
+  "last wins". `XFTY_DefaultSObjectProviderLookup` is that pattern with XFTY's
+  three Providers - a copy-me starter and the framework's self-test lookup.
+  (`@IsTest` classes can't be abstract/virtual, so an abstract base was never an
+  option.)
+- **All keys are flyweights and override `equals`/`hashCode` by `getHashKey()`**,
+  so they work as `Map` keys directly. Obtain them with `.get(...)`.
+  `XFTY_FlavouredLookupKey` is interned by type + record type + flavour; its
+  `.matching(...)` predicates are behaviour, added once - typically in a
+  `*LookupKeys` constants class both the Provider Lookup and the pinning
+  relationships reference.
+- **`keyFor` → `keysFor`** returns `Set<XFTY_LookupKeyIntf>` (a record can match
+  several variants). `XFTY_ProviderLookups.resolve` picks the most specific via
+  `XFTY_LookupKeyIntf.getSpecificity()` (0 / 10 / 20+); an equally-specific tie is
+  an error.
 - **`XFTY_FlavorLookupKey` → `XFTY_FlavouredLookupKey`**: `SObjectType` + optional
   record type + arbitrary `XFTY_SObjectPredicateIntf` conditions
-  (`XFTY_FieldPredicate` ships the common ones). It is not flyweighted (carries
-  behaviour); the lookup still dedupes by hash.
-- **`XFTY_RecordTypeLookupKeyIntf extends XFTY_LookupKeyIntf`** so the lookup can
-  ask any record-type-bearing key for its developer name / Id.
+  (`XFTY_FieldPredicate` ships the common ones).
+- **`XFTY_RecordTypeLookupKeyIntf extends XFTY_LookupKeyIntf`** so any
+  record-type-bearing key exposes its developer name / Id.
 - **`XFTY_RecordTypeDataProvider`** rebuilt as a one-SOQL repository of all record
   types.
-
-Earlier deviations from the original proposal:
-
-- **No inheritance.** `@IsTest` classes cannot be abstract or virtual, so
-  `XFTY_AbstractSObjectProviderLookup` became a concrete, *composed*
-  `XFTY_DefaultSObjectProviderLookup` (configure it, don't extend it), and
-  `XFTY_RecordTypeLookupKey` / `XFTY_FlavorLookupKey` wrap an `XFTY_LookupKey`
-  instead of subclassing it.
-- **Keys are flyweights.** Obtain them with `XFTY_LookupKey.get(...)` etc.;
-  constructors are private and instances are interned.
 - **Deferred + memoised key resolution**, as proposed:
   `XFTY_DummyDefaultRelationshipIntf.resolveLookupKey(lookup)`.
 - **`Required` + `Optional` merged** into `XFTY_DummyDefaultRelationship`;
-  requiredness moved to the Master Template slot
-  (`putRequired` / `putOptional`; untyped `put` ⇒ required).
-- **`XFTY_FlavorLookupKey`** shipped alongside `XFTY_RecordTypeLookupKey`.
-- `XFTY_DefaultSObjectProviderLookup.register` has a `(key, providerInstance)` overload
-  for Providers that need constructor arguments (and for tests).
+  requiredness moved to the Master Template slot (`putRequired` / `putOptional`;
+  a relationship passed to plain `put` is rejected).
 - `XFTY_DefaultAccountDataProvider` was **not** rewritten as a Person/Business
   example (scratch orgs lack Person Accounts); `XFTY_MultiVariantProviderTest`
   is the worked example instead.

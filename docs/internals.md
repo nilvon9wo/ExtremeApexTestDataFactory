@@ -59,8 +59,9 @@ Each component has a single responsibility.
 |-----------|----------------|
 | `XFTY_DummySObjectProvider` | Public fluent API used by tests. |
 | `XFTY_DummySObjectProviderLookupIntf` | Resolves which Provider should generate a particular `SObject`. |
-| `XFTY_DefaultSObjectProviderLookup` | Configurable implementation of that interface. |
-| `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavor). |
+| `XFTY_DefaultSObjectProviderLookup` | Copy-me starter implementation (also XFTY's own self-test lookup). |
+| `XFTY_ProviderLookups` | Reusable lookup mechanics, so a project's lookup stays a few one-liners over a `Map`. |
+| `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavour). |
 | `XFTY_DummySobjectProviderIntf` | Describes how one `SObject` type should be generated. |
 | `XFTY_DummySObjectMasterTemplate` | Declarative description of default values and relationships. |
 | `XFTY_DummySObjectFactory` | Engine that constructs the object graph. |
@@ -352,19 +353,22 @@ common case is unchanged; refined keys add a discriminator:
 record type + arbitrary `XFTY_SObjectPredicateIntf` conditions), or a custom one.
 `getSpecificity()` orders them (0 / 10 / 20+).
 
-Keys are value-compared by `getHashKey()`; `XFTY_LookupKey` and
-`XFTY_RecordTypeLookupKey` are flyweights. The lookup stores providers in a
-`Map<String, ...>` and never worries about instance identity. When a relationship
-supplies only an override template, `keysFor(sObj)` returns every registered key
-that matches (a record can match several) and `XFTY_LookupKeys.resolve` picks the
-most specific; the result is memoised on the relationship, and an equally-specific
-tie is an error.
+All keys are flyweights (`.get(...)`) and override `equals`/`hashCode` by
+`getHashKey()`, so they work as `Map` keys directly. A lookup is therefore just a
+`Map<XFTY_LookupKeyIntf, Type>` (or `..., provider instance>`) plus three
+one-line methods delegating to `XFTY_ProviderLookups` - no base class, no
+registry, no mutation. When a relationship supplies only an override template,
+`keysFor(sObj)` returns every registered key that matches (a record can match
+several) and `XFTY_ProviderLookups.resolve` picks the most specific; the result
+is memoised on the relationship, and an equally-specific tie is an error.
 
-`@IsTest` classes cannot be abstract or virtual, which ruled out an abstract
-lookup base and a subclassable key hierarchy - hence the composition-based design
-(`XFTY_DefaultSObjectProviderLookup` is configured, not extended; refined keys wrap an
-`XFTY_LookupKey` rather than subclass it). See
-[docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
+Every project writes its own lookup: editing a shipped class hurts upgrades, and
+in a multi-package org a lookup may only reference Providers that compile in its
+context - the reason Providers resolve through an interface at all.
+`@IsTest` classes cannot be abstract or virtual, so the pattern is copy, not
+extend; `XFTY_DefaultSObjectProviderLookup` is the copy-me example (and XFTY's
+own self-test lookup). Refined keys wrap an `XFTY_LookupKey` rather than subclass
+it. See [docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
 
 ---
 

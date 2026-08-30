@@ -50,4 +50,14 @@ public class XFTY_LookupKey implements XFTY_LookupKeyIntf {
     public Integer getSpecificity() {
         return 0;
     }
+
+    // Value equality by hash key, so lookup keys work as Map keys directly.
+    public Boolean equals(Object other) {
+        return (other instanceof XFTY_LookupKeyIntf)
+                && ((XFTY_LookupKeyIntf) other).getHashKey() == this.getHashKey();
+    }
+
+    public Integer hashCode() {
+        return this.getHashKey().hashCode();
+    }
 }

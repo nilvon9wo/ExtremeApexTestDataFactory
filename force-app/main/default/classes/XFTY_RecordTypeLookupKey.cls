@@ -59,6 +59,15 @@ public class XFTY_RecordTypeLookupKey implements XFTY_RecordTypeLookupKeyIntf {
         return 10;
     }
 
+    public Boolean equals(Object other) {
+        return (other instanceof XFTY_LookupKeyIntf)
+                && ((XFTY_LookupKeyIntf) other).getHashKey() == this.getHashKey();
+    }
+
+    public Integer hashCode() {
+        return this.getHashKey().hashCode();
+    }
+
     private static String hashOf(XFTY_LookupKey base, String recordTypeDeveloperName) {
         return base.getHashKey() + '::recordType=' + recordTypeDeveloperName;
     }

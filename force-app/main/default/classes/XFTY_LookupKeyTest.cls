@@ -1,9 +1,20 @@
 /**
  * Coverage for the lookup-key types, predicate matching, and
- * `XFTY_DefaultSObjectProviderLookup` registration / resolution.
+ * `XFTY_ProviderLookups` resolution.
  */
 @IsTest
 private class XFTY_LookupKeyTest {
+
+    private static final XFTY_FlavouredLookupKey BIG_ACCOUNT =
+            (XFTY_FlavouredLookupKey) XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big')
+                    .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100));
+
+    private static XFTY_DummySObjectProviderLookupIntf lookupWith(XFTY_LookupKeyIntf refinedKey) {
+        return XFTY_ProviderLookups.ofTypes(new Map<XFTY_LookupKeyIntf, Type>{
+                XFTY_LookupKey.get(Account.SObjectType) => XFTY_DefaultAccountDataProvider.class,
+                refinedKey => XFTY_DefaultAccountDataProvider.class
+        });
+    }
 
     // XFTY_LookupKey -----------------------------------------------------------
 
@@ -68,7 +79,7 @@ private class XFTY_LookupKeyTest {
 
     @IsTest
     static void flavouredKeyMatchesOnArbitraryPredicates() {
-        XFTY_FlavouredLookupKey enterprise = new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise')
+        XFTY_FlavouredLookupKey enterprise = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'enterprise')
                 .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 500));
 
         Assert.isTrue(enterprise.isInstanceOf(new Account(NumberOfEmployees = 1000)));
@@ -79,7 +90,7 @@ private class XFTY_LookupKeyTest {
 
     @IsTest
     static void flavouredKeyCombinesRecordTypeAndPredicates() {
-        XFTY_FlavouredLookupKey key = new XFTY_FlavouredLookupKey(Account.SObjectType, null, 'named')
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, null, 'named')
                 .matching(XFTY_FieldPredicate.isNotNull(Account.Name));
 
         Assert.areEqual('Account::flavour=named', key.getHashKey());
@@ -89,9 +100,9 @@ private class XFTY_LookupKeyTest {
 
     @IsTest
     static void flavouredKeyIsMoreSpecificWithMorePredicates() {
-        XFTY_FlavouredLookupKey one = new XFTY_FlavouredLookupKey(Account.SObjectType, 'a')
+        XFTY_FlavouredLookupKey one = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a')
                 .matching(XFTY_FieldPredicate.isNotNull(Account.Name));
-        XFTY_FlavouredLookupKey two = new XFTY_FlavouredLookupKey(Account.SObjectType, 'b')
+        XFTY_FlavouredLookupKey two = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b')
                 .matching(XFTY_FieldPredicate.isNotNull(Account.Name))
                 .matching(XFTY_FieldPredicate.isNotNull(Account.Industry));
 
@@ -120,12 +131,33 @@ private class XFTY_LookupKeyTest {
         );
     }
 
-    // XFTY_DefaultSObjectProviderLookup -----------------------------------------
+    // Lookup keys as Map keys -----------------------------------------------
 
     @IsTest
-    static void lookupResolvesRegisteredKeysAndCachesInstances() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup()
-                .register(XFTY_LookupKey.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class);
+    static void keysCompareByValueSoTheyWorkAsMapKeys() {
+        Map<XFTY_LookupKeyIntf, String> byKey = new Map<XFTY_LookupKeyIntf, String>{
+                XFTY_LookupKey.get(Account.SObjectType) => 'plain',
+                XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'Business') => 'rt'
+        };
+
+        Assert.areEqual('plain', byKey.get(XFTY_LookupKey.get(Account.SObjectType)));
+        Assert.areEqual('rt', byKey.get(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'Business')));
+        // A freshly-built flavoured key with the same hash still matches.
+        Map<XFTY_LookupKeyIntf, String> flavoured = new Map<XFTY_LookupKeyIntf, String>{
+                XFTY_FlavouredLookupKey.get(Account.SObjectType, 'x') => 'first'
+        };
+        Assert.areEqual('first', flavoured.get(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'x')));
+    }
+
+    // XFTY_ProviderLookups -------------------------------------------------
+
+    @IsTest
+    static void resolvesAKeyToItsProviderAndCachesTheInstance() {
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.ofTypes(
+                new Map<XFTY_LookupKeyIntf, Type>{
+                        XFTY_LookupKey.get(Account.SObjectType) => XFTY_DefaultAccountDataProvider.class
+                }
+        );
 
         XFTY_DummySobjectProviderIntf first = lookup.get(XFTY_LookupKey.get(Account.SObjectType));
         Assert.isInstanceOfType(first, XFTY_DefaultAccountDataProvider.class);
@@ -133,100 +165,86 @@ private class XFTY_LookupKeyTest {
     }
 
     @IsTest
-    static void lookupThrowsForAnUnregisteredKey() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
+    static void ofWrapsACompleteMapOfProviderInstances() {
+        XFTY_DummySObjectProviderIntf provider = new XFTY_DefaultAccountDataProvider();
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => provider
+                }
+        );
+
+        Assert.areEqual(provider, lookup.get(Account.SObjectType));
+    }
+
+    @IsTest
+    static void throwsAFriendlyExceptionForAnUnregisteredKey() {
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.ofTypes(new Map<XFTY_LookupKeyIntf, Type>());
         try {
-            lookup.get(new XFTY_FlavouredLookupKey(Account.SObjectType, 'unregistered'));
+            lookup.get(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'unregistered'));
             Assert.fail('Expected a LookupException');
-        } catch (XFTY_DefaultSObjectProviderLookup.LookupException ex) {
+        } catch (XFTY_ProviderLookups.LookupException ex) {
             Assert.isTrue(ex.getMessage().contains('Account'), ex.getMessage());
         }
     }
 
     @IsTest
-    static void registeringAKeyAgainReplacesTheProvider() {
-        // The built-in Account Provider is registered by the constructor; override it.
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup()
-                .register(XFTY_LookupKey.get(Account.SObjectType), XFTY_DefaultContactDataProvider.class);
+    static void keysForReturnsEveryMatchingKey() {
+        XFTY_DummySObjectProviderLookupIntf lookup = lookupWith(BIG_ACCOUNT);
 
-        Assert.isInstanceOfType(lookup.get(Account.SObjectType), XFTY_DefaultContactDataProvider.class);
+        Assert.areEqual(
+                new Set<String>{ 'Account', 'Account::flavour=big' },
+                hashesOf(lookup.keysFor(new Account(NumberOfEmployees = 500)))
+        );
+        Assert.areEqual(
+                new Set<String>{ 'Account' },
+                hashesOf(lookup.keysFor(new Account(NumberOfEmployees = 1)))
+        );
     }
-
-    @IsTest
-    static void theBuiltInProvidersAreRegisteredOutOfTheBox() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
-        Assert.isInstanceOfType(lookup.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class);
-        Assert.isInstanceOfType(lookup.get(Contact.SObjectType), XFTY_DefaultContactDataProvider.class);
-        Assert.isInstanceOfType(lookup.get(User.SObjectType), XFTY_DefaultUserDataProvider.class);
-    }
-
-    @IsTest
-    static void keysForReturnsEveryMatchingRegisteredKey() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup()
-                .register(XFTY_LookupKey.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class)
-                .register(
-                        new XFTY_FlavouredLookupKey(Account.SObjectType, 'big')
-                                .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100)),
-                        XFTY_DefaultAccountDataProvider.class
-                );
-
-        Set<String> hashes = new Set<String>();
-        for (XFTY_LookupKeyIntf key : lookup.keysFor(new Account(NumberOfEmployees = 500))) {
-            hashes.add(key.getHashKey());
-        }
-        Assert.areEqual(new Set<String>{ 'Account', 'Account::flavour=big' }, hashes);
-
-        // The small Account only matches the plain key.
-        hashes = new Set<String>();
-        for (XFTY_LookupKeyIntf key : lookup.keysFor(new Account(NumberOfEmployees = 1))) {
-            hashes.add(key.getHashKey());
-        }
-        Assert.areEqual(new Set<String>{ 'Account' }, hashes);
-    }
-
-    // XFTY_LookupKeys.resolve --------------------------------------
 
     @IsTest
     static void resolvePicksTheMostSpecificMatch() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup()
-                .register(XFTY_LookupKey.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class)
-                .register(
-                        new XFTY_FlavouredLookupKey(Account.SObjectType, 'big')
-                                .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100)),
-                        XFTY_DefaultAccountDataProvider.class
-                );
+        XFTY_DummySObjectProviderLookupIntf lookup = lookupWith(BIG_ACCOUNT);
 
         Assert.areEqual('Account::flavour=big',
-                XFTY_LookupKeys.resolve(lookup, new Account(NumberOfEmployees = 500)).getHashKey());
+                XFTY_ProviderLookups.resolve(lookup, new Account(NumberOfEmployees = 500)).getHashKey());
         Assert.areEqual('Account',
-                XFTY_LookupKeys.resolve(lookup, new Account(NumberOfEmployees = 1)).getHashKey());
+                XFTY_ProviderLookups.resolve(lookup, new Account(NumberOfEmployees = 1)).getHashKey());
     }
 
     @IsTest
-    static void resolveFallsBackToThePlainKeyWhenNothingIsRegistered() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
-        Assert.areEqual('Account', XFTY_LookupKeys.resolve(lookup, new Account()).getHashKey());
+    static void resolveFallsBackToThePlainKeyWhenNothingRefinedMatches() {
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.ofTypes(
+                new Map<XFTY_LookupKeyIntf, Type>{
+                        XFTY_LookupKey.get(Account.SObjectType) => XFTY_DefaultAccountDataProvider.class
+                }
+        );
+        Assert.areEqual('Account', XFTY_ProviderLookups.resolve(lookup, new Account()).getHashKey());
     }
 
     @IsTest
     static void resolveThrowsWhenTwoEquallySpecificKeysMatch() {
-        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup()
-                .register(
-                        new XFTY_FlavouredLookupKey(Account.SObjectType, 'a')
-                                .matching(XFTY_FieldPredicate.isNotNull(Account.Name)),
-                        XFTY_DefaultAccountDataProvider.class
-                )
-                .register(
-                        new XFTY_FlavouredLookupKey(Account.SObjectType, 'b')
-                                .matching(XFTY_FieldPredicate.isNotNull(Account.Name)),
-                        XFTY_DefaultAccountDataProvider.class
-                );
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.ofTypes(
+                new Map<XFTY_LookupKeyIntf, Type>{
+                        XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a')
+                                .matching(XFTY_FieldPredicate.isNotNull(Account.Name)) => XFTY_DefaultAccountDataProvider.class,
+                        XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b')
+                                .matching(XFTY_FieldPredicate.isNotNull(Account.Name)) => XFTY_DefaultAccountDataProvider.class
+                }
+        );
 
         try {
-            XFTY_LookupKeys.resolve(lookup, new Account(Name = 'x'));
+            XFTY_ProviderLookups.resolve(lookup, new Account(Name = 'x'));
             Assert.fail('Expected an ambiguity exception');
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
+        } catch (XFTY_ProviderLookups.LookupException ex) {
             Assert.isTrue(ex.getMessage().contains('Ambiguous'), ex.getMessage());
         }
+    }
+
+    private static Set<String> hashesOf(Set<XFTY_LookupKeyIntf> keys) {
+        Set<String> hashes = new Set<String>();
+        for (XFTY_LookupKeyIntf key : keys) {
+            hashes.add(key.getHashKey());
+        }
+        return hashes;
     }
 }

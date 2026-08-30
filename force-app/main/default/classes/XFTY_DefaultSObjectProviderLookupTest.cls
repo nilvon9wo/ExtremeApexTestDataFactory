@@ -1,7 +1,7 @@
 /**
  * Coverage for `XFTY_DefaultSObjectProviderLookup` - the built-in Providers,
  * registration, and `get(...)` resolution. Key derivation (`keysFor` /
- * `XFTY_LookupKeys.resolve`) is covered in `XFTY_LookupKeyTest`.
+ * `XFTY_ProviderLookups.resolve`) is covered in `XFTY_LookupKeyTest`.
  */
 @IsTest
 private class XFTY_DefaultSObjectProviderLookupTest {
@@ -47,7 +47,7 @@ private class XFTY_DefaultSObjectProviderLookupTest {
         }
         Assert.areEqual(new Set<String>{ 'Account' }, hashes);
 
-        Assert.areEqual('Account', XFTY_LookupKeys.resolve(lookup, new Account()).getHashKey());
+        Assert.areEqual('Account', XFTY_ProviderLookups.resolve(lookup, new Account()).getHashKey());
     }
 
     @IsTest
@@ -57,7 +57,7 @@ private class XFTY_DefaultSObjectProviderLookupTest {
         try {
             lookup.get(Case.SObjectType);
             Assert.fail('Expected a LookupException');
-        } catch (XFTY_DefaultSObjectProviderLookup.LookupException ex) {
+        } catch (XFTY_ProviderLookups.LookupException ex) {
             Assert.isTrue(ex.getMessage().contains('No data provider registered'), ex.getMessage());
         }
     }

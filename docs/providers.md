@@ -239,32 +239,47 @@ This distinction has a significant impact on test performance.
 # Provider Lookups
 
 Providers are discovered through an `XFTY_DummySObjectProviderLookupIntf`.
-`XFTY_DefaultSObjectProviderLookup` is the implementation - it registers XFTY's
-own Account / Contact / User Providers in its constructor, and you `register(...)`
-your own on top:
+**Each project writes its own** - a small class holding a complete, explicit map
+of lookup key -> Provider. This is deliberate:
+
+- editing a class XFTY ships makes upgrades painful;
+- in a multi-package org a lookup can only reference Providers that compile in
+  its own context - which is the whole reason Providers resolve through an
+  interface rather than one global map.
+
+`XFTY_ProviderLookups` supplies the mechanics so your class is a few one-liners:
 
 ```apex
-XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_DefaultSObjectProviderLookup()
-        .register(XFTY_LookupKey.get(Opportunity.SObjectType), OpportunityDataProvider.class)
-        .register(XFTY_LookupKey.get(Contact.SObjectType), MyContactDataProvider.class); // replaces the built-in
+@IsTest
+public class MyProjectLookup implements XFTY_DummySObjectProviderLookupIntf {
+    private static final Map<XFTY_LookupKeyIntf, Type> PROVIDERS = new Map<XFTY_LookupKeyIntf, Type>{
+        XFTY_LookupKey.get(Account.SObjectType)                         => MyAccountProvider.class,
+        XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAcct') => MyPersonAccountProvider.class,
+        XFTY_LookupKey.get(Contact.SObjectType)                         => MyContactProvider.class
+    };
+    private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> cache =
+            new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>();
+
+    public XFTY_DummySobjectProviderIntf get(SObjectType t)          { return XFTY_ProviderLookups.get(PROVIDERS, cache, XFTY_LookupKey.get(t)); }
+    public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf key) { return XFTY_ProviderLookups.get(PROVIDERS, cache, key); }
+    public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj)             { return XFTY_ProviderLookups.keysFor(PROVIDERS.keySet(), sObj); }
+}
 ```
 
-Each registered Provider needs a public no-arg constructor (it is instantiated
-lazily via `Type.newInstance()`); use the `register(key, providerInstance)`
-overload for Providers that need constructor arguments. Registering a key that is
-already present replaces it, so the built-ins can be overridden.
+Each registered Provider class needs a public no-arg constructor; use
+`XFTY_ProviderLookups.of(Map<key, providerInstance>)` for Providers that need
+constructor arguments. `XFTY_ProviderLookups.ofTypes(map)` / `of(map)` also wrap
+a complete map directly for quick or in-test use.
 
-Wrap `new XFTY_DefaultSObjectProviderLookup()...` in a shared method or a small
-named class if you use the same set of Providers across many tests. `@IsTest`
-classes cannot be abstract or virtual, so `XFTY_DefaultSObjectProviderLookup` is
-*the* implementation to read or copy - there is no base class, and implementing
-`XFTY_DummySObjectProviderLookupIntf` from scratch is only for something the
-built-in cannot express.
+`XFTY_DefaultSObjectProviderLookup` is exactly this pattern with XFTY's own three
+Providers - the framework uses it for its self-tests, and it is the class to copy
+as a starting point. Lookup keys compare by value (`getHashKey()`), so they work
+as `Map` keys directly.
 
 The interface has three methods: `get(SObjectType)`, `get(XFTY_LookupKeyIntf)`,
-and `keysFor(SObject)` (every registered key that matches a record - a record can
-match more than one). `XFTY_LookupKeys.resolve(lookup, sObj)` turns the match set
-into the single most-specific key.
+and `keysFor(SObject)` (every registered key a record matches - a record can
+match more than one). `XFTY_ProviderLookups.resolve(lookup, sObj)` turns the
+match set into the single most-specific key.
 
 ---
 
@@ -291,30 +306,41 @@ The key is one of:
 |-----|-----------|-------------|
 | `XFTY_LookupKey.get(type)` | `SObjectType` only (the default) | 0 |
 | `XFTY_RecordTypeLookupKey.get(type, developerName)` | `SObjectType` + record type | 10 |
-| `new XFTY_FlavouredLookupKey(type, [recordType,] flavour).matching(predicate)...` | `SObjectType` + optional record type + arbitrary conditions on the record | 20 + predicate count |
+| `XFTY_FlavouredLookupKey.get(type, [recordType,] flavour).matching(predicate)...` | `SObjectType` + optional record type + arbitrary conditions on the record | 20 + predicate count |
 | your own `XFTY_LookupKeyIntf` | anything | you choose |
 
-`XFTY_LookupKey` and `XFTY_RecordTypeLookupKey` are flyweights - obtain them with
-`.get(...)`. `XFTY_FlavouredLookupKey` carries behaviour (predicates), so build
-it with `new` and register it.
+All keys are flyweights - obtain them with `.get(...)`, never `new`. A
+`XFTY_FlavouredLookupKey` is interned by type + record type + flavour (its
+predicates are *not* part of its identity), and you add its predicates with
+`.matching(...)` **once**. Because a flavoured key is referenced from the Provider
+Lookup map *and* from every relationship that pins that variant, define each one
+in a single shared place - a small `*LookupKeys` constants class:
 
 ```apex
-XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_DefaultSObjectProviderLookup()
-        .register(XFTY_LookupKey.get(Account.SObjectType), BusinessAccountProvider.class)
-        .register(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), PersonAccountProvider.class)
-        .register(
-                new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise')
-                        .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000)),
-                EnterpriseAccountProvider.class
-        );
+@IsTest
+public class MyProjectLookupKeys {
+    public static final XFTY_LookupKeyIntf ENTERPRISE_ACCOUNT =
+            XFTY_FlavouredLookupKey.get(Account.SObjectType, 'enterprise')
+                    .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000));
+    public static final XFTY_LookupKeyIntf PERSON_ACCOUNT =
+            XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount');
+}
+```
+
+```apex
+private static final Map<XFTY_LookupKeyIntf, Type> PROVIDERS = new Map<XFTY_LookupKeyIntf, Type>{
+    XFTY_LookupKey.get(Account.SObjectType)     => BusinessAccountProvider.class,
+    MyProjectLookupKeys.PERSON_ACCOUNT          => PersonAccountProvider.class,
+    MyProjectLookupKeys.ENTERPRISE_ACCOUNT      => EnterpriseAccountProvider.class
+};
 ```
 
 Resolution:
 
 - `lookup.get(someKey)` - explicit.
 - A relationship with an explicit key -
-  `new XFTY_DummyDefaultRelationship(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), new Account())`.
-- A relationship with only an override template - `XFTY_LookupKeys.resolve`
+  `new XFTY_DummyDefaultRelationship(MyProjectLookupKeys.PERSON_ACCOUNT, new Account())`.
+- A relationship with only an override template - `XFTY_ProviderLookups.resolve`
   collects every registered key whose `isInstanceOf(template)` is true and picks
   the most specific; the plain type key is the fallback when nothing refined
   matches. Two equally-specific matches is an error - supply an explicit key.

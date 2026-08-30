@@ -2,7 +2,7 @@
  * Ready-made {@link XFTY_SObjectPredicateIntf} conditions on a single field.
  *
  * ```apex
- * new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise')
+ * XFTY_FlavouredLookupKey.get(Account.SObjectType, 'enterprise')
  *     .matching(XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000))
  *     .matching(XFTY_FieldPredicate.inSet(Account.Industry, new Set<Object>{ 'Finance', 'Technology' }))
  * ```

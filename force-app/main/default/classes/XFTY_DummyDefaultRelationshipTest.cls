@@ -20,7 +20,7 @@ private class XFTY_DummyDefaultRelationshipTest {
 
     @IsTest
     static void anExplicitKeyIsUsedAsIs() {
-        XFTY_LookupKeyIntf explicitKey = new XFTY_FlavouredLookupKey(Account.SObjectType, 'big');
+        XFTY_LookupKeyIntf explicitKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big');
         XFTY_DummyDefaultRelationship relationship =
                 new XFTY_DummyDefaultRelationship(explicitKey, new Account());
 

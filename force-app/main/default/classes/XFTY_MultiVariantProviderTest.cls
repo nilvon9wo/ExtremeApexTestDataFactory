@@ -6,20 +6,23 @@
 private class XFTY_MultiVariantProviderTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    private static final XFTY_LookupKeyIntf ENTERPRISE = new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise');
-    private static final XFTY_LookupKeyIntf SMB = new XFTY_FlavouredLookupKey(Account.SObjectType, 'smb');
+    // Shared keys - in a real project these live in a `*LookupKeys` constants class
+    // that both the Provider Lookup and the pinning relationships reference.
+    private static final XFTY_LookupKeyIntf ENTERPRISE = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'enterprise');
+    private static final XFTY_LookupKeyIntf SMB = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'smb');
 
-    private static XFTY_DefaultSObjectProviderLookup newLookup() {
-        return new XFTY_DefaultSObjectProviderLookup()
-                .register(XFTY_LookupKey.get(Account.SObjectType), new SmbAccountProvider())
-                .register(ENTERPRISE, new EnterpriseAccountProvider())
-                .register(SMB, new SmbAccountProvider())
-                .register(XFTY_LookupKey.get(Contact.SObjectType), new EnterpriseParentedContactProvider());
+    private static XFTY_DummySObjectProviderLookupIntf newLookup() {
+        return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                XFTY_LookupKey.get(Account.SObjectType) => new SmbAccountProvider(),
+                ENTERPRISE => new EnterpriseAccountProvider(),
+                SMB => new SmbAccountProvider(),
+                XFTY_LookupKey.get(Contact.SObjectType) => new EnterpriseParentedContactProvider()
+        });
     }
 
     @IsTest
     static void getByExplicitKeyReturnsTheMatchingProvider() {
-        XFTY_DefaultSObjectProviderLookup lookup = newLookup();
+        XFTY_DummySObjectProviderLookupIntf lookup = newLookup();
 
         Assert.isInstanceOfType(lookup.get(ENTERPRISE), EnterpriseAccountProvider.class);
         Assert.isInstanceOfType(lookup.get(SMB), SmbAccountProvider.class);
@@ -128,10 +131,8 @@ private class XFTY_MultiVariantProviderTest {
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Variant Contact'))
                     .putRequired(
                             Contact.AccountId,
-                            new XFTY_DummyDefaultRelationship(
-                                    new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise'),
-                                    new Account()
-                            )
+                            // The relationship pins the same shared key the lookup registers.
+                            new XFTY_DummyDefaultRelationship(ENTERPRISE, new Account())
                     );
         }
     }
