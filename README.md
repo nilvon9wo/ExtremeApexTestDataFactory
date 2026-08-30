@@ -6,6 +6,11 @@ Instead of manually constructing complete `SObject` graphs for every test, you d
 
 By centralizing test data definitions, XFTY dramatically reduces boilerplate and makes tests more resilient to changing validation rules, required fields, and evolving business logic.
 
+> **XFTY 4.0 is in development.** The `xfty-4.0-beta` branch adds context-aware
+> values, shared ancestors, finer per-call relationship control, and more - along
+> with some breaking API changes. Try it out and send feedback: check out
+> [`xfty-4.0-beta`](../../tree/xfty-4.0-beta) and open an issue with your thoughts.
+
 ---
 
 # Why XFTY?
