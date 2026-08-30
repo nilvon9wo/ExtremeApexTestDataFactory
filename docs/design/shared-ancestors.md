@@ -31,7 +31,7 @@ and breaks as soon as the graph gets two levels deep.
 A second implementation of `XFTY_DummyDefaultRelationshipIntf`:
 
 ```apex
-.putRequiredRelationship(Contact.AccountId, XFTY_SharedAncestor.of(new Account()))
+.putRequired(Contact.AccountId, XFTY_SharedAncestor.of(new Account()))
 ```
 
 Because requiredness now lives on the Master Template slot, the same shared
@@ -81,7 +81,7 @@ Integer parentCountFor(Integer childCount);
 Transitive relationships of a shared parent are generated once, with it.
 
 ---
-
+OO
 ## Bundle contract
 
 `bundle.getBundle(field)` holds the true generated set (e.g. 1 Account).

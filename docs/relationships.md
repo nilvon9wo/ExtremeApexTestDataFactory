@@ -23,7 +23,7 @@ A relationship is defined with `XFTY_DummyDefaultRelationship` and placed in
 either the *required* or the *optional* slot of the Master Template.
 
 ```apex
-.putRequiredRelationship(
+.putRequired(
     Contact.AccountId,
     new XFTY_DummyDefaultRelationship(
         new Account(
@@ -38,7 +38,7 @@ Whenever a Contact requires an Account, XFTY automatically creates one.
 > Earlier versions used two classes, `XFTY_DummyDefaultRelationshipRequired` and
 > `XFTY_DummyDefaultRelationshipOptional`. These were merged into
 > `XFTY_DummyDefaultRelationship`; requiredness is now decided by the slot
-> (`putRequiredRelationship` vs `putOptionalRelationship`), which lets one
+> (`putRequired` vs `putOptional`), which lets one
 > implementation serve both roles.
 
 The supplied `Account` acts as an Override Template for the generated Account.
@@ -103,7 +103,7 @@ For example, if every Contact must belong to an Account, the relationship
 should be marked as required.
 
 ```apex
-.putRequiredRelationship(
+.putRequired(
     Contact.AccountId,
     new XFTY_DummyDefaultRelationship(
         new Account()
@@ -122,7 +122,7 @@ Optional relationships provide richer test data without making those
 relationships mandatory.
 
 ```apex
-.putOptionalRelationship(
+.putOptional(
     Contact.OwnerId,
     new XFTY_DummyDefaultRelationship(
         new User()

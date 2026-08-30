@@ -1,41 +1,59 @@
 /**
+ * Repository of `RecordType` records, loaded with a **single** SOQL query the
+ * first time anything is asked for and cached for the rest of the transaction.
+ *
  * This is a test class because:
  * 1. No production code needs this.
- * 2. Tests should not be dependant on production code (especially not untested production code).
+ * 2. Tests should not depend on production code (especially untested production code).
+ *
+ * `XFTY_RecordTypeLookupKey` resolves record type Ids straight from the SObject
+ * describe (zero SOQL); this class is for callers that want the whole
+ * `RecordType` record, or a default when no variant key matches.
  */
 @IsTest
 public with sharing class XFTY_RecordTypeDataProvider {
-    private static final Map<String, RecordType> RECORD_TYPE_BY_KEYS = new Map<String, RecordType>();
-    private static final Set<String> LOADED_SOBJECT_NAMES = new Set<String>();
+    // sObjectName (lower case) -> developerName (lower case) -> RecordType
+    private static Map<String, Map<String, RecordType>> recordTypesBySObjectName;
 
     //noinspection ApexUnusedDeclaration
     public static RecordType getFor(SObjectType sObjectType, String developerName) {
-        String sObjectName = getName(sObjectType);
-        if (!LOADED_SOBJECT_NAMES.contains(sObjectName)) {
-            putRecordTypesFor(sObjectName);
+        if (developerName == null) {
+            return null;
         }
-        return RECORD_TYPE_BY_KEYS.get(createKey(sObjectName, developerName));
+        return allFor(sObjectType).get(developerName.toLowerCase());
     }
 
-    private static void putRecordTypesFor(String sObjectName) {
-        List<RecordType> recordTypes = [
-                SELECT Id, DeveloperName, SobjectType
+    //noinspection ApexUnusedDeclaration
+    public static Id idFor(SObjectType sObjectType, String developerName) {
+        RecordType recordType = getFor(sObjectType, developerName);
+        return (recordType == null) ? null : recordType.Id;
+    }
+
+    /** Every record type for the SObject, keyed by lower-cased developer name. */
+    public static Map<String, RecordType> allFor(SObjectType sObjectType) {
+        ensureLoaded();
+        Map<String, RecordType> forSObject = recordTypesBySObjectName.get(nameOf(sObjectType));
+        return (forSObject == null) ? new Map<String, RecordType>() : forSObject;
+    }
+
+    private static void ensureLoaded() {
+        if (recordTypesBySObjectName != null) {
+            return;
+        }
+        recordTypesBySObjectName = new Map<String, Map<String, RecordType>>();
+        for (RecordType recordType : [
+                SELECT Id, Name, DeveloperName, SobjectType, IsActive
                 FROM RecordType
-                WHERE SobjectType = :sObjectName
-        ];
-        for (RecordType recordType : recordTypes) {
-            String key = createKey(recordType.SobjectType, recordType.DeveloperName);
-            RECORD_TYPE_BY_KEYS.put(key, recordType);
+        ]) {
+            String sObjectKey = recordType.SobjectType.toLowerCase();
+            if (!recordTypesBySObjectName.containsKey(sObjectKey)) {
+                recordTypesBySObjectName.put(sObjectKey, new Map<String, RecordType>());
+            }
+            recordTypesBySObjectName.get(sObjectKey).put(recordType.DeveloperName.toLowerCase(), recordType);
         }
-        LOADED_SOBJECT_NAMES.add(sObjectName);
     }
 
-    private static String createKey(String sObjectName, String developerName) {
-        return sObjectName + ':::' + developerName;
-    }
-
-    private static String getName(SObjectType sObjectType) {
-        return sObjectType.getDescribe()
-                .getName();
+    private static String nameOf(SObjectType sObjectType) {
+        return String.valueOf(sObjectType).toLowerCase();
     }
 }

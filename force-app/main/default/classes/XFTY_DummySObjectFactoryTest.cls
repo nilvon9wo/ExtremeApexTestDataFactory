@@ -283,7 +283,7 @@ private class XFTY_DummySObjectFactoryTest {
         private OptionalParentContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Optional Parent Contact'))
-                    .putOptionalRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+                    .putOptional(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
 
@@ -291,7 +291,7 @@ private class XFTY_DummySObjectFactoryTest {
         private DeepAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
                     .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Deep Account'))
-                    .putRequiredRelationship(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
+                    .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
     }
 
@@ -299,7 +299,7 @@ private class XFTY_DummySObjectFactoryTest {
         private DeepContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Deep Contact'))
-                    .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+                    .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
 
@@ -307,7 +307,7 @@ private class XFTY_DummySObjectFactoryTest {
         private RelatedFieldContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Related Field Contact'))
-                    .putRequiredRelationship(
+                    .putRequired(
                             Contact.Description,
                             new XFTY_DummyDefaultRelationship(new Account(Name = 'Wired From Parent'), Account.Name)
                     );

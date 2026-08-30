@@ -19,8 +19,8 @@ private class XFTY_DummySObjectMasterTemplateTest {
     static void putRoutesEachStrategyTypeToItsOwnMap() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                 .put(Contact.LastName, new XFTY_DummyDefaultValueExact('Doe'))
-                .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
-                .putOptionalRelationship(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
+                .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
+                .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
 
         Assert.isTrue(template.defaultBySObjectFieldMap.containsKey(Contact.LastName));
         Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
@@ -28,19 +28,21 @@ private class XFTY_DummySObjectMasterTemplateTest {
     }
 
     @IsTest
-    static void untypedPutTreatsARelationshipAsRequired() {
-        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
-
-        Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
-        Assert.isFalse(template.optionalRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+    static void untypedPutRejectsARelationship() {
+        try {
+            new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                    .put(Contact.AccountId, (Object) new XFTY_DummyDefaultRelationship(new Account()));
+            Assert.fail('Expected an exception');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('putRequired'), ex.getMessage());
+        }
     }
 
     @IsTest
     static void removeClearsAFieldFromEveryMap() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                 .put(Contact.LastName, new XFTY_DummyDefaultValueExact('Doe'))
-                .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+                .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
 
         template.remove(Contact.LastName);
         template.remove(Contact.AccountId);
@@ -69,13 +71,16 @@ private class XFTY_DummySObjectMasterTemplateTest {
     }
 
     @IsTest
-    static void putRoutesARelationshipObjectPassedAsObject() {
-        Object relationship = new XFTY_DummyDefaultRelationship(new Account());
+    static void putRequiredAndPutOptionalRouteToTheirOwnMaps() {
+        XFTY_DummyDefaultRelationship required = new XFTY_DummyDefaultRelationship(new Account());
+        XFTY_DummyDefaultRelationship optional = new XFTY_DummyDefaultRelationship(new Contact());
 
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.AccountId, relationship);
+                .putRequired(Contact.AccountId, required)
+                .putOptional(Contact.ReportsToId, optional);
 
-        Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+        Assert.areEqual(required, template.requiredRelationshipBySObjectFieldMap.get(Contact.AccountId));
+        Assert.areEqual(optional, template.optionalRelationshipBySObjectFieldMap.get(Contact.ReportsToId));
         Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Contact.AccountId));
     }
 

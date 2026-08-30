@@ -222,13 +222,13 @@ Additional strategies can easily be created by implementing
 
 # Relationship Providers
 
-Relationships are configured with `putRequiredRelationship(...)` /
-`putOptionalRelationship(...)` and an `XFTY_DummyDefaultRelationship`.
+Relationships are configured with `putRequired(...)` /
+`putOptional(...)` and an `XFTY_DummyDefaultRelationship`.
 
 For example:
 
 ```apex
-.putRequiredRelationship(
+.putRequired(
     Contact.AccountId,
     new XFTY_DummyDefaultRelationship(new Account(
             Description = 'Integration Test Account'
@@ -254,7 +254,7 @@ the slot it occupies.
 ## Required
 
 ```apex
-.putRequiredRelationship(field, new XFTY_DummyDefaultRelationship(...))
+.putRequired(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 The relationship is generated whenever relationship generation includes required relationships.
@@ -268,7 +268,7 @@ Use this only for relationships that are genuinely required for valid test data.
 ## Optional
 
 ```apex
-.putOptionalRelationship(field, new XFTY_DummyDefaultRelationship(...))
+.putOptional(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 Optional relationships are generated only when the Provider is configured with:
@@ -371,7 +371,7 @@ The methods describe above can be combined.
 ```apex
 XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER)
         .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Test'))
-        .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(
+        .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(
                 new Account(Description = 'Integration Test Account')
         ))
         .setQuantityPerTemplate(2)

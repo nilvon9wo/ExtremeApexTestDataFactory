@@ -31,37 +31,33 @@ public class XFTY_DummySObjectMasterTemplate {
         return this;
     }
 
-    /**
-     * A relationship passed to the untyped `put` is treated as *required*. Use
-     * `putOptionalRelationship(...)` for optional relationships.
-     */
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
-        return this.putRequiredRelationship(sObjectField, relationshipTemplate);
-    }
-
-    public XFTY_DummySObjectMasterTemplate putRequiredRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+    public XFTY_DummySObjectMasterTemplate putRequired(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.requiredRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
         return this;
     }
 
-    public XFTY_DummySObjectMasterTemplate putOptionalRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+    public XFTY_DummySObjectMasterTemplate putOptional(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.optionalRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
         return this;
     }
 
     /**
-     * Convenience overload. Anything that is already a generation strategy or a
-     * relationship template is routed to its typed overload (a relationship is
-     * treated as required); any other value is treated as an exact literal and
-     * wrapped in `XFTY_DummyDefaultValueExact`, so Providers can write
+     * Convenience overload. A value strategy is routed to its typed overload; any
+     * other value is treated as an exact literal and wrapped in
+     * `XFTY_DummyDefaultValueExact`, so Providers can write
      * `.put(Account.Type, 'Customer')`.
+     *
+     * Relationships are rejected here: their requiredness has to be stated, so
+     * use `putRequired(...)` / `putOptional(...)` explicitly.
      */
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, Object value) {
         if (value instanceof XFTY_DummyDefaultValueIntf) {
             return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
         }
         if (value instanceof XFTY_DummyDefaultRelationshipIntf) {
-            return this.putRequiredRelationship(sObjectField, (XFTY_DummyDefaultRelationshipIntf) value);
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Relationships must be added with putRequired(...) or putOptional(...), not put(...).'
+            );
         }
         return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
     }

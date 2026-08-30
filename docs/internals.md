@@ -94,7 +94,7 @@ Providers instead declare *what* should exist.
 new XFTY_DummySObjectMasterTemplate(Account.Id)
     .put(Account.Name,
          new XFTY_DummyDefaultValueIncrementingString("Account"))
-    .putRequiredRelationship(Account.OwnerId,
+    .putRequired(Account.OwnerId,
          new XFTY_DummyDefaultRelationship(
              new User()
          ));

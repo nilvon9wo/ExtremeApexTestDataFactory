@@ -65,7 +65,7 @@ or is that a separate `removeFromMasterTemplate` concern?
 
 `XFTY_DummyDefaultRelationshipRequired` and `XFTY_DummyDefaultRelationshipOptional`
 were merged into `XFTY_DummyDefaultRelationship`. Requiredness is decided by the
-Master Template slot (`putRequiredRelationship` / `putOptionalRelationship`), so a
+Master Template slot (`putRequired` / `putOptional`), so a
 single implementation - including a future shared-ancestor implementation - can
 serve either role.
 
@@ -127,7 +127,7 @@ Relationship override templates already allow customization of generated parent 
 For example:
 
 ```apex
-.putRequiredRelationship(
+.putRequired(
     Foo__c.Account__c,
     new XFTY_DummyDefaultRelationship(
         new Account(Bar__c = someId)

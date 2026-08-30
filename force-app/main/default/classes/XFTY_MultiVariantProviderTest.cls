@@ -49,7 +49,7 @@ private class XFTY_MultiVariantProviderTest {
         Test.startTest();
         System.runAs(TEST_ADMIN) {
             XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, newLookup())
-                    .putRequiredRelationship(
+                    .putRequired(
                             Contact.AccountId,
                             new XFTY_DummyDefaultRelationship(SMB, new Account())
                     )
@@ -69,7 +69,7 @@ private class XFTY_MultiVariantProviderTest {
         Test.startTest();
         System.runAs(TEST_ADMIN) {
             XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, newLookup())
-                    .putRequiredRelationship(
+                    .putRequired(
                             Contact.AccountId,
                             new XFTY_DummyDefaultRelationship(new Account())
                     )
@@ -126,7 +126,7 @@ private class XFTY_MultiVariantProviderTest {
         private EnterpriseParentedContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Variant Contact'))
-                    .putRequiredRelationship(
+                    .putRequired(
                             Contact.AccountId,
                             new XFTY_DummyDefaultRelationship(
                                     XFTY_FlavorLookupKey.get(Account.SObjectType, 'enterprise'),

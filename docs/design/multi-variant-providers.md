@@ -14,7 +14,7 @@ document is the design record; where the implementation deviated:
   `XFTY_DummyDefaultRelationshipIntf.resolveLookupKey(lookup)`.
 - **`Required` + `Optional` merged** into `XFTY_DummyDefaultRelationship`;
   requiredness moved to the Master Template slot
-  (`putRequiredRelationship` / `putOptionalRelationship`; untyped `put` ⇒ required).
+  (`putRequired` / `putOptional`; untyped `put` ⇒ required).
 - **`XFTY_FlavorLookupKey`** shipped alongside `XFTY_RecordTypeLookupKey`.
 - `XFTY_SObjectProviderLookup.register` has a `(key, providerInstance)` overload
   for Providers that need constructor arguments (and for tests).

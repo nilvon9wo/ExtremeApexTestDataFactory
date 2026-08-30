@@ -3,7 +3,7 @@
  *
  * Whether the relationship is *required* or *optional* is not part of this
  * contract - that is decided by which slot it occupies on the Master Template
- * (`putRequiredRelationship` vs `putOptionalRelationship`). This lets a single
+ * (`putRequired` vs `putOptional`). This lets a single
  * implementation - including a future shared-ancestor implementation - be used
  * in either slot.
  */

@@ -82,7 +82,7 @@ public class DefaultContactDataProvider implements XFTY_DummySobjectProviderIntf
     private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
     
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-            .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(
+            .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(
                     Description = DEFAULT_ACCOUNT_DESCRIPTION
             )))
             .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
@@ -146,7 +146,7 @@ For example:
 new XFTY_DummySObjectMasterTemplate(Contact.Id)
     .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString( 'Contact'))
     .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail('test.contact'))
-    .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+    .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
 ```
 
 Think of a Master Template as the canonical definition of a valid object.
@@ -223,13 +223,13 @@ Ask for every relationship: Can this object reasonably exist without the related
 If the answer is **no**, put it in the required slot:
 
 ```apex
-.putRequiredRelationship(field, new XFTY_DummyDefaultRelationship(...))
+.putRequired(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 If the answer is **yes**, put it in the optional slot:
 
 ```apex
-.putOptionalRelationship(field, new XFTY_DummyDefaultRelationship(...))
+.putOptional(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 This distinction has a significant impact on test performance.
