@@ -245,6 +245,11 @@ Two are bundled:
 // copy a field from the generated parent on a relationship
 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
 .put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Site))
+
+// ...or from further up - a path of relationship fields ending in the field to read
+.put(OpportunityLineItem.Description, new XFTY_CopyFromAncestor(new List<SObjectField>{
+        OpportunityLineItem.OpportunityId, Opportunity.AccountId, Account.Name
+}))
 ```
 
 For anything with logic, implement `XFTY_ContextAwareValueIntf` (it extends

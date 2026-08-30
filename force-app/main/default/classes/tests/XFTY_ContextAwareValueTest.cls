@@ -154,12 +154,65 @@ private class XFTY_ContextAwareValueTest {
     }
 
     @IsTest
-    static void copyFromAncestorRejectsNullFields() {
+    static void copyFromAncestorRejectsANullPathStep() {
         try {
             new XFTY_CopyFromAncestor(null, Account.Name);
             Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('relationship field'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('cannot be null'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void copyFromAncestorRejectsATooShortPath() {
+        try {
+            new XFTY_CopyFromAncestor(new List<SObjectField>{ Account.Name });
+            Assert.fail('Expected an exception');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void copyFromAncestorFollowsAMultiHopPath() {
+        // Contact -> Account -> Owner(User).  Copy the generated Owner's Alias onto the Contact.
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider(),
+                        XFTY_LookupKey.get(Account.SObjectType) => new AccountWithOwnerProvider(),
+                        XFTY_LookupKey.get(User.SObjectType) => new XFTY_DefaultUserDataProvider()
+                }
+        );
+
+        Contact result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                    .put(Contact.Department, new XFTY_CopyFromAncestor(new List<SObjectField>{
+                            Contact.AccountId, Account.OwnerId, User.Alias
+                    }))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supply();
+            Test.stopTest();
+        }
+
+        Assert.isNotNull(result.Department, 'the Account Owner Alias was copied two hops up');
+    }
+
+    /** An Account Provider that generates an Owner, so multi-hop tests have a second level. */
+    private class AccountWithOwnerProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
+                .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateSObjectList) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
         }
     }
 
