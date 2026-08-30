@@ -169,33 +169,23 @@ unambiguous even alongside the new `put(SObjectField, Object)`. Explicit
 
 ---
 
-## Open decisions (for review before implementation)
+## How the original questions were resolved
 
-1. **Merge `Required` + `Optional` into one `XFTY_DummyDefaultRelationship`?**
-   Recommend yes — do it as the first commit, before adding the key constructors.
-2. **`putValue` / `putRelationship` explicit names, or keep `put(...)` overloads?**
-   Recommend keep overloads (they resolve fine); add explicit aliases only if you
-   want them for readability.
-3. **Ship `XFTY_RecordTypeLookupKey`, or leave record-type keys as a documented
-   example?** Recommend ship it — it's the compelling real use case and the
-   `RecordTypeId` describe logic is fiddly enough to be worth centralising.
-4. **`XFTY_AbstractSObjectProviderLookup` base class** to keep the interface
-   cheap to implement? Recommend yes.
-5. **Scope of test/doc updates** — this touches the factory, both relationship
-   classes, the master template, the lookup, and ~4 test classes. Confirm it all
-   lands on this branch (not merged) as one reviewable unit.
+All of these were decided and shipped; kept here so the design record is complete.
 
----
+1. **Merge `Required` + `Optional`?** Done - one `XFTY_DummyDefaultRelationship`,
+   requiredness set by the Master Template slot (`putRequired` / `putOptional`).
+2. **Explicit `put*` names vs. overloads?** `putRequired(...)` / `putOptional(...)`
+   for relationships; `put(field, value)` for values (a non-strategy value is
+   wrapped as an exact literal); the untyped `put(field, <relationship>)` throws.
+3. **Ship `XFTY_RecordTypeLookupKey`?** Yes - shipped, plus `XFTY_FlavouredLookupKey`
+   and `XFTY_FieldPredicate`. If it's reusable, it ships.
+4. **An abstract base lookup class?** No. `@IsTest` classes can't be abstract or
+   virtual, and the project uses composition anyway: `XFTY_ProviderLookups` is a
+   stateless utility, and a project's lookup is a small class holding a complete
+   `Map` that delegates its three methods to it.
+5. **Scope / reviewability.** Landed on the `xfty-4.0-beta` integration branch
+   (formerly `sfdx-package-and-tests`). Not on `master`.
 
-## Implementation plan
-
-1. Merge relationship classes (decision 1) + update master template map + factory
-   + tests + docs.
-2. Add `XFTY_LookupKeyIntf`, `XFTY_LookupKey`, `XFTY_RecordTypeLookupKey` + tests.
-3. Revise `XFTY_DummySObjectProviderLookupIntf` + add `XFTY_AbstractSObjectProviderLookup`
-   + refactor `XFTY_DefaultSObjectProviderLookup` + tests.
-4. Add explicit-key constructors to the relationship class; wire deferred
-   resolution into `XFTY_DummySObjectFactory`; tests for a two-variant Provider.
-5. Rewrite `XFTY_DefaultAccountDataProvider` to use a real Person/Business variant
-   pair as the worked example; update `docs/providers.md` "Record Types".
-6. Update `docs/relationships.md`, `docs/future-ideas.md`, `docs/known-issues.md`.
+Key resolution is memoised on the relationship (`resolveLookupKey`), derived from
+the override template's type + record type unless an explicit key was given.

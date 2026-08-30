@@ -37,6 +37,8 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     private SObjectField relatedField;
     private XFTY_LookupKeyIntf resolvedLookupKey;
     private SObject resolvedRecord;
+    private XFTY_DummySObjectBundle resolvedBundle;
+    private Boolean resolvedRecordIsPersisted = false;
 
     private XFTY_SharedAncestor(String name) {
         this.name = name;
@@ -65,6 +67,9 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
                     'XFTY_SharedAncestor.put("' + name + '"): replacing an already-resolved record.');
         }
         ancestor.resolvedRecord = record;
+        ancestor.resolvedBundle = null;
+        // A record handed in with an Id is treated as already inserted.
+        ancestor.resolvedRecordIsPersisted = (record != null && record.Id != null);
     }
 
     /** The resolved record's Id. Throws if it has not been resolved yet this test method. */
@@ -137,15 +142,31 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
 
     public SObject resolveSharedRecord(XFTY_GenerationContext context) {
         if (this.resolvedRecord == null) {
+            XFTY_GenerationContext ancestorContext = context.forRelated();
             XFTY_DummySobjectProviderIntf provider =
                     context.providerLookup.get(this.resolveLookupKey(context.providerLookup));
-            XFTY_DummySObjectBundle bundle = provider.createBundle(
-                    context.forRelated(),
+            this.resolvedBundle = provider.createBundle(
+                    ancestorContext,
                     new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
             );
-            this.resolvedRecord = bundle.getList(provider.getPrimaryTargetField())[0];
+            this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
+            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW.equals(ancestorContext.insertMode);
         }
         return this.resolvedRecord;
+    }
+
+    /** The bundle produced when the shared record was generated (null if it was `put(...)` in). */
+    public XFTY_DummySObjectBundle getResolvedBundle() {
+        return this.resolvedBundle;
+    }
+
+    /**
+     * Whether the shared record has been inserted (has a real Id). A child being
+     * generated with `NOW` needs this to be true, or its lookup would carry a
+     * mock / null Id into a real `insert`.
+     */
+    public Boolean isResolvedRecordPersisted() {
+        return this.resolvedRecordIsPersisted;
     }
 
     private SObject requireTemplate() {

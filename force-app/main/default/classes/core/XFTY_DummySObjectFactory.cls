@@ -143,11 +143,25 @@ public class XFTY_DummySObjectFactory {
             XFTY_SharedRelationshipIntf shared
     ) {
         SObject sharedRecord = shared.resolveSharedRecord(context);
+
+        if (XFTY_InsertModeEnum.NOW.equals(context.insertMode) && !shared.isResolvedRecordPersisted()) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Shared ancestor "' + shared.getSharedName() + '" was resolved without being inserted, but this '
+                            + 'generation runs in NOW mode and would carry its Id onto inserted records. Reference the '
+                            + 'shared ancestor with a consistent insert mode across the test, or register an inserted '
+                            + 'record with XFTY_SharedAncestor.put("' + shared.getSharedName() + '", insertedRecord).'
+            );
+        }
+
         List<SObject> repeated = new List<SObject>();
         for (Integer i = 0; i < quantity; i++) {
             repeated.add(sharedRecord);
         }
-        return bundle.put(sObjectField, repeated);
+        bundle.put(sObjectField, repeated);
+        if (shared.getResolvedBundle() != null) {
+            bundle.put(sObjectField, shared.getResolvedBundle());
+        }
+        return bundle;
     }
 
 

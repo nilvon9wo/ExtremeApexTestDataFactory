@@ -182,9 +182,10 @@ the Provider Lookup. `supplyBundle()` / the factory still drives phases S1-S2 (t
 batched build) the first time generation needs any registered-but-unresolved
 ancestor.
 
-Still open: whether to support **multiple `XFTY_DummySObjectProviderLookupIntf`
-instances in play at once** in the same test. Leaning towards "not a supported
-scenario" unless a real need appears.
+**Multiple `XFTY_DummySObjectProviderLookupIntf` instances in one test** - not
+actively supported, not actively prevented. If a resolved shared ancestor happens
+to work when reached through two different lookups, the developer is welcome to
+it; the framework won't add code to police or guarantee it.
 
 ### 2. Collection without executing Providers — *accepted*
 
@@ -248,9 +249,11 @@ ran itself (XFTY discourages `@TestSetup`); (b) an org-wide singleton (like the
 `Root` in the acceptance scenario) that an earlier step in the same test already
 inserted, so regenerating it would violate the constraint.
 
-Open: what `put(...)` does when the name has *already resolved* during generation
-- warn and replace, or throw (a resolved ancestor may already be wired into
-inserted children).
+**Resolved.** `put(...)` on an already-resolved name **warns and replaces** -
+`System.debug(WARN)`, no exception. XFTY's job is to give a mechanism for sharing
+an identified record, not to police how the developer uses it; there are
+legitimate reasons to swap what is shared partway through a test. (The
+implementation does this today.)
 
 ---
 
@@ -387,18 +390,46 @@ generation pass and the *same* DML:
 .putOptional(Contact.CompanyPresident__c, XFTY_SharedAncestor.get('mr-smith'))
 ```
 
-Here the Account and "mr-smith" are generated together and inserted in the same
-statement(s); the only thing that makes `mr-smith` special is that its record is
-cached under that name for reuse by this record's other fields, other records, and
-other Master Templates. This works precisely because `get(...)` returns the shared
-relationship interface. It relies on `mr-smith` being an on-demand type -
-lightweight, no ancestors of its own - so it can be resolved inline; a *declared*
-name asked for here would hit the "not declared" error instead. So `get(...)`
-first checks which kind the name is.
+The only thing that makes `mr-smith` special is that its record is cached under
+that name for reuse by this record's other fields, other records, and other
+Master Templates. This works because `get(...)` returns the shared relationship
+interface. It relies on `mr-smith` being an on-demand type - lightweight, no
+ancestors of its own - so it can be resolved inline; a *declared* name asked for
+here would hit the "not declared" error instead. So `get(...)` first checks which
+kind the name is.
 
 Declared ancestors don't ride the sibling pass - they are pre-resolved in
 phases S0-S2 (they may be deep or heavy, and must exist before the first
 top-level generation call). On-demand ancestors need no pre-phase at all.
+
+### The four invariants a shared ancestor must always keep
+
+No matter how it is referenced (sibling field, ancestor, descendant, a different
+`supplyBundle()` call) and no matter the insert mode(s) involved:
+
+1. the record is **created exactly once**;
+2. it has **one consistent Id** - real or mocked, never both, never changing;
+3. that Id is populated **everywhere** it is expected in the generated records;
+4. the shared record itself appears **everywhere** it is expected in the
+   bundle / graph (including `bundle.getBundle(field)`, not just `getList(field)`).
+
+**The current on-demand implementation has two gaps against this:**
+
+- **Mixed insert modes.** If `mr-smith` is first resolved in a `MOCK` call it gets
+  a mock Id; a later `NOW` call that references him then wires children to that
+  mock Id and `insert` fails (`INVALID_CROSS_REFERENCE_KEY`). Invariant 2/3
+  broken. Fix options: (a) resolve a shared ancestor's persistence once, from a
+  declared `XFTY_SharedAncestor.context(mode)` or the first call, and **throw a
+  clear error** if a later call needs a stronger mode; (b) route shared-ancestor
+  persistence through the `DEFERRED` insert mode
+  ([deferred-persistence.md](deferred-persistence.md)) so the Id is only ever
+  assigned once, at `flush()`, consistently for every consumer.
+- **Bundle placement (invariant 4).** `wireSharedAncestor` puts the record in
+  `bundle.getList(field)` but not `bundle.getBundle(field)` - `getBundle` on a
+  shared-ancestor field returns null today. Should return a (single-record)
+  sub-bundle.
+
+Both are tracked as bugs to fix before the declared path lands.
 
 **`XFTY_SharedAncestor.getId('name')`** - the resolved record's `Id`, for anywhere
 an `Id` is what's wanted (an override template field, an assertion, a lookup the

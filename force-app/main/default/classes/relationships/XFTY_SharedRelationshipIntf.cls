@@ -20,4 +20,10 @@ public interface XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationsh
      * Uses `context` for the Provider Lookup and the insert mode.
      */
     SObject resolveSharedRecord(XFTY_GenerationContext context);
+
+    /** The sub-bundle generated with the shared record, or null if it was supplied directly. */
+    XFTY_DummySObjectBundle getResolvedBundle();
+
+    /** Whether the shared record has a real (inserted) Id - a `NOW` child needs this to be true. */
+    Boolean isResolvedRecordPersisted();
 }

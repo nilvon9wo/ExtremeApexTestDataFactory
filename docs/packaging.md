@@ -25,9 +25,14 @@ sf org delete scratch --target-org xfty --no-prompt
 
 Because the whole framework is `@IsTest`, Salesforce reports 0% coverage for it -
 that is expected. The behavioural suite under
-`force-app/main/default/classes/tests/` is what guards the framework; it is kept
-at 100% line coverage (verify by temporarily stripping `@IsTest` and running
-`sf apex run test --code-coverage`).
+`force-app/main/default/classes/tests/` is what guards the framework.
+
+Salesforce only measures **line** coverage. That is the floor, not the goal: the
+real target is **branch** coverage - every guard, every `switch`, every ternary,
+both sides. Salesforce cannot measure or enforce that, so it is on the author:
+when you touch a method, make sure every branch has a test, not just every line.
+Line coverage is currently 100% (verify by temporarily stripping `@IsTest` and
+running `sf apex run test --code-coverage`); branch coverage is reviewed by hand.
 
 `force-app/main/default/classes/` is organised into `core/`, `values/`,
 `relationships/`, `lookup/`, `providers/`, and `tests/`. The `test-support/`

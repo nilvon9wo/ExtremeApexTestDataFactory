@@ -7,20 +7,28 @@ For what changed and why, see [migration.md](migration.md).
 
 ---
 
-## The deferred whole-graph pass — the keystone
+## Deferred persistence
 
-Build the entire object graph in memory, evaluate values against the complete
-graph, then wire + insert **once per dependency depth** instead of once per
-Provider per level. This one change unlocks the next three items. Full design:
-**[design/deferred-graph-pass.md](design/deferred-graph-pass.md)**.
+Two related, self-contained ideas that move DML out of the recursion - full
+design **[design/deferred-persistence.md](design/deferred-persistence.md)**:
+
+- **Depth-batched persistence** - one mixed-type `insert` per dependency depth
+  instead of one per Provider. Verified today's behaviour is per-Provider (a Task
+  with two typed parents costs 3 inserts, not 2). A perf change to the existing
+  engine; opt-in or always-on TBD.
+- **A reference-preserving insert mode** (`DEFERRED`) - generate like `NEVER`
+  (no Ids), register every record, then `XFTY_DeferredInsert.flush()` inserts the
+  whole set (depth-batched) and back-fills the Ids on the instances already handed
+  out. For tests that call the framework several times and want one insert phase.
+  Plays nice with records inserted by other modes.
 
 ## Declared shared ancestors / deep chains
 
 The on-demand `XFTY_SharedAncestor` (one generated parent for many children) is
 [implemented](relationships.md#shared-ancestors). Still to build: **declared**
 ancestors (`XFTY_SharedAncestor.require(...)` up front), deep shared chains, and
-DML-batched resolution of many shared ancestors at once - all on top of the
-deferred pass. Design + the deep-record-type-hierarchy acceptance test:
+DML-batched resolution of many at once - "register these in the deferred set,
+then `flush()`". Design + the deep-record-type-hierarchy acceptance test:
 [design/shared-ancestors.md](design/shared-ancestors.md).
 
 ---
@@ -38,7 +46,8 @@ Two options, tracked as decision 4 in
 - a light `context.requestingChildTemplate` (the child's seed template, available
   when the factory builds a parent because a child asked for it) - covers
   "matching value the test set explicitly on the child";
-- the full deferred pass (above), which covers everything.
+- the `DEFERRED` insert mode above - the whole graph is in memory between
+  `supply*()` and `flush()`, so a value pass in `flush()` sees everything.
 
 ---
 
@@ -78,7 +87,9 @@ from the same source. Cheaper than a real module split if it can be made reliabl
 
 ## Remaining coverage gaps
 
-The framework is at 100% line coverage (see [packaging.md](packaging.md)). Deeper
-scenarios still worth explicit tests as the engine grows: many-level graphs,
-circular relationships beyond `PREVENT_CASCADE`, and the open items in
-[known-issues.md](known-issues.md).
+The framework is at 100% *line* coverage (see [packaging.md](packaging.md)), but
+line coverage is a fragile proxy - the goal is **branch** coverage, which
+Salesforce can neither measure nor enforce. Every new guard / `switch` / ternary
+needs a test for each side, checked by hand. Deeper scenarios still worth explicit
+tests as the engine grows: many-level graphs, circular relationships beyond
+`PREVENT_CASCADE`, and the open items in [known-issues.md](known-issues.md).
