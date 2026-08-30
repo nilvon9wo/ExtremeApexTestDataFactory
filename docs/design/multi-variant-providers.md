@@ -1,7 +1,21 @@
 # Design: Multi-Variant Providers
 
-Status: **implemented** on the `multi-variant-providers` branch. The rest of this
-document is the design record; where the implementation deviated:
+Status: **implemented** on the `multi-variant-providers` branch, then revised.
+The rest of this document is the design record; where things ended up:
+
+- **`keyFor` → `keysFor`** (returns `Set<XFTY_LookupKeyIntf>` - a record can match
+  several variants). `XFTY_LookupKeys.resolve` picks the most specific via
+  `XFTY_LookupKeyIntf.getSpecificity()`; an equally-specific tie is an error.
+- **`XFTY_FlavorLookupKey` → `XFTY_FlavouredLookupKey`**: `SObjectType` + optional
+  record type + arbitrary `XFTY_SObjectPredicateIntf` conditions
+  (`XFTY_FieldPredicate` ships the common ones). It is not flyweighted (carries
+  behaviour); the lookup still dedupes by hash.
+- **`XFTY_RecordTypeLookupKeyIntf extends XFTY_LookupKeyIntf`** so the lookup can
+  ask any record-type-bearing key for its developer name / Id.
+- **`XFTY_RecordTypeDataProvider`** rebuilt as a one-SOQL repository of all record
+  types.
+
+Earlier deviations from the original proposal:
 
 - **No inheritance.** `@IsTest` classes cannot be abstract or virtual, so
   `XFTY_AbstractSObjectProviderLookup` became a concrete, *composed*

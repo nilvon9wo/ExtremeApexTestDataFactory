@@ -1,133 +1,159 @@
 # Design: Shared Ancestors
 
-Status: **proposal**. Builds on the merged relationship model from
-[multi-variant-providers.md](multi-variant-providers.md).
+Status: **proposal** (v2 - rewritten after feedback). Builds on the merged
+relationship model from [multi-variant-providers.md](multi-variant-providers.md).
 
 ---
 
-## Problem
+## Requirements
 
-Every generated child currently gets its own generated parent.
+1. **Deterministic, not pooled.** A shared ancestor is *one* record. Every field
+   that references it gets the same Id.
+2. **Named and interned.** `XFTY_SharedAncestor.get('John')` returns the one
+   instance for that name (flyweight), from anywhere.
+3. **Built once per transaction.** The record is generated (and inserted) the
+   first time it is needed and cached on the instance; later references - in the
+   same or a different `supplyBundle()` call - reuse it.
+4. **Cross-template, cross-SObject.** The same `XFTY_SharedAncestor.get('John')`
+   can sit in `Contact.ReportsToId` on the Contact Master Template *and*
+   `Case.ContactId` on the Case Master Template. Different fields, different
+   Master Templates, different owning SObjects - one John.
+5. **Fills either slot.** It implements `XFTY_DummyDefaultRelationshipIntf`, so it
+   goes in `putRequired(...)` or `putOptional(...)` like any relationship.
+6. **DML-frugal.** Resolving N shared ancestors must not cost N DML statements.
+   If 'John' and 'Jane' are both Contacts, they insert together.
+
+Consumption:
 
 ```apex
-new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
-    .setQuantityPerTemplate(3)
-    .setInclusivity(REQUIRED)
-    .supplyBundle();
-// => 3 Contacts, 3 Accounts
+// somewhere central
+XFTY_SharedAncestor.get('acme-hq').of(new Account(Name = 'ACME HQ'));
+XFTY_SharedAncestor.get('john').of(new Contact(LastName = 'Doe'));
+
+// any Master Template, any field
+.putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'))
+.putOptional(Case.ContactId,    XFTY_SharedAncestor.get('john'))
 ```
-
-Real hierarchical data often wants the opposite: 3 Contacts under **one**
-Account; an `OpportunityLineItem` and its `Opportunity` sharing **one**
-`Account`; a batch of records all owned by the same `User`.
-
-Tests can re-parent afterwards, but that defeats the point of declarative setup
-and breaks as soon as the graph gets two levels deep.
 
 ---
 
-## Shape of the solution
+## The registry
 
-A second implementation of `XFTY_DummyDefaultRelationshipIntf`:
+`XFTY_SharedAncestorRegistry` - a `static Map<String, XFTY_SharedAncestor>`.
+`XFTY_SharedAncestor.get(name)` interns through it. Being static, a resolved
+ancestor survives across `supplyBundle()` calls in the same test - the point of
+requirement 3 - and inherits the framework's existing `@TestSetup` caveat
+(see [salesforce-considerations.md](../salesforce-considerations.md)).
 
-```apex
-.putRequired(Contact.AccountId, XFTY_SharedAncestor.of(new Account()))
-```
+Each `XFTY_SharedAncestor` holds:
 
-Because requiredness now lives on the Master Template slot, the same shared
-ancestor can be required in one Provider and optional in another - which was the
-main reason for merging `Required` + `Optional`.
+- `name`
+- `overrideTemplate` (`SObject`) and optional explicit `XFTY_LookupKeyIntf`
+- `relatedField` (nullable, as for `XFTY_DummyDefaultRelationship`)
+- once resolved: the generated record (and, if useful, its sub-bundle)
 
-Fluent configuration:
-
-```apex
-XFTY_SharedAncestor.of(new Account())
-    .poolSize(2)          // round-robin across 2 shared parents instead of 1
-    .scope(XFTY_SharingScope.TRANSACTION)   // default is BUNDLE
-```
-
-| Scope | One shared parent per... |
-|-------|--------------------------|
-| `BUNDLE` (default) | `supplyBundle()` call - covers `setQuantityPerTemplate` and multiple override templates |
-| `TRANSACTION` | test method - covers parents shared across *separate* Provider calls (Opp + OLI) |
-
-`TRANSACTION` scope uses a `static` cache and therefore inherits the framework's
-existing `@TestSetup` caveat (see
-[salesforce-considerations.md](../salesforce-considerations.md)).
+`of(...)` / `withKey(...)` configure it. Because it is interned, configuration
+should happen **once**; a second `of(...)` with a different template on an
+already-resolved ancestor is a programming error and should throw.
 
 ---
 
-## Engine changes
+## The hard part: DML-frugal resolution
 
-The interface gains one method:
+A shared ancestor cannot be generated inline inside `createRelatedRecords`,
+because that method inserts one level at a time and would produce one `insert`
+per ancestor. Resolution needs its own phase, run **before** the main graph
+build, that batches.
 
-```apex
-Integer parentCountFor(Integer childCount);
-```
+### Phase S0 - collect
 
-- `XFTY_DummyDefaultRelationship` returns `childCount` (unchanged behaviour).
-- `XFTY_SharedAncestor` returns `min(poolSize, childCount)`.
+Walk the Master Template(s) about to be used (and, recursively, the Master
+Templates of the Providers those relationships resolve to) and collect every
+distinct **unresolved** `XFTY_SharedAncestor`. Recursion terminates because
+ancestors are interned and each is visited once.
 
-`XFTY_DummySObjectFactory`:
+Nested case: `XFTY_SharedAncestor.get('john')` is a Contact; the Contact Provider
+requires an Account which is itself `XFTY_SharedAncestor.get('acme-hq')`.
+Collecting 'john' surfaces 'acme-hq'.
 
-1. **createRelatedRecords** - generate `relationship.parentCountFor(childCount)`
-   parents instead of always `childCount`. For `TRANSACTION` scope, first consult
-   the static cache (keyed by `resolveLookupKey().getHashKey()` +, if we decide to,
-   a hash of the override template) and only generate the shortfall.
-2. **createRelationships** - wire `child[i].field <- parents[i // (childCount / parentCount)].id`
-   (or simple `parents[i mod parentCount]` for a pool; the exact distribution is
-   an open question, see below).
+### Phase S1 - generate in memory
 
-Transitive relationships of a shared parent are generated once, with it.
+For each collected ancestor, run its Provider's `createBundle` with insert mode
+forced to **`NEVER`**, inclusivity as configured. Record graphs, no DML.
+
+### Phase S2 - ordered bulk insert
+
+Group the collected top-level ancestor records by `SObjectType` and insert them
+**in dependency order** (an SObjectType whose records point at another group's
+records goes second). The dependency graph among *named* ancestors is small and
+acyclic in practice; a topological sort over "ancestor A's record has a lookup to
+ancestor B's record" is enough. Non-shared records generated underneath an
+ancestor insert with that ancestor's group.
+
+`RELATED_ONLY` / `LATER` interact here - S2 respects the top-level call's mode.
+
+### Phase S3 - main build
+
+The normal graph build runs. When `createRelatedRecords` meets an
+`XFTY_SharedAncestor`, `parentCountFor(childCount)` returns 0 (nothing to
+generate) and wiring reads `ancestor.getResolvedRecord().Id` for every child.
 
 ---
-OO
+
+## Interface change
+
+`XFTY_DummyDefaultRelationshipIntf` gains:
+
+```apex
+Integer parentCountFor(Integer childCount);   // standard: childCount; shared: 0
+```
+
+The factory treats `parentCountFor == 0` as "already resolved - just wire it". An
+`isShared()` / `getResolvedRecord()` pair on a narrower interface
+(`XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`) keeps
+the base contract clean.
+
+---
+
 ## Bundle contract
 
-`bundle.getBundle(field)` holds the true generated set (e.g. 1 Account).
-
-`bundle.getList(field)` currently returns a list aligned 1:1 with the primary
-records. Options:
-
-- **A. Keep it aligned** - return `childCount` entries, repeating the shared
-  instance. Preserves every existing caller; slightly surprising that
-  `getList(field)[0] === getList(field)[1]`.
-- **B. Return the deduplicated set** - `getList(field).size()` becomes the parent
-  count. Cleaner, but breaks callers that index `getList(field)` in lockstep with
-  `getList(Id)`.
-
-Recommend **A** (compatibility), with `getBundle(field).getList(parentPrimaryField)`
-as the deduplicated view.
+`bundle.getList(field)` stays aligned 1:1 with the primary records (every entry
+the same shared instance). `bundle.getBundle(field)` exposes the ancestor's
+sub-graph once.
 
 ---
 
 ## Open decisions
 
-1. **`BUNDLE` only, or `BUNDLE` + `TRANSACTION`?** `TRANSACTION` is where the real
-   power is (cross-provider hierarchies) but also where the `@TestSetup` /
-   static-state sharp edges live. Ship `BUNDLE` first?
-2. **`TRANSACTION` cache key** - lookup key alone (first override template wins,
-   simple) or lookup key + serialized override template (predictable, more
-   allocation)?
-3. **Pool distribution** - contiguous blocks (`children 0-1 -> parent 0,
-   children 2-3 -> parent 1`) or round-robin (`0,2 -> parent 0; 1,3 -> parent
-   1`)? Blocks match how people think about "2 accounts, 4 contacts each".
-4. **Naming** - `XFTY_SharedAncestor` / `XFTY_SharedAncestor.of(...)` vs
-   `XFTY_DummyDefaultRelationship.shared(...)` vs a flag on the existing class.
-   A flag keeps one type but muddies `parentCountFor`; a separate type is
-   cleaner and matches "pluggable implementations of the relationship interface".
-5. **Explicit shared instance** - also allow handing in an already-generated
-   parent (`XFTY_SharedAncestor.reusing(existingAccount)`) so a test can parent
-   generated records under a record it made itself?
+1. **Where do S0-S2 run?** In `XFTY_DummySObjectProvider.supplyBundle()` (knows
+   the entry Master Template) or inside `XFTY_DummySObjectFactory` (recursive
+   already, but no "run starts here" hook)?
+2. **Collection without executing Providers.** S0 wants the shared ancestors
+   *reachable* from a Master Template without generating anything - walk the
+   relationship maps, resolve each Provider, recurse into its Master Template. A
+   second traversal of the template graph. Acceptable?
+3. **Dependency ordering in S2.** Topological sort over named ancestors, or the
+   simpler "insert Accounts before everything else" heuristic people rely on? A
+   cycle (John.Account = HQ, HQ.PrimaryContact = John) - detect and error, or
+   break with a second-pass update?
+4. **Insert mode.** Does a shared ancestor honour the *first* caller's insert
+   mode, or does the registry default to `NOW` (sharing across calls only makes
+   sense for inserted records)?
+5. **Reset between tests.** Static state needs `XFTY_SharedAncestorRegistry.clear()`
+   for isolation - consumer's job (Apex has no per-method static reset hook)?
+6. **`reusing(existingRecord)`** - seed the registry with a record the test
+   inserted itself?
 
 ---
 
 ## Rough implementation plan
 
-1. `XFTY_SharingScope` enum; `parentCountFor` on the interface;
-   `XFTY_DummyDefaultRelationship` returns `childCount`.
-2. `XFTY_SharedAncestor` (BUNDLE scope, poolSize 1) + factory wiring + tests.
-3. Pool size + distribution.
-4. TRANSACTION scope + static cache + tests (incl. the `@TestSetup` note).
-5. `reusing(existing)` if decision 5 is yes.
-6. Docs: relationships.md, a new worked example, future-ideas.md.
+1. `XFTY_SharedAncestor` + `XFTY_SharedAncestorRegistry` + `parentCountFor` on
+   the relationship interface; `XFTY_DummyDefaultRelationship.parentCountFor`
+   returns `childCount`. No factory behaviour change yet (a shared ancestor
+   throws "not wired" if used).
+2. Phase S3 wiring in the factory + a manual
+   `XFTY_SharedAncestorRegistry.resolveAll(lookup, insertMode)` a test can call.
+3. Phases S0-S2 automatic from `supplyBundle()`.
+4. Nested ancestors; dependency ordering; cycle detection.
+5. `reusing(...)`, `clear()`, docs, worked example.

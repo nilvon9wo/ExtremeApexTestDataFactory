@@ -261,8 +261,10 @@ Separating lookup from generation lets different projects provide different
 implementations without modifying XFTY itself.
 
 The interface has three methods: `get(SObjectType)`, `get(XFTY_LookupKeyIntf)`,
-and `keyFor(SObject)` (used to derive a variant key from a relationship's
-override template). `XFTY_SObjectProviderLookup` implements all three.
+and `keysFor(SObject)` (every registered key that matches a record - a record can
+match more than one). `XFTY_SObjectProviderLookup` implements all three;
+`XFTY_LookupKeys.resolve(lookup, sObj)` turns the match set into the single
+most-specific key.
 
 ---
 
@@ -285,21 +287,26 @@ This allows XFTY to be shared across packages without introducing unwanted compi
 A single `SObjectType` can have several Providers, chosen by a **lookup key**.
 The key is one of:
 
-| Key | Selects by |
-|-----|-----------|
-| `XFTY_LookupKey.get(type)` | `SObjectType` only (the default) |
-| `XFTY_RecordTypeLookupKey.get(type, developerName)` | `SObjectType` + record type |
-| `XFTY_FlavorLookupKey.get(type, flavor)` | `SObjectType` + an arbitrary developer-chosen string |
-| your own `XFTY_LookupKeyIntf` | anything |
+| Key | Selects by | Specificity |
+|-----|-----------|-------------|
+| `XFTY_LookupKey.get(type)` | `SObjectType` only (the default) | 0 |
+| `XFTY_RecordTypeLookupKey.get(type, developerName)` | `SObjectType` + record type | 10 |
+| `new XFTY_FlavouredLookupKey(type, [recordType,] flavour).matching(predicate)...` | `SObjectType` + optional record type + arbitrary conditions on the record | 20 + predicate count |
+| your own `XFTY_LookupKeyIntf` | anything | you choose |
 
-Keys are flyweights - always obtain them with `.get(...)`, never `new`.
-
-Register a Provider per variant:
+`XFTY_LookupKey` and `XFTY_RecordTypeLookupKey` are flyweights - obtain them with
+`.get(...)`. `XFTY_FlavouredLookupKey` carries behaviour (predicates), so build
+it with `new` and register it.
 
 ```apex
 XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_SObjectProviderLookup()
         .register(XFTY_LookupKey.get(Account.SObjectType), BusinessAccountProvider.class)
-        .register(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), PersonAccountProvider.class);
+        .register(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), PersonAccountProvider.class)
+        .register(
+                new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise')
+                        .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000)),
+                EnterpriseAccountProvider.class
+        );
 ```
 
 Resolution:
@@ -307,11 +314,13 @@ Resolution:
 - `lookup.get(someKey)` - explicit.
 - A relationship with an explicit key -
   `new XFTY_DummyDefaultRelationship(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), new Account())`.
-- A relationship with only an override template - the lookup's `keyFor(sObj)`
-  matches the template's `RecordTypeId` against registered record-type keys,
-  falling back to the plain type key. The `XFTY_RecordTypeLookupKey` resolves the
-  record type Id from its developer name through the describe (no SOQL, nothing
-  hard-coded).
+- A relationship with only an override template - `XFTY_LookupKeys.resolve`
+  collects every registered key whose `isInstanceOf(template)` is true and picks
+  the most specific; the plain type key is the fallback when nothing refined
+  matches. Two equally-specific matches is an error - supply an explicit key.
+  `XFTY_RecordTypeLookupKey` matches the template's `RecordTypeId` (resolved from
+  the describe, no SOQL). A flavoured key with no record type and no predicates
+  can only be used explicitly.
 
 Each top-level Provider still owns one Master Template, so a single generation
 call produces one variant at a time. Provider-specific `createBundle` logic

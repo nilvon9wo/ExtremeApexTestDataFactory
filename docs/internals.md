@@ -347,14 +347,18 @@ Although this is usually `Id`, using a configurable field makes the framework mo
 
 Provider Lookup keys a Provider by an `XFTY_LookupKeyIntf`, not a bare
 `SObjectType`. The default key (`XFTY_LookupKey`) *is* just the type, so the
-common case is unchanged; refined keys (`XFTY_RecordTypeLookupKey`,
-`XFTY_FlavorLookupKey`, or a custom one) add a discriminator.
+common case is unchanged; refined keys add a discriminator:
+`XFTY_RecordTypeLookupKey` (record type), `XFTY_FlavouredLookupKey` (optional
+record type + arbitrary `XFTY_SObjectPredicateIntf` conditions), or a custom one.
+`getSpecificity()` orders them (0 / 10 / 20+).
 
-Keys are value-compared by `getHashKey()` and are flyweights, so the lookup
-stores providers in a `Map<String, ...>` and never worries about instance
-identity. When a relationship supplies only an override template, the lookup
-derives a key from it (`keyFor`), matching registered record-type keys against
-the template's `RecordTypeId`; the result is memoised on the relationship.
+Keys are value-compared by `getHashKey()`; `XFTY_LookupKey` and
+`XFTY_RecordTypeLookupKey` are flyweights. The lookup stores providers in a
+`Map<String, ...>` and never worries about instance identity. When a relationship
+supplies only an override template, `keysFor(sObj)` returns every registered key
+that matches (a record can match several) and `XFTY_LookupKeys.resolve` picks the
+most specific; the result is memoised on the relationship, and an equally-specific
+tie is an error.
 
 `@IsTest` classes cannot be abstract or virtual, which ruled out an abstract
 lookup base and a subclassable key hierarchy - hence the composition-based design

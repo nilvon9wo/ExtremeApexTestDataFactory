@@ -11,9 +11,10 @@ automatically. See [Customization → Implicit Exact Values](customization.md#im
 
 ## Multi-Variant Providers — implemented
 
-Providers are now keyed by `XFTY_LookupKeyIntf` (`SObjectType`, optionally +
-record type via `XFTY_RecordTypeLookupKey` or + flavor via
-`XFTY_FlavorLookupKey`). See
+Providers are now keyed by `XFTY_LookupKeyIntf` - `SObjectType`, optionally +
+record type (`XFTY_RecordTypeLookupKey`), optionally + arbitrary predicates on
+the record (`XFTY_FlavouredLookupKey` + `XFTY_FieldPredicate`). A record can match
+several keys; `keysFor` returns them all and the most specific wins. See
 [Providers → Record Types and Variants](providers.md#record-types-and-variants)
 and [docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
 
