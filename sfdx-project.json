@@ -3,6 +3,10 @@
     {
       "path": "force-app",
       "default": true
+    },
+    {
+      "path": "test-support",
+      "default": false
     }
   ],
   "name": "ExtremeApexTestDataFactory",

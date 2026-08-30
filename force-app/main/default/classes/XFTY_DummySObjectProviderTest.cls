@@ -55,6 +55,71 @@ private class XFTY_DummySObjectProviderTest {
         }
     }
 
+    @IsTest
+    static void setOverrideTemplateListToleratesNullAndEmpty() {
+        Contact result;
+        Test.startTest();
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setOverrideTemplateList(null)
+                .setOverrideTemplateList(new List<SObject>())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        Assert.isNotNull(result.Id, 'A blank template is generated when no overrides are supplied');
+    }
+
+    // put(...) routing -----------------------------------------------------
+
+    @IsTest
+    static void putRoutesAValueStrategyPassedAsObject() {
+        Contact result;
+        Test.startTest();
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .put(Contact.FirstName, (Object) new XFTY_DummyDefaultValueExact('RoutedStrategy'))
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        Assert.areEqual('RoutedStrategy', result.FirstName);
+    }
+
+    @IsTest
+    static void putRejectsARelationship() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .put(Contact.AccountId, (Object) new XFTY_DummyDefaultRelationship(new Account()));
+            Assert.fail('Expected an exception');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('putRequired'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void putOptionalAddsAnOptionalRelationshipThatRequiredInclusivitySkips() {
+        XFTY_DummySObjectBundle underRequired;
+        XFTY_DummySObjectBundle underAll;
+        Test.startTest();
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            underRequired = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                    .removeFromMasterTemplate(Contact.AccountId)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+            underAll = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                    .removeFromMasterTemplate(Contact.AccountId)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        Assert.isNull(underRequired.getList(Contact.ReportsToId), 'optional relationship skipped for REQUIRED');
+        Assert.areEqual(1, underAll.getList(Contact.ReportsToId).size(), 'optional relationship generated for ALL');
+    }
+
     // supply / supplyList / supplyBundle -------------------------------------
 
     @IsTest

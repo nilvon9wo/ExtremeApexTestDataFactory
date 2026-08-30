@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RecordType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>XFTY_TestBusiness</fullName>
+    <active>true</active>
+    <label>XFTY Test Business</label>
+    <description>Record type used only by XFTY's own test suite. Not part of the distributable package.</description>
+</RecordType>

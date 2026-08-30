@@ -1,110 +1,109 @@
 /**
- * Ready-made {@link XFTY_SObjectPredicateIntf} conditions on a single field.
+ * Ready-made {@link XFTY_SObjectPredicateIntf} conditions on a single field, for
+ * {@link XFTY_FlavouredLookupKey} matching.
  *
  * ```apex
  * XFTY_FlavouredLookupKey.get(Account.SObjectType, 'enterprise')
- *     .matching(XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000))
+ *     .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000))
  *     .matching(XFTY_FieldPredicate.inSet(Account.Industry, new Set<Object>{ 'Finance', 'Technology' }))
  * ```
+ *
+ * `greaterThan` / `lessThan` compare numerically; the field value must be
+ * numeric (Integer / Long / Double / Decimal) or the predicate throws.
  */
 @IsTest
 public class XFTY_FieldPredicate {
 
     public static XFTY_SObjectPredicateIntf equalTo(SObjectField field, Object value) {
-        return new Comparison(field, ComparisonOp.EQ, value);
+        return new EqualityPredicate(field, value, true);
     }
 
     public static XFTY_SObjectPredicateIntf notEqualTo(SObjectField field, Object value) {
-        return new Comparison(field, ComparisonOp.NE, value);
-    }
-
-    public static XFTY_SObjectPredicateIntf greaterThan(SObjectField field, Object value) {
-        return new Comparison(field, ComparisonOp.GT, value);
-    }
-
-    public static XFTY_SObjectPredicateIntf lessThan(SObjectField field, Object value) {
-        return new Comparison(field, ComparisonOp.LT, value);
+        return new EqualityPredicate(field, value, false);
     }
 
     public static XFTY_SObjectPredicateIntf isNull(SObjectField field) {
-        return new Comparison(field, ComparisonOp.EQ, null);
+        return new EqualityPredicate(field, null, true);
     }
 
     public static XFTY_SObjectPredicateIntf isNotNull(SObjectField field) {
-        return new Comparison(field, ComparisonOp.NE, null);
+        return new EqualityPredicate(field, null, false);
     }
 
     public static XFTY_SObjectPredicateIntf inSet(SObjectField field, Set<Object> values) {
-        return new InSet(field, values);
+        return new InSetPredicate(field, values);
+    }
+
+    public static XFTY_SObjectPredicateIntf greaterThan(SObjectField field, Decimal value) {
+        return new NumericPredicate(field, value, true);
+    }
+
+    public static XFTY_SObjectPredicateIntf lessThan(SObjectField field, Decimal value) {
+        return new NumericPredicate(field, value, false);
     }
 
     // --------------------------------------------------------------------------
 
-    private enum ComparisonOp { EQ, NE, GT, LT }
+    private static Object valueOn(SObject sObj, SObjectField field) {
+        return (sObj == null) ? null : sObj.get(field);
+    }
 
-    private class Comparison implements XFTY_SObjectPredicateIntf {
+    private class EqualityPredicate implements XFTY_SObjectPredicateIntf {
         private final SObjectField field;
-        private final ComparisonOp op;
         private final Object value;
+        private final Boolean wantEqual;
 
-        private Comparison(SObjectField field, ComparisonOp op, Object value) {
+        private EqualityPredicate(SObjectField field, Object value, Boolean wantEqual) {
             this.field = field;
-            this.op = op;
             this.value = value;
+            this.wantEqual = wantEqual;
         }
 
         public Boolean isSatisfiedBy(SObject sObj) {
-            Object actual = (sObj == null) ? null : sObj.get(this.field);
-            switch on this.op {
-                when EQ {
-                    return actual == this.value;
-                }
-                when NE {
-                    return actual != this.value;
-                }
-                when GT {
-                    return actual != null && this.value != null && compare(actual, this.value) > 0;
-                }
-                when LT {
-                    return actual != null && this.value != null && compare(actual, this.value) < 0;
-                }
-            }
-            return false;
-        }
-
-        private Integer compare(Object a, Object b) {
-            if (a instanceof Decimal || a instanceof Integer || a instanceof Long || a instanceof Double) {
-                Decimal da = Decimal.valueOf(String.valueOf(a));
-                Decimal db = Decimal.valueOf(String.valueOf(b));
-                return (da == db) ? 0 : (da > db ? 1 : -1);
-            }
-            if (a instanceof Datetime && b instanceof Datetime) {
-                Datetime dta = (Datetime) a;
-                Datetime dtb = (Datetime) b;
-                return (dta == dtb) ? 0 : (dta > dtb ? 1 : -1);
-            }
-            if (a instanceof Date && b instanceof Date) {
-                Date da = (Date) a;
-                Date db = (Date) b;
-                return (da == db) ? 0 : (da > db ? 1 : -1);
-            }
-            String sa = String.valueOf(a);
-            String sb = String.valueOf(b);
-            return sa.compareTo(sb);
+            Boolean isEqual = valueOn(sObj, this.field) == this.value;
+            return this.wantEqual ? isEqual : !isEqual;
         }
     }
 
-    private class InSet implements XFTY_SObjectPredicateIntf {
+    private class InSetPredicate implements XFTY_SObjectPredicateIntf {
         private final SObjectField field;
         private final Set<Object> values;
 
-        private InSet(SObjectField field, Set<Object> values) {
+        private InSetPredicate(SObjectField field, Set<Object> values) {
             this.field = field;
             this.values = (values == null) ? new Set<Object>() : values;
         }
 
         public Boolean isSatisfiedBy(SObject sObj) {
-            return this.values.contains((sObj == null) ? null : sObj.get(this.field));
+            return this.values.contains(valueOn(sObj, this.field));
+        }
+    }
+
+    private class NumericPredicate implements XFTY_SObjectPredicateIntf {
+        private final SObjectField field;
+        private final Decimal value;
+        private final Boolean wantGreater;
+
+        private NumericPredicate(SObjectField field, Decimal value, Boolean wantGreater) {
+            this.field = field;
+            this.value = value;
+            this.wantGreater = wantGreater;
+        }
+
+        public Boolean isSatisfiedBy(SObject sObj) {
+            Object actual = valueOn(sObj, this.field);
+            if (actual == null || this.value == null) {
+                return false;
+            }
+            Decimal actualNumber;
+            try {
+                actualNumber = Decimal.valueOf(String.valueOf(actual));
+            } catch (Exception ex) {
+                throw new XFTY_DummySObjectFtyProviderException(
+                        'greaterThan / lessThan need a numeric field value, got: ' + actual
+                );
+            }
+            return this.wantGreater ? actualNumber > this.value : actualNumber < this.value;
         }
     }
 }

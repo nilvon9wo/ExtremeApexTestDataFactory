@@ -15,11 +15,6 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
     private static final Map<String, Id> PROFILE_ID_BY_PROFILE_NAME_MAP = createProfileIdByProfileNameMap();
     private static final Id SYSTEM_ADMIN_ID = PROFILE_ID_BY_PROFILE_NAME_MAP.get(SYSTEM_ADMIN);
 
-    private static final String CEO = 'CEO';
-    private static final Map<String, Id> USERROLE_ID_BY_USERROLE_NAME_MAP = createUserRoleIdByUserRoleNameMap();
-    //noinspection ApexUnusedDeclaration
-    private static final Id CEO_USERROLE_ID = USERROLE_ID_BY_USERROLE_NAME_MAP.get(CEO);
-
     private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
             = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
@@ -94,20 +89,4 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
         return profileIdByProfileNameMap;
     }
 
-    private static Map<String, Id> createUserRoleIdByUserRoleNameMap() {
-        Set<String> userroleNameSet = new Set<String>{
-                CEO
-        };
-        List<UserRole> userRoleList = [
-                SELECT Id, Name
-                FROM UserRole
-                WHERE Name IN :userroleNameSet
-        ];
-
-        Map<String, Id> userRoleIdByUserRoleNameMap = new Map<String, Id>();
-        for (UserRole userRole : userRoleList) {
-            userRoleIdByUserRoleNameMap.put(userRole.Name, userRole.Id);
-        }
-        return userRoleIdByUserRoleNameMap;
-    }
 }

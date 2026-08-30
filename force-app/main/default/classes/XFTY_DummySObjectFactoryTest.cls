@@ -100,6 +100,24 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
+    static void aLookupFieldAlreadySetOnTheChildTemplateIsNotOverwritten() {
+        Id presetAccountId = XFTY_IdMocker.generateId(Account.SObjectType);
+
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+                    .setOverrideTemplate(new Contact(LastName = 'Preset', AccountId = presetAccountId))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.NEVER)
+                    .supplyBundle();
+        }
+
+        Contact generated = (Contact) bundle.getList(Contact.Id)[0];
+        Assert.areEqual(presetAccountId, generated.AccountId, 'the preset lookup value is kept');
+        Assert.isNotNull(bundle.getList(Contact.AccountId), 'the Account is still generated into the bundle');
+    }
+
+    @IsTest
     static void quantityGeneratesADistinctParentPerRecord() {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {

@@ -110,6 +110,32 @@ private class XFTY_LookupKeyTest {
         Assert.isTrue(one.getSpecificity() > 10, 'more specific than a record-type key');
     }
 
+    @IsTest
+    static void flavouredKeyWithNoDiscriminatorIsExplicitUseOnly() {
+        Assert.isFalse(
+                XFTY_FlavouredLookupKey.get(Account.SObjectType, 'no-discriminator').isInstanceOf(new Account()),
+                'a flavour with no record type and no predicates never matches a record'
+        );
+    }
+
+    @IsTest
+    static void flavouredKeyExposesItsRecordTypeAndFlavour() {
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'XFTY_TestBusiness', 'vip');
+
+        Assert.areEqual('vip', key.getFlavour());
+        Assert.areEqual('XFTY_TestBusiness', key.getRecordTypeDeveloperName());
+        Assert.isNotNull(key.getRecordTypeId(), 'resolves the record type Id from the describe');
+    }
+
+    @IsTest
+    static void flavouredKeyRejectsARecordOfTheWrongRecordType() {
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'XFTY_TestBusiness', 'biz')
+                .matching(XFTY_FieldPredicate.isNotNull(Account.Name));
+
+        // Right type and predicate, but no / wrong record type.
+        Assert.isFalse(key.isInstanceOf(new Account(Name = 'x')));
+    }
+
     // XFTY_FieldPredicate --------------------------------------------
 
     @IsTest
@@ -129,6 +155,34 @@ private class XFTY_LookupKeyTest {
         Assert.isFalse(
                 XFTY_FieldPredicate.inSet(Account.Industry, new Set<Object>{ 'Finance' }).isSatisfiedBy(big)
         );
+
+        // negative outcomes for greater/less than
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 900).isSatisfiedBy(big), 'equal, not greater');
+        Assert.isFalse(XFTY_FieldPredicate.lessThan(Account.NumberOfEmployees, 900).isSatisfiedBy(big), 'equal, not less');
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000).isSatisfiedBy(big));
+    }
+
+    @IsTest
+    static void fieldPredicatesHandleNullsAndBadInput() {
+        // null record
+        Assert.isFalse(XFTY_FieldPredicate.equalTo(Account.Industry, 'x').isSatisfiedBy(null));
+        Assert.isTrue(XFTY_FieldPredicate.isNull(Account.Industry).isSatisfiedBy(null));
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1).isSatisfiedBy(null));
+
+        // null field value / null threshold
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1).isSatisfiedBy(new Account()));
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, null).isSatisfiedBy(new Account(NumberOfEmployees = 5)));
+
+        // inSet with a null value set
+        Assert.isFalse(XFTY_FieldPredicate.inSet(Account.Industry, null).isSatisfiedBy(new Account(Industry = 'x')));
+
+        // greaterThan/lessThan on a non-numeric field
+        try {
+            XFTY_FieldPredicate.greaterThan(Account.Name, 5).isSatisfiedBy(new Account(Name = 'not a number'));
+            Assert.fail('Expected an exception for a non-numeric field');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('numeric'), ex.getMessage());
+        }
     }
 
     // Lookup keys as Map keys -----------------------------------------------
@@ -178,13 +232,63 @@ private class XFTY_LookupKeyTest {
 
     @IsTest
     static void throwsAFriendlyExceptionForAnUnregisteredKey() {
-        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.ofTypes(new Map<XFTY_LookupKeyIntf, Type>());
+        // ...on a type-map lookup
         try {
-            lookup.get(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'unregistered'));
-            Assert.fail('Expected a LookupException');
+            XFTY_ProviderLookups.ofTypes(new Map<XFTY_LookupKeyIntf, Type>())
+                    .get(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'unregistered'));
+            Assert.fail('Expected a LookupException (types)');
         } catch (XFTY_ProviderLookups.LookupException ex) {
             Assert.isTrue(ex.getMessage().contains('Account'), ex.getMessage());
         }
+        // ...and on an instance-map lookup
+        try {
+            XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>())
+                    .get(XFTY_LookupKey.get(Contact.SObjectType));
+            Assert.fail('Expected a LookupException (instances)');
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            Assert.isTrue(ex.getMessage().contains('Contact'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void providerLookupsRejectNullArguments() {
+        Map<XFTY_LookupKeyIntf, Type> types = new Map<XFTY_LookupKeyIntf, Type>();
+        Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> instances =
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>();
+        Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> cache =
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>();
+
+        try {
+            XFTY_ProviderLookups.get(types, cache, null);
+            Assert.fail('null key, type map');
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            Assert.isTrue(ex.getMessage().contains('lookup key is required'), ex.getMessage());
+        }
+        try {
+            XFTY_ProviderLookups.get(instances, null);
+            Assert.fail('null key, instance map');
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            Assert.isTrue(ex.getMessage().contains('lookup key is required'), ex.getMessage());
+        }
+        try {
+            XFTY_ProviderLookups.keysFor(new Set<XFTY_LookupKeyIntf>(), null);
+            Assert.fail('null SObject, keysFor');
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            Assert.isTrue(ex.getMessage().contains('SObject is required'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void keysForSkipsKeysForOtherSObjectTypes() {
+        Set<XFTY_LookupKeyIntf> registered = new Set<XFTY_LookupKeyIntf>{
+                XFTY_LookupKey.get(Account.SObjectType),
+                XFTY_LookupKey.get(Contact.SObjectType)
+        };
+
+        Assert.areEqual(
+                new Set<String>{ 'Account' },
+                hashesOf(XFTY_ProviderLookups.keysFor(registered, new Account()))
+        );
     }
 
     @IsTest

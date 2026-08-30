@@ -48,7 +48,7 @@ public class XFTY_RecordTypeLookupKey implements XFTY_RecordTypeLookupKeyIntf {
 
     public Boolean isInstanceOf(SObject sObj) {
         return this.base.isInstanceOf(sObj)
-                && XFTY_RecordTypeMatching.matches(sObj, this.getSObjectType(), this.recordTypeDeveloperName);
+                && XFTY_RecordTypeMatching.matches(sObj, this.recordTypeDeveloperName);
     }
 
     public String getHashKey() {

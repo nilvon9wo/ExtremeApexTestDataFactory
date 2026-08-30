@@ -35,16 +35,12 @@ public class XFTY_RecordTypeMatching {
     }
 
     /**
-     * Whether `sObj` carries the given record type. A null `developerName` means
-     * "no record type" and matches a record with no `RecordTypeId`.
+     * Whether `sObj` carries the given record type. The record's `RecordTypeId`
+     * is resolved to a developer name (via the describe) and compared - so this
+     * matches by Id transitively. A null `developerName` means "no record type"
+     * and matches a record with no `RecordTypeId`.
      */
-    public static Boolean matches(SObject sObj, SObjectType sObjectType, String developerName) {
-        if (developerName == developerNameOf(sObj)) {
-            return true;
-        }
-        Id keyRecordTypeId = idFor(sObjectType, developerName);
-        return keyRecordTypeId != null
-                && sObj != null
-                && keyRecordTypeId == (Id) sObj.get('RecordTypeId');
+    public static Boolean matches(SObject sObj, String developerName) {
+        return developerName == developerNameOf(sObj);
     }
 }
