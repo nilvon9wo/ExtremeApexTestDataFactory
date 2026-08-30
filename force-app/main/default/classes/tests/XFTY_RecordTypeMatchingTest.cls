@@ -54,4 +54,16 @@ private class XFTY_RecordTypeMatchingTest {
                 )
         );
     }
+
+    @IsTest
+    static void matchesRunsTheIdFallbackWhenTheNameResolvesButTheRecordDiffers() {
+        // 'Master' resolves to the placeholder master record-type Id on every
+        // SObject in every org, so idFor(...) returns non-null here and the
+        // fallback Id comparison actually executes - then fails, because the
+        // record carries no RecordTypeId. (Real-record-type coverage of the same
+        // fallback is in test-support/XFTY_RecordTypeRealRtTest.)
+        Assert.isFalse(
+                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'Master')
+        );
+    }
 }

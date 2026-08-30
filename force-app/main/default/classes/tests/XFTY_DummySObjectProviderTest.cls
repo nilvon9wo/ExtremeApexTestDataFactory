@@ -79,6 +79,16 @@ private class XFTY_DummySObjectProviderTest {
     }
 
     @IsTest
+    static void constructorFromATemplateListWhoseFirstEntryIsNullThrows() {
+        try {
+            new XFTY_DummySObjectProvider(new List<SObject>{ null }, LOOKUP);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('empty or null template list'), ex.getMessage());
+        }
+    }
+
+    @IsTest
     static void constructorRejectsNullProviderLookup() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, null);
@@ -97,6 +107,27 @@ private class XFTY_DummySObjectProviderTest {
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('makes no sense'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void withVariantPinsAMatchingKeyAndGenerates() {
+        Contact result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .withVariant(XFTY_LookupKey.get(Contact.SObjectType))
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+
+        Assert.isNotNull(result.Id);
+        Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
+    }
+
+    @IsTest
+    static void withVariantRejectsANullKey() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP).withVariant(null);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('variant key is required'), ex.getMessage());
         }
     }
 

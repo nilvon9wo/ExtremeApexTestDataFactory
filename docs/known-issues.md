@@ -60,13 +60,17 @@ Removed on the `multi-variant-providers` branch.
 e.g. an optional `Account.ParentId -> Account`. `PREVENT_CASCADE` is the current
 workaround. Cycle detection in the engine would make `ALL` safe to use here.
 
-### `XFTY_DummySObjectFactory.createBundle` always runs `insert insertSObjectList`
-Harmless (an empty `insert` is a no-op) but unnecessary for `MOCK` / `NEVER` /
-`LATER`.
-
 ---
 
 ## Resolved on the branch
+
+### ~~`XFTY_DummySObjectFactory.createBundle` always runs `insert insertSObjectList`~~
+An empty `insert` is functionally a no-op but still spends a DML statement, and
+`createBundle` recurses once per relationship level - so a `MOCK` generation of a
+3-level graph burned 3 DML statements for nothing. Now guarded
+(`if (!insertSObjectList.isEmpty())`). `XFTY_LoadTest` and
+`XFTY_DummySObjectFactoryTest.mockAssignsIdsWithoutTouchingTheDatabase` assert
+zero DML for `MOCK`.
 
 ### ~~`XFTY_DefaultAccountDataProvider.createBundle` carries a Person Account scaffold~~
 The commented-out record-type-selection block and its `masterTemplate == null`

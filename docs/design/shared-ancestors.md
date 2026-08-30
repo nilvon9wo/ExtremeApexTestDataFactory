@@ -58,8 +58,9 @@ Each `XFTY_SharedAncestor` holds:
 - once resolved: the generated record (and, if useful, its sub-bundle)
 
 `of(...)` / `withKey(...)` configure it. Because it is interned, configuration
-should happen **once**; a second `of(...)` with a different template on an
-already-resolved ancestor is a programming error and should throw.
+should happen **once**; changing the template on an already-*resolved* ancestor
+is a programming error and should throw. Re-configuring a not-yet-resolved
+ancestor is allowed but logs a `System.debug(WARN)` (see `put(...)` below).
 
 ---
 
@@ -199,22 +200,32 @@ persistence.
 Removed. Salesforce isolates every test method; static state never leaks between
 them. No `clear()` hook. (See "The registry" above.)
 
-### 6. `reusing(existingRecord)` — *needs a clearer proposal*
+### 6. Registering a record the test made itself — `put(name, record)`
 
-The idea: let a test hand XFTY a record it created itself and register it as a
-named shared ancestor, so subsequent `XFTY_SharedAncestor.get('root')` references
-resolve to *that* record instead of generating one:
+Let a test hand XFTY a record it created itself and register it as a named shared
+ancestor, so subsequent `XFTY_SharedAncestor.get('Root')` references resolve to
+*that* record instead of generating one:
 
 ```apex
 MyHierarchyObj__c root = /* the test inserts its own root */;
-XFTY_SharedAncestor.reusing('Root', root);   // from here, get('Root') == this record
+XFTY_SharedAncestor.put('Root', root);   // from here, get('Root') == this record
 ```
 
-Use cases: (a) the record already exists because of `@TestSetup`-free shared
-setup logic the test ran itself; (b) an org-wide singleton (like the `Root` in
-the acceptance scenario) that a prior step in the same test already inserted, so
-regenerating it would violate the constraint. To be fleshed out into a concrete
-API + semantics (what if it's called after the name already resolved?).
+Name is `put(...)`, matching `XFTY_DummySObjectMasterTemplate.put` /
+`XFTY_DummySObjectProvider.put` - the verb XFTY already uses for "register this
+under that key". If `put(...)` overwrites a name that already has a *different*
+record (or a configured-but-unresolved ancestor), log a `System.debug(WARN)` so
+an accidental double-register is visible without failing the run; overwriting a
+name that resolved to an equal record is silent.
+
+Use cases: (a) the record already exists because of shared setup logic the test
+ran itself (XFTY discourages `@TestSetup`); (b) an org-wide singleton (like the
+`Root` in the acceptance scenario) that an earlier step in the same test already
+inserted, so regenerating it would violate the constraint.
+
+Open: what `put(...)` does when the name has *already resolved* during generation
+- warn and replace, or throw (a resolved ancestor may already be wired into
+inserted children).
 
 ---
 
@@ -310,7 +321,7 @@ XFTY_SharedAncestor.get('Root').of(new MyHierarchyObj__c())
    `XFTY_DummySObjectProviderLookupIntf` fetch (decision 1).
 4. Nested ancestors; depth batching; cycle detection; load tests + documented
    limits + off-switches (decision 3).
-5. `reusing(...)` (decision 6), docs, worked example (the deep-hierarchy scenario).
+5. `put(name, record)` (decision 6), docs, worked example (the deep-hierarchy scenario).
 
 ---
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        Volume and governor-budget tests. The slowest suite and the one most
+        likely to need re-tuning as the engine changes (notably when
+        shared-ancestor generation lands: see docs/design/shared-ancestors.md).
+        Run on demand: sf apex run test  suite-names XFTY_Load
+    -->
+    <testClassName>XFTY_LoadTest</testClassName>
+</ApexTestSuite>

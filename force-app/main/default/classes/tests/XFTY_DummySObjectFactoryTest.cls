@@ -167,45 +167,28 @@ private class XFTY_DummySObjectFactoryTest {
 
     @IsTest
     static void mockAssignsIdsWithoutTouchingTheDatabase() {
-        XFTY_DummySObjectBundle bundle = supplyContact(
-                DEFAULT_LOOKUP, XFTY_InsertInclusivityEnum.REQUIRED, XFTY_InsertModeEnum.MOCK
-        );
+        XFTY_DummySObjectBundle bundle;
+        Integer dmlForGeneration;
+        System.runAs(TEST_ADMIN) {
+            Integer dmlBefore = Limits.getDmlStatements();
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+                    .setOverrideTemplate(new Contact(LastName = 'Factory Test'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+            dmlForGeneration = Limits.getDmlStatements() - dmlBefore;
+        }
 
         Assert.isNotNull(bundle.getList(Contact.Id)[0].Id);
         Assert.isNotNull(bundle.getList(Contact.AccountId)[0].Id);
         Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
         Assert.areEqual(0, [SELECT COUNT() FROM Account]);
+        Assert.areEqual(0, dmlForGeneration,
+                'MOCK generation must not spend a DML statement - not even an empty insert per level');
     }
 
-    @IsTest
-    static void nowInsertsEveryGeneratedRecord() {
-        XFTY_DummySObjectBundle bundle = supplyContact(
-                DEFAULT_LOOKUP, XFTY_InsertInclusivityEnum.REQUIRED, XFTY_InsertModeEnum.NOW
-        );
-
-        Assert.areEqual(1, [SELECT COUNT() FROM Contact]);
-        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
-        Assert.areEqual(
-                bundle.getList(Contact.AccountId)[0].Id,
-                [SELECT AccountId FROM Contact LIMIT 1].AccountId
-        );
-    }
-
-    @IsTest
-    static void relatedOnlyInsertsParentsButNotThePrimaryRecords() {
-        XFTY_DummySObjectBundle bundle = supplyContact(
-                DEFAULT_LOOKUP, XFTY_InsertInclusivityEnum.REQUIRED, XFTY_InsertModeEnum.RELATED_ONLY
-        );
-
-        Assert.isNull(bundle.getList(Contact.Id)[0].Id, 'The requested Contact is left uninserted');
-        Assert.isNotNull(bundle.getList(Contact.AccountId)[0].Id, 'The related Account is inserted');
-        Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
-        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
-        Assert.areEqual(
-                bundle.getList(Contact.AccountId)[0].Id,
-                ((Contact) bundle.getList(Contact.Id)[0]).AccountId
-        );
-    }
+    // The DML-backed insert modes (NOW / RELATED_ONLY) live in
+    // XFTY_DummySObjectFactoryDmlTest so the unit suite can skip them.
 
     // ---------------------------------------------------------------------------
     //  Helpers

@@ -45,6 +45,19 @@ private class XFTY_RecordTypeRealRtTest {
         );
     }
 
+    @IsTest
+    static void matchesFallsBackToTheIdComparisonWhenDeveloperNamesDiffer() {
+        // The record carries an unrecognised record type Id, so developerNameOf(...)
+        // returns null and the name check fails - forcing the Id-comparison fallback,
+        // which resolves the real Id for REAL_RT and finds it does not match.
+        Id staleRtId = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
+        Assert.isFalse(
+                XFTY_RecordTypeMatching.matches(
+                        new Account(RecordTypeId = staleRtId), Account.SObjectType, REAL_RT
+                )
+        );
+    }
+
     // XFTY_RecordTypeLookupKey / XFTY_FlavouredLookupKey ---------------------
 
     @IsTest
