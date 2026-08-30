@@ -196,6 +196,20 @@ private class XFTY_DummySObjectProviderTest {
     }
 
     @IsTest
+    static void putRoutesAContextAwareStrategyPassedAsObject() {
+        Contact result;
+        Test.startTest();
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .put(Contact.FirstName, 'Source')
+                .put(Contact.Department, (Object) new XFTY_CopyFromSibling(Contact.FirstName))
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        Assert.areEqual('Source', result.Department, 'a context-aware strategy passed as Object still routes correctly');
+    }
+
+    @IsTest
     static void putRejectsARelationship() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
