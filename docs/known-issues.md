@@ -65,12 +65,11 @@ workaround. Cycle detection in the engine would make `ALL` safe to use here.
 ## Resolved on the branch
 
 ### ~~`XFTY_DummySObjectFactory.createBundle` always runs `insert insertSObjectList`~~
-An empty `insert` is functionally a no-op but still spends a DML statement, and
-`createBundle` recurses once per relationship level - so a `MOCK` generation of a
-3-level graph burned 3 DML statements for nothing. Now guarded
-(`if (!insertSObjectList.isEmpty())`). `XFTY_LoadTest` and
+Not a defect. An empty `insert` is a genuine no-op - **0 DML statements, 0 rows**
+(verified) - so the unconditional call for `MOCK` / `NEVER` / `LATER` costs
+nothing and needs no guard. `XFTY_LoadTest` and
 `XFTY_DummySObjectFactoryTest.mockAssignsIdsWithoutTouchingTheDatabase` assert
-zero DML for `MOCK`.
+that `MOCK` generation spends zero DML.
 
 ### ~~`XFTY_DefaultAccountDataProvider.createBundle` carries a Person Account scaffold~~
 The commented-out record-type-selection block and its `masterTemplate == null`

@@ -68,17 +68,23 @@ ancestor is allowed but logs a `System.debug(WARN)` (see `put(...)` below).
 
 ## The hard part: DML-frugal resolution
 
-A shared ancestor cannot be generated inline inside `createRelatedRecords`,
-because that method inserts one level at a time and would produce one `insert`
-per ancestor. Resolution needs its own phase, run **before** the main graph
-build, that batches.
+This whole section is about **declared** ancestors (decision 9). **On-demand**
+ancestors skip it entirely - they generate inline with their sibling
+relationships and need no pre-phase (see decision 9).
+
+A *declared* ancestor can be deep and can be needed before the first top-level
+generation call (or across several of them), so it cannot just be generated
+inline inside `createRelatedRecords` - that method inserts one level at a time and
+would produce one `insert` per ancestor. Declared ancestors get their own phase,
+run **before** the main graph build, that batches.
 
 ### Phase S0 - collect
 
-Walk the Master Template(s) about to be used (and, recursively, the Master
-Templates of the Providers those relationships resolve to) and collect every
-distinct **unresolved** `XFTY_SharedAncestor`. Recursion terminates because
-ancestors are interned and each is visited once.
+From the set the test `require(...)`d, walk each declared ancestor's Master
+Template (and, recursively, the Master Templates of the Providers its
+relationships resolve to) and collect every distinct **unresolved** declared
+`XFTY_SharedAncestor`. Recursion terminates because ancestors are interned and
+each is visited once.
 
 Nested case: `XFTY_SharedAncestor.get('john')` is a Contact; the Contact Provider
 requires an Account which is itself `XFTY_SharedAncestor.get('acme-hq')`.
@@ -299,17 +305,20 @@ A test that references `root` (directly or through the chain) without
 
 **What it forces onto this design:**
 
-### 7. Record-type-aware parent selection — *one key + Provider per record type*
+### 7. Record-type-aware parent selection — *keys, not computed keys*
 
-**Decided.** A distinct `XFTY_RecordTypeLookupKey` and a small Provider per level
-(ten of them for the acceptance scenario). Each level's Provider pins its parent
-with an explicit key constant - `Level5`'s Master Template does
-`.putRequired(Parent__c, XFTY_SharedAncestor.get('level4'))` (or a plain
-key-pinned relationship), never a computed one.
+**Decided.** Selection is by explicit key. Each level's Provider pins its parent
+with a key *constant* - `Level5`'s Master Template does
+`.putRequired(Parent__c, <key-pinned relationship to level 4>)`, never a computed
+one. No key-producing callback in relationships or Master Templates: removing
+"hacky/leaky Master Template computations" is the whole point of lookup keys, and
+a compute-the-key callback would put the leak right back.
 
-No key-producing callback in relationships or Master Templates. Removing
-"hacky/leaky Master Template computations" is the whole point of lookup keys -
-adding a compute-the-key callback would put the leak right back.
+It is **at least one Provider per record type**, not exactly one - a record type
+can still fan out into several `XFTY_FlavouredLookupKey` variants (e.g.
+`Level5` + `enterprise`, `Level5` + `smb`), each with its own Provider. The
+deep-hierarchy scenario happens to use one plain `XFTY_RecordTypeLookupKey` per
+level, but nothing stops a level from having flavours.
 
 ### 8. Chain depth — *as deep as it needs, with guard rails*
 
@@ -349,6 +358,30 @@ resolves to it during generation - throws an **explicit error** naming the
 ancestor and telling the author to add it to the `require(...)` call. No silent
 fallback, no lazy generation for the declared kind. (On-demand ancestors are the
 opposite: reaching one that hasn't been built yet just builds it.)
+
+**On-demand ancestors build in synergy with their siblings.** An on-demand
+`XFTY_SharedAncestor.get('mr-smith')` is just an `XFTY_DummyDefaultRelationshipIntf`
+implementation that memoises its resolved record by name - so it drops into
+`putRequired` / `putOptional` next to ordinary relationships and rides the *same*
+generation pass and the *same* DML:
+
+```apex
+.putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
+.putOptional(Contact.CompanyPresident__c, XFTY_SharedAncestor.get('mr-smith'))
+```
+
+Here the Account and "mr-smith" are generated together and inserted in the same
+statement(s); the only thing that makes `mr-smith` special is that its record is
+cached under that name for reuse by this record's other fields, other records, and
+other Master Templates. This works precisely because `get(...)` returns the shared
+relationship interface. It relies on `mr-smith` being an on-demand type -
+lightweight, no ancestors of its own - so it can be resolved inline; a *declared*
+name asked for here would hit the "not declared" error instead. So `get(...)`
+first checks which kind the name is.
+
+Declared ancestors don't ride the sibling pass - they are pre-resolved in
+phases S0-S2 (they may be deep or heavy, and must exist before the first
+top-level generation call). On-demand ancestors need no pre-phase at all.
 
 A test that declares nothing and uses only on-demand ancestors pays only for what
 it references. A test working deep in a hierarchy declares the spine it needs and

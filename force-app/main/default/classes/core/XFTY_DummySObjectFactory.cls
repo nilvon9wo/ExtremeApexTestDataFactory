@@ -33,11 +33,9 @@ public class XFTY_DummySObjectFactory {
                 XFTY_IdMocker.addIds(sobjectList);
             }
         }
-        // An empty insert still consumes a DML statement, so skip it for the
-        // non-persisting modes (MOCK / NEVER / LATER) - it recurses per level.
-        if (!insertSObjectList.isEmpty()) {
-            insert insertSObjectList;
-        }
+        // Empty for the non-persisting modes (MOCK / NEVER / LATER); an empty
+        // insert is a true no-op - 0 DML statements, 0 rows - so it needs no guard.
+        insert insertSObjectList;
         return bundle;
     }
 
