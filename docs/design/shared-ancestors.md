@@ -1,9 +1,26 @@
 # Design: Shared Ancestors
 
-Status: **proposal** (v3 - decisions folded in). Builds on the merged
-relationship model from [multi-variant-providers.md](multi-variant-providers.md).
-Most open decisions now have a direction (see "Open decisions"); the remaining
-work is the batched-DML mechanics and the declared/on-demand implementation.
+Status: **on-demand path implemented** (v3). The *declared* path (up-front
+`require(...)`, the S0-S2 batched pre-phase, deep chains) is still proposal - see
+"Open decisions" and the phase descriptions below.
+
+Implemented (`XFTY_SharedAncestor`, usage in
+[relationships.md](../relationships.md#shared-ancestors)):
+
+- `XFTY_SharedAncestor.get(name)` - flyweight, interned by name, static state so it
+  resets between test methods (decision 5).
+- `.of(template)` / `.withKey(key)` / `.copyingRelatedField(field)` configuration;
+  reconfiguring after resolution throws.
+- Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`
+  so it drops into `putRequired` / `putOptional`. The factory branches on the
+  interface: one record resolved (generated once, or supplied via `put(...)`),
+  every child pointed at it.
+- `XFTY_SharedAncestor.put(name, record)` (decision 6), `getId(name)`.
+- Persistence follows the call's insert mode (`context.forRelated()`): `NOW`
+  inserts the shared record once, `MOCK` gives it one mock Id, etc.
+
+Not yet: declared ancestors, `require(...)`, deep shared chains, DML-batched
+resolution of many shared ancestors, `context(mode)` for pre-generation `getId`.
 
 ---
 

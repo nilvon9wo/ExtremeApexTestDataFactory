@@ -60,17 +60,33 @@ value pass, `null` for the top-level context):
 
 - `SObject recordBeingBuilt` - the in-progress record, with every field filled so
   far;
-- `XFTY_DummySObjectBundle ancestorBundle` - the bundle of records generated for
-  *this* record's relationships, so a strategy can read
-  `context.ancestorBundle.getList(Contact.AccountId)[0].Site`.
+- `XFTY_DummySObjectBundle ancestorBundle` - the bundle produced by the current
+  `createBundle` call so far. It holds this record's generated relationships
+  (`getList(Contact.AccountId)[0].Site`) **and** the sibling primary records
+  (`getList(<primaryTargetField>)`) - the whole graph this call has built up to
+  now;
+- `Integer rowIndex` - which row of a multi-record generation this is (the index
+  into every list in the bundle).
 
 Derived the same way as `forRelated()`:
 
 ```apex
-context.forRecord(sObjectInProgress, ancestorBundle)
+context.forRecord(sObjectInProgress, bundleSoFar, rowIndex)
 ```
 
 Insert mode / Provider Lookup / inclusivity ride along unchanged.
+
+### Later: the graph *across* calls, with a position pointer
+
+`ancestorBundle` is scoped to one `createBundle` call. A value being generated for
+a nested relationship (say the `Account` built for a `Contact`) does not see the
+`Contact` in progress or anything above it. Threading a **root bundle** (or a
+"graph so far" reference) plus a **path pointer** down through `forRelated()`
+would give a strategy the full picture - every record generated or in progress in
+this whole `supply*()` call, and where the current record sits in it. That is the
+same plumbing the deferred whole-graph pass (decision 4) needs; do it there.
+(`ancestorBundle` may be renamed `bundleSoFar` when this lands, since it already
+carries more than ancestors.)
 
 ---
 

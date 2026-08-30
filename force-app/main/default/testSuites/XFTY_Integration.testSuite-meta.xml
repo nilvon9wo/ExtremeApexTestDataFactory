@@ -11,4 +11,5 @@
     <testClassName>XFTY_DefaultDataProviderTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryDmlTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderTests</testClassName>
+    <testClassName>XFTY_SharedAncestorTest</testClassName>
 </ApexTestSuite>

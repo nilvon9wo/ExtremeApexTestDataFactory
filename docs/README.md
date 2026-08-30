@@ -45,5 +45,5 @@ Working documents for features still being specified. Each lists open decisions.
 | Proposal | Status |
 |----------|--------|
 | [Multi-Variant Providers](design/multi-variant-providers.md) | Implemented — kept for the rationale. |
-| [Context-Aware Values](design/context-aware-values.md) | Proposal. Sibling / ancestor reads via `XFTY_GenerationContext`. In progress. |
-| [Shared Ancestors](design/shared-ancestors.md) | Proposal (v3). Includes the deep record-type-hierarchy acceptance scenario. |
+| [Context-Aware Values](design/context-aware-values.md) | Sibling + ancestor reads implemented; descendant reads still designed. |
+| [Shared Ancestors](design/shared-ancestors.md) | On-demand path implemented; declared / deep-chain path still designed. |

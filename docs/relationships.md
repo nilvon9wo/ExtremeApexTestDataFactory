@@ -162,6 +162,74 @@ focused tests.
 
 ---
 
+# Shared Ancestors
+
+By default every generated child gets its **own** generated parent. When several
+children should sit under **one** parent - 50 Contacts at the same Account, a
+whole hierarchy converging on one root - use `XFTY_SharedAncestor`.
+
+```apex
+// configure once, somewhere central (a *LookupKeys-style constants class is ideal)
+XFTY_SharedAncestor.get('acme-hq').of(new Account(Name = 'ACME HQ'));
+
+// reference it from any Master Template, any field, required or optional
+new XFTY_DummySObjectMasterTemplate(Contact.Id)
+    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'));
+```
+
+```apex
+List<Contact> contacts = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .setQuantityPerTemplate(50)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .setInsertMode(XFTY_InsertModeEnum.NOW)
+    .supplyList();
+// -> 50 Contacts, ONE generated Account, ONE Account insert
+```
+
+- **One record, one Id.** Every child that references `'acme-hq'` gets the same
+  `Account` instance and the same `AccountId`.
+- **Generated once per test method.** The first reference generates (and, in
+  `NOW` mode, inserts) it; every later reference - in the same or a later
+  `supply*()` call - reuses it. State is static, so it resets between test methods
+  automatically. Each test is responsible for configuring its own shared
+  ancestors (Salesforce never shares data between tests).
+- **Persistence follows the call.** `NOW` inserts it, `MOCK` gives it a mock Id,
+  `NEVER` leaves it Id-less - same as any relationship.
+
+## Configuring
+
+| Call | Effect |
+|------|--------|
+| `.of(SObject template)` | The override template for the shared record (also sets its type). Required before generation. |
+| `.withKey(XFTY_LookupKeyIntf key)` | Pin which Provider variant generates it. |
+| `.copyingRelatedField(SObjectField f)` | Copy `f` from the shared record into the child's field instead of its Id. |
+
+Reconfiguring a shared ancestor after it has resolved throws.
+
+## Supplying your own record, and reading the Id
+
+```apex
+Account root = /* the test inserts its own singleton root */;
+XFTY_SharedAncestor.put('root', root);   // from here, get('root') resolves to this
+
+Id hqId = XFTY_SharedAncestor.getId('acme-hq');  // after it has resolved
+```
+
+`getId(name)` throws if the ancestor has not been resolved yet this test method
+(reference it from a relationship in a `supply*()` call first, or `put(...)` a
+record).
+
+## Limits of the current version
+
+Each shared ancestor is generated with its own `createBundle` call, so resolving
+*N* shared ancestors in `NOW` mode still costs *N* inserts (better than one per
+child, not yet one total). Deep shared chains, up-front `require(...)`
+declaration, and fully DML-batched resolution are
+[on the roadmap](future-ideas.md#shared-ancestors) - see
+[design/shared-ancestors.md](design/shared-ancestors.md).
+
+---
+
 # Relationship Inclusivity
 
 Relationship generation is controlled independently of insertion.

@@ -242,6 +242,30 @@ This distinction has a significant impact on test performance.
 
 ---
 
+# Shared Ancestors in a Master Template
+
+A relationship slot normally holds an `XFTY_DummyDefaultRelationship`, which
+generates a fresh parent per child. To make a relationship point at **one shared
+record** instead, put an `XFTY_SharedAncestor` in the same slot:
+
+```apex
+new XFTY_DummySObjectMasterTemplate(Contact.Id)
+    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('primary-account'))
+```
+
+`XFTY_SharedAncestor` implements the relationship interface, so `putRequired` /
+`putOptional` accept it unchanged. Configure it once, centrally
+(`XFTY_SharedAncestor.get('primary-account').of(new Account(...))`), the same way
+a project defines its flavoured lookup keys. Full behaviour:
+[Relationships → Shared Ancestors](relationships.md#shared-ancestors).
+
+Use this in a *shipped* Master Template only when the shared parent is genuinely
+part of the model (a singleton config record, an org-wide root). For a
+test-specific "these all share one account", it is usually clearer to set it on
+the `XFTY_DummySObjectProvider` instance with `.putRequired(...)`.
+
+---
+
 # Provider Lookups
 
 Providers are discovered through an `XFTY_DummySObjectProviderLookupIntf`.

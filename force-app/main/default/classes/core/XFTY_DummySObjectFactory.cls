@@ -74,6 +74,12 @@ public class XFTY_DummySObjectFactory {
             SObjectField sObjectField,
             XFTY_DummyDefaultRelationshipIntf relationshipTemplate
     ) {
+        if (relationshipTemplate instanceof XFTY_SharedRelationshipIntf) {
+            return wireSharedAncestor(
+                    bundle, context, quantity, sObjectField, (XFTY_SharedRelationshipIntf) relationshipTemplate
+            );
+        }
+
         SObject sObjectTemplate = relationshipTemplate.getOverrideTemplate();
         XFTY_DummySobjectProviderIntf factoryOutlet
                 = context.providerLookup.get(relationshipTemplate.resolveLookupKey(context.providerLookup));
@@ -85,6 +91,26 @@ public class XFTY_DummySObjectFactory {
 
         return bundle.put(sObjectField, innerBundle)
                 .put(sObjectField, innerBundle.getList(factoryOutlet.getPrimaryTargetField()));
+    }
+
+    /**
+     * A shared ancestor resolves to one record - generated at most once per test
+     * method. Every child at this field points at that same record, so the
+     * bundle's list for the field is that record repeated `quantity` times.
+     */
+    private static XFTY_DummySObjectBundle wireSharedAncestor(
+            XFTY_DummySObjectBundle bundle,
+            XFTY_GenerationContext context,
+            Integer quantity,
+            SObjectField sObjectField,
+            XFTY_SharedRelationshipIntf shared
+    ) {
+        SObject sharedRecord = shared.resolveSharedRecord(context);
+        List<SObject> repeated = new List<SObject>();
+        for (Integer i = 0; i < quantity; i++) {
+            repeated.add(sharedRecord);
+        }
+        return bundle.put(sObjectField, repeated);
     }
 
 
