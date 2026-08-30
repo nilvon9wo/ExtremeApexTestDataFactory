@@ -177,6 +177,17 @@ private class XFTY_SharedAncestorTest {
         Assert.isNotNull(result.AccountId);
     }
 
+    @IsTest
+    static void aSharedAncestorExposesItsNameAndConfiguredTemplate() {
+        XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.get('hq')
+                .of(new Account(Name = 'Configured'))
+                .copyingRelatedField(Account.Name);
+
+        Assert.areEqual('hq', ancestor.getSharedName());
+        Assert.areEqual('Configured', (String) ancestor.getOverrideTemplate().get(Account.Name));
+        Assert.areEqual(Account.Name, ancestor.getRelatedField());
+    }
+
     // Guards ---------------------------------------------------------------
 
     @IsTest
