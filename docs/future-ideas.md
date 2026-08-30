@@ -115,7 +115,10 @@ Examples include:
 - inheriting data from an ancestor
 - generating values based on previously generated related records
 
-Whether this should be -- or even can be -- implemented as an extension of `XFTY_DummyDefaultValueIntf` or as a new abstraction remains an open design question.
+**Now being designed / implemented** on the `context-generation` branch, on top
+of `XFTY_GenerationContext` - see
+**[design/context-aware-values.md](design/context-aware-values.md)** for the
+concrete plan and open decisions. The sketch below is retained for background.
 
 Context means **both** sibling fields on the same record (`isOver18` from `age`)
 **and** values from generated ancestors / other generated related records.
@@ -246,18 +249,26 @@ letting consumers run generation from anonymous Apex / batch jobs.
    Mitigation: their generator/Provider code is almost certainly covered by the
    tests they write anyway.
 
-**Middle path:** split into `xfty-core` (deployable engine - factory, bundle,
-master template, lookup, the value/relationship interfaces + generators) and
-`xfty-test-support` (test-only helpers: `XFTY_IdMocker`,
+**Middle path:** split the engine into a deployable base (factory, bundle, master
+template, lookup, the value/relationship interfaces + generators - the parts with
+no test-only dependency) and a thin `@IsTest` layer on top (`XFTY_IdMocker`,
 `XFTY_DefaultUserDataProvider`'s admin bootstrap, the bundled Default Providers).
-Consumers who only want the test factory install just `xfty-test-support`
-(`@IsTest`, no limits); consumers who want seeding also install `xfty-core`.
+Everyone installs the base; the `@IsTest` layer is the add-on. (Not the other way
+round - the naming has to match "base is always required, extras sit on top".)
+A test-only consumer takes both; a seeding consumer takes only the base plus a
+thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs -> `insert`,
+the only genuinely new surface).
 
-A thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs -> `insert`)
-is the only genuinely new surface either way.
+**Feasibility is the open question.** Salesforce almost certainly won't let a
+consumer *replace* a file that came from one package with a file from another, so
+"install the base without the `@IsTest` layer" may in practice mean deleting the
+layer's files, which cascades into deleting or manually detaching everything that
+depends on them. For a difference of ~half a dozen small files that may not be
+worth it. Needs a real experiment (build both packages, install into a scratch
+org both ways, see what breaks) before committing.
 
-The `namespace` / AppExchange work in [packaging.md](packaging.md) forces the
-same core/test-support split, so doing it once serves both goals.
+The `namespace` / AppExchange work in [packaging.md](packaging.md) pushes toward
+the same base/layer split, so an experiment serves both goals.
 
 ### Two-package variant of the same idea
 
