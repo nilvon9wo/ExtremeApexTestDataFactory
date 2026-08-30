@@ -155,7 +155,7 @@ public class XFTY_DummySObjectProviderTests {
         System.runAs(TEST_ADMIN) {
             try {
                 //noinspection ApexUnusedDeclaration - We need this unused variable, because `new X()` can't be a statement.
-                XFTY_DummySObjectProvider supplier = (new XFTY_DummySObjectProvider(null, DEFAULT_SOBJECT_PROVIDER));
+                XFTY_DummySObjectProvider supplier = (new XFTY_DummySObjectProvider((SObjectType) null, DEFAULT_SOBJECT_PROVIDER));
             } catch (XFTY_DummySObjectProvider.SanityException ex) {
                 caughtException = ex;
             }

@@ -120,16 +120,18 @@ private class XFTY_LookupKeyTest {
 
     @IsTest
     static void flavouredKeyExposesItsRecordTypeAndFlavour() {
-        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'PersonAccount', 'vip');
+        // getRecordTypeId() against a real record type is covered by
+        // XFTY_RecordTypeRealRtTest (test-support) - it needs a record type to exist.
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'SomeRecordType', 'vip');
 
         Assert.areEqual('vip', key.getFlavour());
-        Assert.areEqual('PersonAccount', key.getRecordTypeDeveloperName());
-        Assert.isNotNull(key.getRecordTypeId(), 'resolves the record type Id from the describe');
+        Assert.areEqual('SomeRecordType', key.getRecordTypeDeveloperName());
+        Assert.isNull(key.getRecordTypeId(), 'unknown developer name resolves to null');
     }
 
     @IsTest
     static void flavouredKeyRejectsARecordOfTheWrongRecordType() {
-        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'PersonAccount', 'biz')
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'SomeRecordType', 'biz')
                 .matching(XFTY_FieldPredicate.isNotNull(Account.Name));
 
         // Right type and predicate, but no / wrong record type.

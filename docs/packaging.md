@@ -31,8 +31,12 @@ at 100% line coverage (verify by temporarily stripping `@IsTest` and running
 
 `force-app/main/default/classes/` is organised into `core/`, `values/`,
 `relationships/`, `lookup/`, `providers/`, and `tests/`. The `test-support/`
-package directory (an Account record type used only by the suite) is **not**
-part of the distributable package.
+package directory holds examples that need an org feature the published package
+must not require - currently a Person Account Provider, its variant test, and the
+"real record type" tests - and is **not** part of the distributable package
+(`"default": false` in `sfdx-project.json`, excluded from `sf package version
+create`, deployed to scratch/dev orgs). The CI scratch org enables
+`PersonAccounts` so those tests run.
 
 ---
 

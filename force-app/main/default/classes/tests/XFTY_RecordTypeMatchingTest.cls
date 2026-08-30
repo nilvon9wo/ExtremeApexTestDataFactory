@@ -1,17 +1,14 @@
 /**
- * Coverage for `XFTY_RecordTypeMatching`. Uses the built-in `PersonAccount`
- * Account record type (the scratch org enables Person Accounts) for the
- * "real record type" paths.
+ * Coverage for `XFTY_RecordTypeMatching` - the paths that do not need any real
+ * record type to exist (null / absent / unknown record types), so this runs in
+ * any org.
+ *
+ * The "real record type" paths are covered by `XFTY_RecordTypeRealRtTest` in
+ * `test-support/` (it uses the built-in `PersonAccount` record type, which the
+ * published package must not require).
  */
 @IsTest
 private class XFTY_RecordTypeMatchingTest {
-
-    private static Id personRtId() {
-        return Account.SObjectType.getDescribe()
-                .getRecordTypeInfosByDeveloperName()
-                .get('PersonAccount')
-                .getRecordTypeId();
-    }
 
     @IsTest
     static void developerNameOfHandlesTheAbsenceOfARecordType() {
@@ -30,33 +27,30 @@ private class XFTY_RecordTypeMatchingTest {
     }
 
     @IsTest
-    static void developerNameOfResolvesARealRecordType() {
-        Assert.areEqual(
-                'PersonAccount',
-                XFTY_RecordTypeMatching.developerNameOf(new Account(RecordTypeId = personRtId()))
-        );
-    }
-
-    @IsTest
-    static void idForResolvesFromTheDescribe() {
+    static void idForReturnsNullForNullAndUnknownDeveloperNames() {
         Assert.isNull(XFTY_RecordTypeMatching.idFor(Account.SObjectType, null), 'null developer name');
         Assert.isNull(XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'NoSuchRecordType'), 'unknown developer name');
-        Assert.areEqual(personRtId(), XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'PersonAccount'));
     }
 
     @IsTest
-    static void matchesComparesResolvedDeveloperNames() {
+    static void matchesTreatsANullNameAsNoRecordType() {
         Assert.isTrue(
                 XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, null),
                 'no record type matches the null name'
         );
-        // developer name differs, and the fallback Id comparison also fails
+    }
+
+    @IsTest
+    static void matchesReturnsFalseWhenTheNamedRecordTypeIsAbsentOrDiffers() {
+        // Developer name differs from the record's (null), and the fallback Id
+        // comparison also fails (no such record type, or the record has none).
         Assert.isFalse(
-                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'PersonAccount')
+                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'NoSuchRecordType')
         );
-        Assert.isTrue(
+        Id fabricatedRtId = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
+        Assert.isFalse(
                 XFTY_RecordTypeMatching.matches(
-                        new Account(RecordTypeId = personRtId()), Account.SObjectType, 'PersonAccount'
+                        new Account(RecordTypeId = fabricatedRtId), Account.SObjectType, 'NoSuchRecordType'
                 )
         );
     }

@@ -7,6 +7,18 @@ here for context; open items are for triage.
 
 ## Fixed
 
+### Shipped tests required the Person Accounts feature
+`XFTY_RecordTypeMatchingTest` and `XFTY_LookupKeyTest` (in `force-app`, so part of
+the package) resolved the built-in `PersonAccount` record type and NPE'd on
+`getRecordTypeId()` in any org without Person Accounts. The real-record-type
+assertions moved to `XFTY_RecordTypeRealRtTest` in `test-support/`; the
+feature-independent paths stay in `force-app` and run anywhere.
+
+### `profileIdFor` / `roleIdFor` returned null on a miss
+Silent - a test that fed the null into `User.ProfileId` / `User.UserRoleId` hit an
+opaque `INVALID_CROSS_REFERENCE_KEY` at insert instead of a clear error at the
+call site. They now throw `XFTY_DefaultUserDataProvider.UnknownReferenceException`.
+
 ### `XFTY_DefaultSObjectProviderLookup.get()` swallowed the "unknown type" error
 It constructed a `LookupException` but never threw it, so an unregistered
 `SObjectType` fell through to a bare `NullPointerException`. Now throws.
