@@ -7,15 +7,21 @@ For what changed and why, see [migration.md](migration.md).
 
 ---
 
-## Shared Ancestors
+## The deferred whole-graph pass — the keystone
 
-Several children under *one* shared parent, and deep record-type hierarchies that
-converge on a single root. Full design, with all open decisions resolved:
-**[design/shared-ancestors.md](design/shared-ancestors.md)**.
+Build the entire object graph in memory, evaluate values against the complete
+graph, then wire + insert **once per dependency depth** instead of once per
+Provider per level. This one change unlocks the next three items. Full design:
+**[design/deferred-graph-pass.md](design/deferred-graph-pass.md)**.
 
-Brings with it a **deferred, whole-graph generation pass** (build everything in
-memory, then evaluate, then wire + insert once per depth) - the same machinery
-that unlocks descendant-value reads and one mixed-type `insert` per graph depth.
+## Declared shared ancestors / deep chains
+
+The on-demand `XFTY_SharedAncestor` (one generated parent for many children) is
+[implemented](relationships.md#shared-ancestors). Still to build: **declared**
+ancestors (`XFTY_SharedAncestor.require(...)` up front), deep shared chains, and
+DML-batched resolution of many shared ancestors at once - all on top of the
+deferred pass. Design + the deep-record-type-hierarchy acceptance test:
+[design/shared-ancestors.md](design/shared-ancestors.md).
 
 ---
 

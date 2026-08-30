@@ -47,3 +47,4 @@ Working documents for features still being specified. Each lists open decisions.
 | [Multi-Variant Providers](design/multi-variant-providers.md) | Implemented — kept for the rationale. |
 | [Context-Aware Values](design/context-aware-values.md) | Sibling + ancestor reads implemented; descendant reads still designed. |
 | [Shared Ancestors](design/shared-ancestors.md) | On-demand path implemented; declared / deep-chain path still designed. |
+| [Deferred Whole-Graph Pass](design/deferred-graph-pass.md) | Not started. The keystone for descendant reads, declared shared ancestors, and depth-batched insert. |
