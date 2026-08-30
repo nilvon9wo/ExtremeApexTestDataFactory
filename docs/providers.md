@@ -339,13 +339,18 @@ Resolution:
 
 - `lookup.get(someKey)` - explicit.
 - **Top-level generation** - `new XFTY_DummySObjectProvider(Account.SObjectType, lookup)`
-  picks a variant in two ways:
+  picks a variant in three ways:
   - `.withVariant(MyProjectLookupKeys.PERSON_ACCOUNT)` - explicit; must be called
     before any `put(...)` customization (it throws otherwise, since the master
     template is derived from the resolved Provider).
+  - the lookup-key constructor -
+    `new XFTY_DummySObjectProvider(MyProjectLookupKeys.PERSON_ACCOUNT, lookup)` -
+    same effect as `withVariant`, and takes the `SObjectType` from the key.
   - an override template that carries a record type -
-    `.setOverrideTemplate(new Account(RecordTypeId = personRtId))` runs
-    `XFTY_ProviderLookups.resolve` against the first override template and
+    `.setOverrideTemplate(new Account(RecordTypeId = personRtId))`, or the
+    template constructor
+    `new XFTY_DummySObjectProvider(new Account(RecordTypeId = personRtId), lookup)`,
+    runs `XFTY_ProviderLookups.resolve` against the first override template and
     selects the matching Provider automatically.
 - A relationship with an explicit key -
   `new XFTY_DummyDefaultRelationship(MyProjectLookupKeys.PERSON_ACCOUNT, new Account())`.
@@ -361,6 +366,43 @@ Each top-level Provider still owns one Master Template, so a single generation
 call produces one variant at a time. Provider-specific `createBundle` logic
 (inspecting the override template) is no longer needed for record types.
 
+
+---
+
+# Bundled Providers and Test Users
+
+XFTY ships three Providers - `Account`, `Contact`, `User` - wired together by
+`XFTY_DefaultSObjectProviderLookup`. They are deliberately generic starting
+points; copy them into your project and adjust rather than depending on their
+exact defaults.
+
+`XFTY_DefaultUserDataProvider` also exposes helpers for tests that need a
+specific profile or a position in the role hierarchy:
+
+| Member | Returns |
+|--------|---------|
+| `TEST_ADMIN_USER` | An inserted System Administrator `User`, ready for `System.runAs(...)`. |
+| `profileIdFor(String profileLabel)` | The `Profile` Id for a profile **label** (cached for the transaction). |
+| `roleIdFor(String roleDeveloperName)` | The `UserRole` Id for a role **developer name** (cached for the transaction). |
+
+```apex
+User regionalManager = (User) new XFTY_DummySObjectProvider(User.SObjectType, lookup)
+    .setOverrideTemplate(new User(
+        ProfileId  = XFTY_DefaultUserDataProvider.profileIdFor('Standard User'),
+        UserRoleId = XFTY_DefaultUserDataProvider.roleIdFor('Regional_Manager')
+    ))
+    .setInsertMode(XFTY_InsertModeEnum.NOW)
+    .supply();
+```
+
+`profileIdFor(...)` and `roleIdFor(...)` **throw**
+`XFTY_DefaultUserDataProvider.UnknownReferenceException` when the org has no
+matching Profile / UserRole. They are accessors: a test that asks for an Id and
+then relies on it should fail at the call site with a clear message, not receive
+a `null` that later surfaces as an opaque `INVALID_CROSS_REFERENCE_KEY` on
+insert. If a role is genuinely optional for your test, check for it first
+(`[SELECT Id FROM UserRole WHERE DeveloperName = :name]`) rather than catching the
+exception.
 
 ---
 

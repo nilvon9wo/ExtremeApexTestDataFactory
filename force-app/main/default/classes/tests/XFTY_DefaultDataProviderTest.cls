@@ -134,34 +134,63 @@ private class XFTY_DefaultDataProviderTest {
         // The first call already ran during static init (TEST_ADMIN), so no new query here.
         Assert.areEqual(before, Limits.getQueries(), 'resolution is cached across calls');
         Assert.areEqual(TEST_ADMIN.ProfileId, adminId);
-        Assert.isNull(XFTY_DefaultUserDataProvider.profileIdFor('No Such Profile Name'));
     }
 
     @IsTest
-    static void roleIdForResolvesByDeveloperName() {
-        // 'CEO' exists via test-support/roles; unknown names return null.
-        Id ceoRoleId = XFTY_DefaultUserDataProvider.roleIdFor('CEO');
-        Assert.isNotNull(ceoRoleId, 'the CEO role from test-support should resolve');
-        Assert.areEqual(ceoRoleId, [SELECT Id FROM UserRole WHERE DeveloperName = 'CEO' LIMIT 1].Id);
-        Assert.areEqual(ceoRoleId, XFTY_DefaultUserDataProvider.roleIdFor('CEO'), 'cached on repeat');
-        Assert.isNull(XFTY_DefaultUserDataProvider.roleIdFor('No_Such_Role'));
+    static void profileIdForThrowsForAnUnknownProfile() {
+        try {
+            XFTY_DefaultUserDataProvider.profileIdFor('No Such Profile Name');
+            Assert.fail('Expected an UnknownReferenceException');
+        } catch (XFTY_DefaultUserDataProvider.UnknownReferenceException ex) {
+            Assert.isTrue(ex.getMessage().contains('No Such Profile Name'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void roleIdForResolvesByDeveloperNameAndCaches() {
+        UserRole role = new UserRole(Name = 'XFTY Coverage Role', DeveloperName = 'XFTY_Coverage_Role');
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            insert role;
+        }
+
+        Integer queriesAfterFirst;
+        Id resolved = XFTY_DefaultUserDataProvider.roleIdFor('XFTY_Coverage_Role');
+        queriesAfterFirst = Limits.getQueries();
+        Assert.areEqual(role.Id, resolved);
+        Assert.areEqual(role.Id, XFTY_DefaultUserDataProvider.roleIdFor('XFTY_Coverage_Role'), 'cached on repeat');
+        Assert.areEqual(queriesAfterFirst, Limits.getQueries(), 'the second call does not re-query');
+    }
+
+    @IsTest
+    static void roleIdForThrowsForAnUnknownRole() {
+        try {
+            XFTY_DefaultUserDataProvider.roleIdFor('XFTY_No_Such_Role');
+            Assert.fail('Expected an UnknownReferenceException');
+        } catch (XFTY_DefaultUserDataProvider.UnknownReferenceException ex) {
+            Assert.isTrue(ex.getMessage().contains('XFTY_No_Such_Role'), ex.getMessage());
+        }
     }
 
     @IsTest
     static void aRoleCanBeAppliedViaAnOverrideTemplate() {
         // Assigning the role at insert time is a platform concern; this only checks
         // that roleIdFor(...) plugs into the normal override-template flow.
+        UserRole role = new UserRole(Name = 'XFTY Override Role', DeveloperName = 'XFTY_Override_Role');
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            insert role;
+        }
+
         XFTY_DummySObjectBundle bundle;
         Test.startTest();
         System.runAs(TEST_ADMIN) {
             bundle = new XFTY_DummySObjectProvider(User.SObjectType, LOOKUP)
-                    .setOverrideTemplate(new User(UserRoleId = XFTY_DefaultUserDataProvider.roleIdFor('CEO')))
+                    .setOverrideTemplate(new User(UserRoleId = XFTY_DefaultUserDataProvider.roleIdFor('XFTY_Override_Role')))
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supplyBundle();
         }
         Test.stopTest();
 
         User generated = (User) bundle.getList(User.Id)[0];
-        Assert.areEqual(XFTY_DefaultUserDataProvider.roleIdFor('CEO'), generated.UserRoleId);
+        Assert.areEqual(role.Id, generated.UserRoleId);
     }
 }

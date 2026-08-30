@@ -15,10 +15,66 @@ private class XFTY_DummySObjectProviderTest {
     @IsTest
     static void constructorRejectsNullSObjectType() {
         try {
-            new XFTY_DummySObjectProvider(null, LOOKUP);
+            new XFTY_DummySObjectProvider((SObjectType) null, LOOKUP);
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('SObjectType to request data'), ex.getMessage());
+        }
+    }
+
+    // Convenience constructors ------------------------------------------------
+
+    @IsTest
+    static void constructorFromLookupKeyPinsTheVariantAndType() {
+        Contact result = (Contact) new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+
+        Assert.isNotNull(result.Id);
+        Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
+    }
+
+    @IsTest
+    static void constructorFromNullLookupKeyThrows() {
+        try {
+            new XFTY_DummySObjectProvider((XFTY_LookupKeyIntf) null, LOOKUP);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('lookup key'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void constructorFromTemplateDerivesTypeAndAppliesTheOverride() {
+        Contact result = (Contact) new XFTY_DummySObjectProvider(new Contact(FirstName = 'Zoe'), LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+
+        Assert.areEqual('Zoe', result.FirstName);
+        Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
+    }
+
+    @IsTest
+    static void constructorFromTemplateListDerivesTypeAndKeepsEachTemplate() {
+        List<SObject> results = new XFTY_DummySObjectProvider(
+                new List<Contact>{ new Contact(FirstName = 'Alice'), new Contact(FirstName = 'Bob') },
+                LOOKUP
+        )
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supplyList();
+
+        Assert.areEqual(2, results.size());
+        Assert.areEqual('Alice', (String) results[0].get(Contact.FirstName));
+        Assert.areEqual('Bob', (String) results[1].get(Contact.FirstName));
+    }
+
+    @IsTest
+    static void constructorFromEmptyTemplateListThrows() {
+        try {
+            new XFTY_DummySObjectProvider(new List<SObject>(), LOOKUP);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('empty or null template list'), ex.getMessage());
         }
     }
 

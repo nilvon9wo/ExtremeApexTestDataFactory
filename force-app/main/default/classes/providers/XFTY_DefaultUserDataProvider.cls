@@ -12,6 +12,11 @@
  *     .setInsertMode(XFTY_InsertModeEnum.NOW)
  *     .supply();
  * ```
+ *
+ * `profileIdFor(...)` / `roleIdFor(...)` throw `UnknownReferenceException` when the
+ * org has no such Profile / UserRole. They are accessors - a caller asking for an
+ * Id it then relies on should hear about a missing one immediately, not receive a
+ * null that surfaces later as an opaque DML error.
  */
 @IsTest
 public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIntf {
@@ -68,22 +73,43 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
         return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
     }
 
-    /** Profile Id for a profile's name (cached), or null if there is no such profile in this org. */
+    /**
+     * Profile Id for a profile's name (cached across the transaction).
+     * @throws UnknownReferenceException if this org has no Profile with that name.
+     */
     public static Id profileIdFor(String profileName) {
         if (!PROFILE_ID_BY_NAME.containsKey(profileName)) {
             List<Profile> profiles = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
-            PROFILE_ID_BY_NAME.put(profileName, profiles.isEmpty() ? null : profiles[0].Id);
+            if (profiles.isEmpty()) {
+                throw new UnknownReferenceException(
+                        'No Profile named "' + profileName + '" exists in this org. '
+                                + 'profileIdFor(...) takes the Profile label, not its API name.'
+                );
+            }
+            PROFILE_ID_BY_NAME.put(profileName, profiles[0].Id);
         }
         return PROFILE_ID_BY_NAME.get(profileName);
     }
 
-    /** UserRole Id for a role's API (developer) name (cached), or null if there is no such role in this org. */
+    /**
+     * UserRole Id for a role's API (developer) name (cached across the transaction).
+     * @throws UnknownReferenceException if this org has no UserRole with that developer name.
+     */
     public static Id roleIdFor(String roleDeveloperName) {
         if (!ROLE_ID_BY_DEVELOPER_NAME.containsKey(roleDeveloperName)) {
             List<UserRole> roles = [SELECT Id FROM UserRole WHERE DeveloperName = :roleDeveloperName LIMIT 1];
-            ROLE_ID_BY_DEVELOPER_NAME.put(roleDeveloperName, roles.isEmpty() ? null : roles[0].Id);
+            if (roles.isEmpty()) {
+                throw new UnknownReferenceException(
+                        'No UserRole with DeveloperName "' + roleDeveloperName + '" exists in this org. '
+                                + 'Create the role, or check the developer (API) name.'
+                );
+            }
+            ROLE_ID_BY_DEVELOPER_NAME.put(roleDeveloperName, roles[0].Id);
         }
         return ROLE_ID_BY_DEVELOPER_NAME.get(roleDeveloperName);
+    }
+
+    public class UnknownReferenceException extends Exception {
     }
 
     // ---------------------------------------------------------------------------

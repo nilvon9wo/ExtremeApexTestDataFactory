@@ -97,6 +97,27 @@ If the Override Template specifies an email address, the Override Template alway
 
 ---
 
+# Shorthand Constructors
+
+Three constructor overloads save a call for the most common starting points:
+
+```apex
+// from a template — derives the SObjectType (and any record-type variant) from it
+new XFTY_DummySObjectProvider(new Contact(FirstName = 'Alice'), providerLookup);
+
+// from a list of templates — derives the SObjectType from the first
+new XFTY_DummySObjectProvider(new List<Contact>{ new Contact(), new Contact() }, providerLookup);
+
+// from a lookup key — derives the SObjectType from the key and pins that variant
+new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), providerLookup);
+```
+
+They are exactly equivalent to the `(SObjectType, lookup)` constructor followed
+by `setOverrideTemplate(...)` / `setOverrideTemplateList(...)` / `withVariant(...)`.
+Lookup keys and variants are covered in [Providers](providers.md#record-types-and-variants).
+
+---
+
 # Generating Multiple Records
 
 There are two ways to create multiple records.

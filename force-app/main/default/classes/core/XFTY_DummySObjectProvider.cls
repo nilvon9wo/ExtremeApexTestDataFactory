@@ -31,6 +31,53 @@ public class XFTY_DummySObjectProvider {
         this.sObjectProviderLookup = sObjectProviderLookup;
     }
 
+    /**
+     * Convenience: start from a lookup key. The `SObjectType` is taken from the
+     * key and the key is pinned as the variant (equivalent to
+     * `new XFTY_DummySObjectProvider(key.getSObjectType(), lookup).withVariant(key)`).
+     */
+    public XFTY_DummySObjectProvider(XFTY_LookupKeyIntf variantKey, XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup) {
+        this(typeOf(variantKey), sObjectProviderLookup);
+        this.explicitVariantKey = variantKey;
+    }
+
+    /**
+     * Convenience: start from an override template. The `SObjectType` is taken
+     * from the template and the template becomes the (single) override template,
+     * so the variant is resolved from it too - equivalent to
+     * `new XFTY_DummySObjectProvider(template.getSObjectType(), lookup).setOverrideTemplate(template)`.
+     */
+    public XFTY_DummySObjectProvider(SObject overrideTemplate, XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup) {
+        this(new List<SObject>{ overrideTemplate }, sObjectProviderLookup);
+    }
+
+    /**
+     * Convenience: start from a list of override templates. The `SObjectType` is
+     * taken from the first template - equivalent to
+     * `new XFTY_DummySObjectProvider(list[0].getSObjectType(), lookup).setOverrideTemplateList(list)`.
+     */
+    public XFTY_DummySObjectProvider(List<SObject> overrideTemplateList, XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup) {
+        this(typeOf(overrideTemplateList), sObjectProviderLookup);
+        this.setOverrideTemplateList(overrideTemplateList);
+    }
+
+    private static SObjectType typeOf(XFTY_LookupKeyIntf variantKey) {
+        if (variantKey == null) {
+            throw new SanityException('It is required to specify a lookup key to request data!');
+        }
+        return variantKey.getSObjectType();
+    }
+
+    private static SObjectType typeOf(List<SObject> overrideTemplateList) {
+        if (overrideTemplateList == null || overrideTemplateList.isEmpty() || overrideTemplateList[0] == null) {
+            throw new SanityException(
+                    'Cannot derive an SObjectType from an empty or null template list - '
+                            + 'supply at least one concrete template, or use the (SObjectType, lookup) constructor.'
+            );
+        }
+        return overrideTemplateList[0].getSObjectType();
+    }
+
     private List<SObject> overrideTemplateList;
     private XFTY_LookupKeyIntf explicitVariantKey;
     private Integer quantityPerListedTemplate = 1; // If no templates are supplied, a blank one will be created.

@@ -84,20 +84,17 @@ System.assertEquals(account.Id, contact.AccountId);
 
 # Documentation
 
-Detailed documentation is available in the `docs` directory.
+Full documentation is in the [`docs`](docs/README.md) directory, grouped by
+purpose — **tutorials** (learn by doing), **how-to guides** (extend and operate),
+**reference** (look things up), and **explanation** (understand the design).
 
-| Document                                         | Description |
-|--------------------------------------------------|-------------|
-| [Getting Started](docs/getting-started.md)       | Introduction to XFTY and the basic API. |
-| [Customization](docs/customization.md)           | Override templates, custom value generators, and advanced customization. |
-| [Relationships](docs/relationships.md)           | Relationship generation, bundles, and navigating generated object graphs. |
-| [Providers](docs/providers.md)                   | Creating Providers for additional `SObject` types. |
-| [Testing Modes](docs/testing-modes.md)           | Insert modes and relationship inclusivity. |
-| [Limitations](docs/salesforce-considerations.md) | Current limitations, recommended practices, and known trade-offs. |
-| [Internals](docs/internals.md)                   | Architecture, implementation details, and design decisions. |
-| [Future Ideas](docs/future-ideas.md)             | Enhancements under consideration and their open design questions. |
-| [Packaging & Development](docs/packaging.md)     | Local setup, CI, unlocked-package builds, and the AppExchange roadmap. |
-| [Known Issues](docs/known-issues.md)             | Defects found and fixed, plus open items for triage. |
+| Start with | Then |
+|------------|------|
+| [Getting Started](docs/getting-started.md) — generate and customize records | [Customization](docs/customization.md) · [Relationships](docs/relationships.md) |
+| [Providers](docs/providers.md) — add `SObject` types, variants, Provider Lookups | [Testing Modes](docs/testing-modes.md) · [Packaging & Development](docs/packaging.md) |
+| [Salesforce Considerations](docs/salesforce-considerations.md) — platform constraints | [Internals](docs/internals.md) · [Future Ideas](docs/future-ideas.md) · [Known Issues](docs/known-issues.md) |
+
+See [docs/README.md](docs/README.md) for the full index, including design proposals.
 
 ---
 

@@ -297,8 +297,8 @@ are excluded from the org-wide figure.
 
 Salesforce computes only *line* coverage and none for `@IsTest` classes, so this
 is a manual strip-to-measure exercise - re-run it whenever the engine changes.
-129 tests, run in CI on a Person-Accounts-enabled scratch org (which also carries
-the `test-support/` Person Account Provider + `CEO` role).
+Tests run in CI on a Person-Accounts-enabled scratch org (which also carries the
+`test-support/` Person Account Provider).
 
 Remaining gaps worth closing: deeper multi-level graphs, circular-relationship
 edge cases beyond `PREVENT_CASCADE`, and the open items in

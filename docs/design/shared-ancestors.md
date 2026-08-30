@@ -159,6 +159,86 @@ sub-graph once.
 
 ---
 
+## Acceptance scenario: deep record-type hierarchy with a singleton root
+
+A real case this design must satisfy (it also exercises lookup keys hard). The
+test uses **custom** metadata, so it lives in `test-support/`, not the published
+package.
+
+**The shape.** One custom SObject that is its own parent (a self lookup, like
+`Account.ParentId`). It has **at least 10 record types** forming a strict
+hierarchy of levels, the top one called **`Root`**:
+
+- Every non-root record has exactly one parent, and the parent's record type is
+  **fully determined by the child's record type** - the hierarchy *narrows*
+  downward (`Level3_RegionEast` always has a `Level2_Region` parent, never
+  anything else), so from any leaf you can compute the entire chain of ancestor
+  record types up to `Root`.
+- Parent and child record types are always different.
+- **`Root` is a singleton.** Exactly one record of type `Root` may exist in the
+  org; a second insert fails.
+
+Salesforce has no native "record type hierarchy", so `test-support/` supplies the
+mapping itself - the simplest thing that works: a
+`static Map<String, String> PARENT_RT_BY_CHILD_RT` (plus an Apex trigger or
+validation rule enforcing the `Root` singleton). Nothing more elaborate is needed
+for a test.
+
+**What XFTY must do.** A test asks for one deep-level record:
+
+```apex
+MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
+        XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9_Branch'),
+        lookup
+    )
+    .setInsertMode(XFTY_InsertModeEnum.NOW)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .supply();
+```
+
+and XFTY generates the whole chain `Level9 -> Level8 -> ... -> Level1 -> Root`,
+each record carrying the correct record type, **all converging on the one shared
+`Root` record** - so two `supply()` calls for different leaves produce two chains
+that share the same `Root` Id.
+
+**Why this needs shared ancestors specifically.** Without them, each generated
+parent gets its own generated grandparent, and every chain would try to insert
+its own `Root` - the second `supply()` (or the second leaf in one call) blows up
+on the singleton constraint. `XFTY_SharedAncestor.get('Root')` is the mechanism
+that makes `Root` resolve once and be reused everywhere:
+
+```apex
+// test-support, one place
+XFTY_SharedAncestor.get('Root').of(new MyHierarchyObj__c())
+        .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+
+// the Level1 Provider's Master Template
+.putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('Root'))
+```
+
+**What it forces onto this design (new open decisions):**
+
+7. **Record-type-aware parent selection.** Each level's Provider must, for its
+   required self-parent relationship, resolve the parent Provider *by the parent
+   record type* - i.e. the relationship's lookup key is a function of the current
+   record's key, not a constant. Options: a distinct Provider + `XFTY_LookupKey`
+   per level (10 tiny Providers, explicit, no new mechanism - probably the
+   answer for a *test*), or a single Provider whose Master Template computes the
+   parent key from `PARENT_RT_BY_CHILD_RT` (needs relationships to accept a
+   key-producing callback, which is a real framework change).
+8. **Chain depth vs. `PREVENT_CASCADE` / inclusivity.** Generating `Level9` pulls
+   in eight ancestors + `Root`. `REQUIRED` inclusivity must recurse the whole way
+   (it already does); confirm the shared-ancestor S0 collection walk also
+   recurses parent-of-parent when the parent is itself shared-or-required.
+9. **Singleton ancestors in general.** `Root` is the degenerate case of "there
+   must be exactly one" - the shared-ancestor registry already gives that for
+   free *within a transaction*; document that a consumer whose singleton is
+   enforced across transactions (a real org-wide constraint) needs
+   `reusing(existingRoot)` (decision 6) after the first test inserts it, or must
+   run in a context where each test re-creates it.
+
+---
+
 ## Rough implementation plan
 
 1. `XFTY_SharedAncestor` + `XFTY_SharedAncestorRegistry` + `parentCountFor` on

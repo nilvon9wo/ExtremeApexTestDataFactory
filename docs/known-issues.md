@@ -72,6 +72,9 @@ later" flow is ever added, reinstate it then.
 
 ### ~~`XFTY_DefaultUserDataProvider` has an unfinished UserRole lookup~~
 Finished. The `private` CEO scaffolding is replaced by public cached lookups
-`profileIdFor(name)` and `roleIdFor(developerName)`, both returning `null` (not
-throwing) when the org has no such profile/role. A `CEO` role in `test-support/`
-exercises the query path in CI.
+`profileIdFor(name)` and `roleIdFor(developerName)`. Both **throw**
+`XFTY_DefaultUserDataProvider.UnknownReferenceException` when the org has no such
+Profile / UserRole - they are accessors, and a caller relying on the returned Id
+should hear about a missing one at the call site, not via an opaque DML error
+later. Their own tests self-provision a `UserRole` rather than depending on
+org-specific metadata.

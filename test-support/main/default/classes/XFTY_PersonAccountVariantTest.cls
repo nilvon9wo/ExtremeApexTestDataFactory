@@ -50,6 +50,36 @@ private class XFTY_PersonAccountVariantTest {
     }
 
     @IsTest
+    static void theLookupKeyConstructorSelectsThePersonAccountProvider() {
+        Account person;
+        Test.startTest();
+        System.runAs(TEST_ADMIN) {
+            person = (Account) new XFTY_DummySObjectProvider(PERSON_ACCOUNT, lookup())
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .supply();
+        }
+        Test.stopTest();
+
+        Assert.isTrue([SELECT IsPersonAccount FROM Account WHERE Id = :person.Id].IsPersonAccount);
+    }
+
+    @IsTest
+    static void theTemplateConstructorDerivesTypeAndPersonVariantFromTheRecordType() {
+        Id personRtId = XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'PersonAccount');
+
+        Account person;
+        Test.startTest();
+        System.runAs(TEST_ADMIN) {
+            person = (Account) new XFTY_DummySObjectProvider(new Account(RecordTypeId = personRtId), lookup())
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .supply();
+        }
+        Test.stopTest();
+
+        Assert.isTrue([SELECT IsPersonAccount FROM Account WHERE Id = :person.Id].IsPersonAccount);
+    }
+
+    @IsTest
     static void anOverrideTemplateCarryingThePersonRecordTypeSelectsThePersonProvider() {
         Id personRtId = XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'PersonAccount');
 
