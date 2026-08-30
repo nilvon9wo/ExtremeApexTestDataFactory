@@ -383,6 +383,27 @@ Declared ancestors don't ride the sibling pass - they are pre-resolved in
 phases S0-S2 (they may be deep or heavy, and must exist before the first
 top-level generation call). On-demand ancestors need no pre-phase at all.
 
+**`XFTY_SharedAncestor.getId('name')`** - the resolved record's `Id`, for anywhere
+an `Id` is what's wanted (an override template field, an assertion, a lookup the
+Master Template sets directly rather than through a relationship). Same
+kind-dependent behaviour as `get(...)`:
+
+| Name is... | `getId('name')` does |
+|------------|----------------------|
+| on-demand | resolves it now if needed (generating + caching), returns the `Id` |
+| declared, and `require`d | returns the cached `Id` |
+| declared, not `require`d | throws the "not declared" error |
+| unknown | throws |
+
+Open: `getId` may be called while a test is *building* an override template,
+before any `XFTY_DummySObjectProvider` call has fixed an insert mode - so at that
+point the registry doesn't yet know whether this ancestor will end up inserted.
+Likely answer: `getId` resolves the record in memory and hands back a mock `Id`
+now; if a later generation call runs in `NOW`, the same record is inserted then
+and keeps that identity (the shared-ancestor batch already has to reconcile
+in-memory records with their inserted rows). To be pinned down with the S1-S3
+mechanics.
+
 A test that declares nothing and uses only on-demand ancestors pays only for what
 it references. A test working deep in a hierarchy declares the spine it needs and
 gets a clear error the moment it touches a level it forgot. This also gives
