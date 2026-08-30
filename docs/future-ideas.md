@@ -9,18 +9,17 @@ For what changed and why, see [migration.md](migration.md).
 
 ## Deferred persistence
 
-Two related ideas that move DML out of the recursion - full design
+Both ideas that move DML out of the recursion are **done** - full design
 **[design/deferred-persistence.md](design/deferred-persistence.md)**:
 
-- **Depth-batched persistence** - **done**, as the opt-in `.depthBatched()`
-  Provider flag: one mixed-type `insert` per dependency depth instead of one per
-  Provider. See [Testing Modes](testing-modes.md#depth-batched-persistence-depthbatched).
-- **A reference-preserving insert mode** (`DEFERRED`) - not started. Generate like
-  `NEVER` (no Ids), register every record, then `XFTY_DeferredInsert.flush()`
-  inserts the whole set (reusing the depth-batched machinery) and back-fills the
-  Ids on the instances already handed out. For tests that call the framework
-  several times and want one insert phase. Plays nice with records inserted by
-  other modes.
+- **Depth-batched persistence** - the opt-in `.depthBatched()` Provider flag: one
+  mixed-type `insert` per dependency depth instead of one per Provider.
+- **The `DEFERRED` insert mode** + `XFTY_DeferredInsert.flush()` - generate like
+  `NEVER` across many `supplyBundle()` calls, then insert the whole set in one
+  depth-batched pass with Ids back-filled on the instances already handed out.
+
+Both see [Testing Modes](testing-modes.md#deferred). Still open: neither supports
+shared ancestors yet, and the walk cost wants load-testing at volume.
 
 ## Declared shared ancestors / deep chains
 

@@ -349,15 +349,21 @@ public class XFTY_DummySObjectProvider {
                 ? this.multiplyByQuantity(templateList)
                 : templateList;
 
-        Boolean batchingThisCall = this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+        // Two ways to defer DML into one depth-batched pass: the .depthBatched()
+        // flag (flushed here, at the end of this call) and the DEFERRED insert
+        // mode (flushed later by XFTY_DeferredInsert.flush()). Both build
+        // structurally, like NEVER.
+        Boolean flushHere = this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+        Boolean deferToRegistry = XFTY_InsertModeEnum.DEFERRED.equals(this.insertMode);
+        Boolean batchedInsert = flushHere || deferToRegistry;
 
         XFTY_GenerationContext context = new XFTY_GenerationContext(
                 this.sObjectProviderLookup,
-                batchingThisCall ? XFTY_InsertModeEnum.NEVER : this.insertMode,
+                batchedInsert ? XFTY_InsertModeEnum.NEVER : this.insertMode,
                 this.inclusivity
         ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
-        if (batchingThisCall) {
-            context = context.asDepthBatched();
+        if (batchedInsert) {
+            context = context.forBatchedInsert();
         }
 
         // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
@@ -367,8 +373,10 @@ public class XFTY_DummySObjectProvider {
                 ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, multipliedTemplateList)
                 : this.factoryOutlet.createBundle(context, multipliedTemplateList);
 
-        if (batchingThisCall) {
+        if (flushHere) {
             XFTY_DeferredInsertBuffer.insertGraph(bundle);
+        } else if (deferToRegistry) {
+            XFTY_DeferredInsert.register(bundle);
         }
         return bundle;
     }

@@ -209,7 +209,7 @@ XFTY_DummySObjectBundle opportunityBundle = bundle.getBundle(OpportunityLineItem
 
 Generating objects and inserting objects are separate concerns.
 
-XFTY supports five insertion strategies.
+XFTY supports six insertion strategies.
 
 | Mode | Description |
 |------|-------------|
@@ -218,6 +218,7 @@ XFTY supports five insertion strategies.
 | RELATED_ONLY | Insert only related records. |
 | NOW | Insert every generated record. |
 | LATER | Behaves like NEVER while documenting that insertion will happen later. |
+| DEFERRED | Generate like NEVER over many calls; `XFTY_DeferredInsert.flush()` inserts them all at once. |
 
 For most tests:
 

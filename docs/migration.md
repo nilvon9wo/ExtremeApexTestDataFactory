@@ -125,4 +125,5 @@ Not required, but available:
 | Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [Relationships → One-Off Exceptions](relationships.md#one-off-exceptions-includeoptional--excluderelationship) |
 | Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [Relationships → Shared Ancestors](relationships.md#shared-ancestors) |
 | `.depthBatched()` - opt-in, one `insert` per dependency depth instead of one per Provider | [Testing Modes → Depth-Batched Persistence](testing-modes.md#depth-batched-persistence-depthbatched) |
+| `DEFERRED` insert mode + `XFTY_DeferredInsert.flush()` - generate over many calls, insert once | [Testing Modes → DEFERRED](testing-modes.md#deferred) |
 | `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites | [Packaging → Test suites](packaging.md#test-suites) |

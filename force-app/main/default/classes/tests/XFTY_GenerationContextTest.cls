@@ -66,6 +66,23 @@ private class XFTY_GenerationContextTest {
     }
 
     @IsTest
+    static void batchedInsertPendingDefaultsFalseAndIsCarriedThroughEveryDerivation() {
+        XFTY_GenerationContext base = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.ALL
+        );
+        Assert.isFalse(base.batchedInsertPending, 'a plain run is not a batched-insert run');
+
+        XFTY_GenerationContext batched = base.forBatchedInsert();
+        Assert.isTrue(batched.batchedInsertPending);
+        Assert.isTrue(batched.withForcedRelationshipPaths(null).batchedInsertPending, 'carried through withForcedRelationshipPaths');
+        Assert.isTrue(batched.forRelated().batchedInsertPending, 'carried down to ancestors');
+        Assert.isTrue(
+                batched.forRecord(new Account(), new XFTY_DummySObjectBundle(), 0).batchedInsertPending,
+                'carried into the value pass'
+        );
+    }
+
+    @IsTest
     static void baseContextHasNoPerRecordState() {
         XFTY_GenerationContext context = new XFTY_GenerationContext(
                 LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE

@@ -143,11 +143,12 @@ public class XFTY_DummySObjectFactory {
             SObjectField sObjectField,
             XFTY_SharedRelationshipIntf shared
     ) {
-        if (context.depthBatched) {
+        if (context.batchedInsertPending) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + shared.getSharedName() + '" cannot be generated in a depth-batched run yet - '
-                            + 'depth-batching and shared ancestors are not supported together. Drop .depthBatched() for '
-                            + 'this call, or reference the shared ancestor from a separate non-batched Provider call.'
+                    'Shared ancestor "' + shared.getSharedName() + '" cannot be generated with batched-insert persistence '
+                            + 'yet - shared ancestors are not supported together with .depthBatched() or the DEFERRED '
+                            + 'insert mode. Drop it for this call, or reference the shared ancestor from a separate '
+                            + 'Provider call that uses NOW / MOCK / NEVER.'
             );
         }
         SObject sharedRecord = shared.resolveSharedRecord(context);

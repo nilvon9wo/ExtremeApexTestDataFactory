@@ -58,6 +58,7 @@ Insert Modes determine what happens **after** records have been generated.
 | `RELATED_ONLY` | Insert only generated related records. |
 | `NOW` | Insert all generated records. |
 | `LATER` | Behaves like `NEVER` while documenting that insertion will occur later. |
+| `DEFERRED` | Generate like `NEVER`, but register every record so `XFTY_DeferredInsert.flush()` can insert the whole set - across many `supplyBundle()` calls - in one depth-batched pass. |
 
 The generated data itself is identical regardless of Insert Mode.
 
@@ -157,6 +158,42 @@ It communicates the intention that the caller expects to insert the records late
 
 This can make tests easier to understand by documenting intent directly in the setup code.
 
+For a `LATER`-style flow where XFTY should do the eventual insert, use `DEFERRED`.
+
+---
+
+# DEFERRED
+
+```apex
+XFTY_DummySObjectBundle accounts = new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
+        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+        .setQuantityPerTemplate(3)
+        .supplyBundle();
+
+XFTY_DummySObjectBundle contacts = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+        .supplyBundle();
+
+XFTY_DeferredInsert.flush();   // every graph from every DEFERRED call, inserted now
+```
+
+`DEFERRED` generates exactly like `NEVER` - no Ids, no DML - but registers every
+record. `XFTY_DeferredInsert.flush()` then inserts everything registered so far,
+**depth-batched** (one `insert` per dependency depth, across all the graphs), and
+because the records handed back are the same instances, their `Id` fields are now
+populated.
+
+Use it when a test - or a chain of setup helpers - builds its data in several
+`supplyBundle()` calls and wants a single insert phase at the end.
+
+- A test that never calls `flush()` gets `NEVER` semantics - no surprise DML.
+- Records inserted by a `NOW` call in between are not in the registry and are
+  left untouched; a `DEFERRED` record pointing at one keeps that Id.
+- `flush()` clears the registry - generation after a `flush()` starts fresh.
+- Not supported with `@TestSetup` (it resets statics) or shared ancestors
+  (refused during generation).
+
 ---
 
 # Choosing an Insert Mode
@@ -168,6 +205,7 @@ Most tests naturally fall into one of these categories.
 | Pure unit test | `MOCK` |
 | Testing object construction | `NEVER` |
 | Test inserts records itself | `LATER` |
+| Data built over several calls, one insert phase | `DEFERRED` |
 | Need inserted lookup targets only | `RELATED_ONLY` |
 | Integration test | `NOW` |
 

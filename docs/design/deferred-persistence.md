@@ -1,16 +1,17 @@
 # Design: Deferred Persistence
 
-Status: **in progress** on branch `deferred-persistence`. Two related ideas that
-both move DML out of the recursion:
+Status: **built** on branch `deferred-persistence` (not merged). Two related ways
+to move DML out of the recursion:
 
-1. **Depth-batched persistence** - a performance change to the existing engine.
-   **Built and shipped** on `deferred-persistence` as the opt-in `.depthBatched()`
-   Provider flag (see below).
-2. **A reference-preserving insert mode** - a new, opt-in `XFTY_InsertModeEnum`
-   value for tests that call the framework several times and want the whole set
-   inserted (and Ids back-filled) at the end. Not started.
+1. **Depth-batched persistence** - the opt-in `.depthBatched()` Provider flag: one
+   mixed-type `insert` per dependency depth instead of one per Provider.
+2. **The `DEFERRED` insert mode** - generate like `NEVER` over many
+   `supplyBundle()` calls, then `XFTY_DeferredInsert.flush()` inserts the whole
+   set (reusing idea 1's machinery) with Ids back-filled on the handed-out
+   instances.
 
-Neither requires rewriting `XFTY_DummySObjectFactory`.
+Neither required rewriting `XFTY_DummySObjectFactory` - both are a structural
+build (`NEVER`) plus a bundle-walk in `XFTY_DeferredInsertBuffer`.
 
 ---
 
@@ -115,30 +116,43 @@ XFTY_DeferredInsert.flush();   // inserts everything registered so far, one pass
                                // and the Ids appear on the records already handed out
 ```
 
-- `DEFERRED` generates like `NEVER` (no Ids) but **registers every generated
-  record** in a static list, keyed by identity.
-- `flush()` inserts the registered set - depth-batched (idea 1) - and because the
-  records handed back are the *same instances*, their `Id` fields are now
-  populated. Every lookup that was wired to another registered record is
-  re-pointed.
-- **Plays nice with mixed modes.** Records that were inserted by a `NOW` call
-  (e.g. a reused setup utility) are not in the registry, already have Ids, and a
-  `DEFERRED` record pointing at one keeps that Id untouched. `flush()` only
-  touches the registry.
+### What is built
+
+`XFTY_InsertModeEnum.DEFERRED` + `XFTY_DeferredInsert` (static registry).
+
+- A `DEFERRED` Provider call generates exactly like `NEVER` (context forced to
+  `NEVER` + `forBatchedInsert()`), then `XFTY_DummySObjectProvider` calls
+  `XFTY_DeferredInsert.register(bundle)` instead of inserting.
+- `register` hands the bundle to a static `XFTY_DeferredInsertBuffer` (the same
+  bundle-walk as `.depthBatched()`), accumulating records + edges across every
+  call - global indices, so one `flush()` covers many graphs.
+- `flush()` runs `XFTY_DepthBatchedInserter.insertAll` over the whole set and
+  then replaces the buffer, so the pending set is cleared. Because the records
+  handed back are the *same instances*, their `Id` fields are now populated.
+- **No cross-call identity problem.** The engine clones every template and
+  generates a distinct parent per child row, so each bundle's records are fresh
+  instances no other bundle shares. The walk is positional within one tree and
+  never needs to reconcile a record seen twice - so the registry is just
+  "append each bundle's forest, insert the union."
+- **Mixed modes.** A record inserted by a `NOW` call is not in the registry and
+  already has an Id; a `DEFERRED` record pointing at it was wired by Id during
+  the structural build, so no edge is emitted and `flush()` leaves it alone.
 - Static, so it resets between test methods. A test that never calls `flush()`
   gets `NEVER` semantics - no surprise DML.
 
-### Questions
+`XFTY_DeferredInsertTest` (`XFTY_Integration`): held without Ids until flush,
+2-insert depth batching, many graphs in one flush, no-flush = no DML, flush
+clears the set, a `DEFERRED` record pointing at an already-inserted record,
+shared ancestor throws. 100% line coverage.
 
-- **Does `flush()` need the lookup / an insert mode?** It has the records and
-  their wiring already; it just needs to insert. Probably no arguments.
-- **Interaction with shared ancestors.** A shared ancestor resolved during a
-  `DEFERRED` call registers like any other record; `flush()` inserts it once.
-  This is also how a shared ancestor gets a *consistent* Id across
-  `MOCK`-then-`NOW` usage (see shared-ancestors.md - the current on-demand path
-  has a gap here).
-- **`@TestSetup`.** Not supported - `@TestSetup` resets statics, so the registry
-  would be empty. Documented, not worked around.
+### Not done yet
+
+- **Shared ancestors + `DEFERRED`** - refused, same as `.depthBatched()`. The
+  design once hoped `DEFERRED` would give a shared ancestor a consistent Id
+  across `MOCK`-then-`NOW`, but the tree-walk assumes no shared instances. Needs
+  the walk to handle a record reachable from two places.
+- **`@TestSetup`** - not supported (resets statics). Documented, not worked around.
+- **A value pass inside `flush()`** for descendant/up-flowing reads (below).
 
 ---
 
@@ -151,5 +165,5 @@ XFTY_DeferredInsert.flush();   // inserts everything registered so far, one pass
 - **Declared shared ancestors** ([shared-ancestors.md](shared-ancestors.md)) can
   be "register these in the deferred set, then `flush()`".
 
-So build idea 1 first (it's self-contained and testable), then idea 2 on top,
-then descendant reads and declared ancestors reuse the `flush()` machinery.
+Both ideas are built. Descendant reads and declared shared ancestors can now
+reuse the `flush()` machinery.
