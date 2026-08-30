@@ -1,0 +1,9 @@
+# Normalise line endings to LF in the repository (Salesforce/Apex tooling is LF).
+* text=auto eol=lf
+*.cls text eol=lf
+*.cls-meta.xml text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf

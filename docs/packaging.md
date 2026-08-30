@@ -25,7 +25,14 @@ sf org delete scratch --target-org xfty --no-prompt
 
 Because the whole framework is `@IsTest`, Salesforce reports 0% coverage for it -
 that is expected. The behavioural suite under
-`force-app/main/default/classes/*Test.cls` is what guards the framework.
+`force-app/main/default/classes/tests/` is what guards the framework; it is kept
+at 100% line coverage (verify by temporarily stripping `@IsTest` and running
+`sf apex run test --code-coverage`).
+
+`force-app/main/default/classes/` is organised into `core/`, `values/`,
+`relationships/`, `lookup/`, `providers/`, and `tests/`. The `test-support/`
+package directory (an Account record type used only by the suite) is **not**
+part of the distributable package.
 
 ---
 
