@@ -292,7 +292,7 @@ Consumers who only want the test factory install just `xfty-test-support`
 A thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs -> `insert`)
 is the only genuinely new surface either way.
 
-The `namespace` / AppExchange work in [packaging.md](../packaging.md) forces the
+The `namespace` / AppExchange work in [packaging.md](packaging.md) forces the
 same core/test-support split, so doing it once serves both goals.
 
 ### Two-package variant of the same idea
