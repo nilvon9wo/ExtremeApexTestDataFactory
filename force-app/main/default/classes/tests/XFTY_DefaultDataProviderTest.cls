@@ -43,10 +43,8 @@ private class XFTY_DefaultDataProviderTest {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             bundle = new XFTY_DefaultAccountDataProvider().createBundle(
-                    LOOKUP,
-                    new List<SObject>{ new Account() },
-                    XFTY_InsertModeEnum.MOCK,
-                    XFTY_InsertInclusivityEnum.NONE
+                    new XFTY_GenerationContext(LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE),
+                    new List<SObject>{ new Account() }
             );
         }
 

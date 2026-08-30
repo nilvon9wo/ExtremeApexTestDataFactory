@@ -64,6 +64,7 @@ Each component has a single responsibility.
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavour). |
 | `XFTY_DummySobjectProviderIntf` | Describes how one `SObject` type should be generated. |
 | `XFTY_DummySObjectMasterTemplate` | Declarative description of default values and relationships. |
+| `XFTY_GenerationContext` | The per-run state the engine threads everywhere: Provider Lookup, insert mode, inclusivity (and, in future, the record being built + its ancestors). |
 | `XFTY_DummySObjectFactory` | Engine that constructs the object graph. |
 | `XFTY_DummySObjectBundle` | Represents the generated graph. |
 | `XFTY_DummyDefaultValueIntf` | Strategy interface for generating field values. |
@@ -231,6 +232,33 @@ Performing this as a separate phase allows every object at the current level to 
 Once related records possess Ids, lookup fields can be populated.
 
 This separation greatly simplifies recursion while ensuring every lookup points at a valid record.
+
+---
+
+# The Generation Context
+
+Every step of one `supply*()` call - the top-level build and each level of
+relationship recursion - needs the same three things: the Provider Lookup, the
+insert mode, and the relationship inclusivity. These travel together as an
+`XFTY_GenerationContext` rather than as separate arguments.
+
+The context is also where the two **recursion transforms** live, in
+`context.forRelated()` - the context handed to a child (ancestor) build:
+
+| Parent context | Child context | Why |
+|----------------|---------------|-----|
+| `insertMode = RELATED_ONLY` | `insertMode = NOW` | The parents of a not-inserted primary record must still be inserted, or the primary can't reference them. |
+| `inclusivity = PREVENT_CASCADE` | `inclusivity = NONE` | The direct relationships are generated, but they do not generate their own - the cascade stops one level down. |
+| anything else | unchanged | |
+
+Because the transform is in one method, "what does `PREVENT_CASCADE` actually
+prevent" has a single, readable answer.
+
+The context is the intended extension point for context-aware value generation
+(it would carry the record being built and the generated ancestor bundle) and for
+the shared-ancestor insert-mode declaration - see
+[future-ideas.md](future-ideas.md) and
+[design/shared-ancestors.md](design/shared-ancestors.md).
 
 ---
 

@@ -65,12 +65,10 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
     }
 
     public XFTY_DummySObjectBundle createBundle(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            List<SObject> templateSObjectList,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_GenerationContext context,
+            List<SObject> templateSObjectList
     ) {
-        return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
+        return XFTY_DummySObjectFactory.createBundle(context, MASTER_TEMPLATE, templateSObjectList);
     }
 
     /**
@@ -116,10 +114,12 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
 
     private static User createStandardAdminUser() {
         return (User) new XFTY_DefaultUserDataProvider().createBundle(
-                DEFAULT_SOBJECT_PROVIDER_LOOKUP,
-                new List<User>{ new User(ProfileId = profileIdFor(SYSTEM_ADMIN)) },
-                XFTY_InsertModeEnum.NOW,
-                XFTY_InsertInclusivityEnum.REQUIRED
+                new XFTY_GenerationContext(
+                        DEFAULT_SOBJECT_PROVIDER_LOOKUP,
+                        XFTY_InsertModeEnum.NOW,
+                        XFTY_InsertInclusivityEnum.REQUIRED
+                ),
+                new List<User>{ new User(ProfileId = profileIdFor(SYSTEM_ADMIN)) }
         ).getList(PRIMARY_TARGET_FIELD)[0];
     }
 }

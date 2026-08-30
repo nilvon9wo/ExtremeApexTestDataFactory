@@ -98,17 +98,23 @@ public class DefaultContactDataProvider implements XFTY_DummySobjectProviderIntf
     }
 
     public XFTY_DummySObjectBundle createBundle(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            List<SObject> templateSObjectList,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_GenerationContext context,
+            List<SObject> templateSObjectList
     ) {
-        return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
+        return XFTY_DummySObjectFactory.createBundle(context, MASTER_TEMPLATE, templateSObjectList);
     }
 }
 ```
 
 Most Providers follow exactly this pattern.
+
+`XFTY_GenerationContext` carries the values every step of one generation run needs
+- the Provider Lookup, the insert mode, and the relationship inclusivity - so they
+travel as one argument instead of four. A Provider almost never inspects it; it
+just passes it to `XFTY_DummySObjectFactory.createBundle`. (Earlier versions of
+XFTY passed `providerLookup`, `insertMode` and `inclusivity` as separate
+parameters here; a Provider written against that signature needs this one-line
+change.)
 
 ---
 

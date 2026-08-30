@@ -72,56 +72,15 @@ strictly `removeFromMasterTemplate`'s job? Probably keep them distinct:
 
 ---
 
-## Mixed-Type Template Lists — idea (sketch)
+## Mixed-Type Template Lists — dropped
 
-Let `new XFTY_DummySObjectProvider(List<SObject> templates, lookup)` (and
-`setOverrideTemplateList`) accept a mixed-type list, chunk it by `SObjectType`,
-resolve a Provider per chunk, and seed a heterogeneous set of records in one call
-- pairs naturally with the depth-batched mixed-type insert in
-[design/shared-ancestors.md](design/shared-ancestors.md).
-
-**First objection:** a `XFTY_DummySObjectBundle` is a *tree* rooted at one
-primary `SObjectType`, and a heterogeneous result has no single root.
-
-**Resolution (Brian's).** A Bundle is already a map from `SObjectField` to
-lists / sub-bundles. For a normal Bundle the keys are *relationship* fields you
-navigate down the tree from the root. For a mixed batch, key the **top level by
-each chunk's `XFTY_DummySobjectProviderIntf.getPrimaryTargetField()`** - normally
-`Id`, but the indirection is exactly why that method exists (SObject types with
-no usable `Id`). So:
-
-```apex
-XFTY_DummySObjectBundle batch = new XFTY_DummySObjectProvider(
-        new List<SObject>{ new Account(), new Account(), new Contact(), new Contract() }, lookup)
-    .setInsertMode(XFTY_InsertModeEnum.NOW)
-    .supplyBundle();
-
-List<Account>  accounts  = (List<Account>)  batch.getList(Account.Id);
-List<Contact>  contacts  = (List<Contact>)  batch.getList(Contact.Id);
-XFTY_DummySObjectBundle accountSubTree = batch.getBundle(Account.Id); // that chunk's own graph
-```
-
-Mechanically this works with `XFTY_DummySObjectBundle` unchanged - a mixed batch
-is just a Bundle whose top-level keys are N primary-target fields instead of one
-root's relationship fields.
-
-**Open questions:**
-
-- **Confusion.** Top-level keys meaning "partition by type" vs. "navigate the
-  tree" is a real semantic overload. Return a distinct type for the mixed entry
-  point? If so - what name (`XFTY_DummySObjectBatch`? `XFTY_SObjectBundleSet`?),
-  and does it share an interface with `XFTY_DummySObjectBundle` (the common
-  contract being `getList(SObjectField)` / `getBundle(SObjectField)`)?
-- `supply()` / `supplyList()` have no obvious meaning for a heterogeneous result
-  - restrict the mixed path to `supplyBundle()` (or a `supplyBatch()`).
-- Per-chunk variant selection: `withVariant` is single-valued; a mixed batch
-  needs per-template resolution (from each template's record type) or a
-  `Map<SObjectType, XFTY_LookupKeyIntf>`.
-- Cross-chunk relationships: if a `Contact` in the list points at an `Account`
-  also in the list, are they wired together or kept independent? Leaning
-  independent (each chunk is its own graph), but the depth-batched insert can
-  still flush across chunks.
-- Ordering of the returned lists within a chunk vs. the input order.
+Briefly considered letting `new XFTY_DummySObjectProvider(List<SObject>, lookup)`
+accept a mixed-type list and chunk it by `SObjectType`. It generated more
+ambiguity than value (heterogeneous Bundles have no single root, `supply()` /
+`withVariant` stop making sense, cross-chunk wiring is unclear) for what is
+essentially syntactic sugar nothing has asked for. Scrapped unless a concrete
+need appears. The DML-batching angle it hinted at is kept separately - see
+[design/shared-ancestors.md](design/shared-ancestors.md) "Wider applicability".
 
 ---
 

@@ -24,11 +24,9 @@ public class XFTY_DefaultContactDataProvider implements XFTY_DummySobjectProvide
     }
 
     public XFTY_DummySObjectBundle createBundle(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            List<SObject> templateSObjectList,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_GenerationContext context,
+            List<SObject> templateSObjectList
     ) {
-        return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
+        return XFTY_DummySObjectFactory.createBundle(context, MASTER_TEMPLATE, templateSObjectList);
     }
 }

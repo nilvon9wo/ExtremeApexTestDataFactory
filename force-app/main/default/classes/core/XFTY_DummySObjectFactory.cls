@@ -1,20 +1,12 @@
 @IsTest
 public class XFTY_DummySObjectFactory {
     public static XFTY_DummySObjectBundle createBundle(
-            XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup,
+            XFTY_GenerationContext context,
             XFTY_DummySObjectMasterTemplate masterTemplate,
-            List<SObject> testSpecificTemplateList,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            List<SObject> testSpecificTemplateList
     ) {
         XFTY_DummySObjectBundle bundle
-                = createRelatedRecords(
-                        sObjectProviderLookup,
-                        masterTemplate,
-                        testSpecificTemplateList.size(),
-                        insertMode,
-                        inclusivity
-                );
+                = createRelatedRecords(context, masterTemplate, testSpecificTemplateList.size());
 
         List<SObject> sobjectList = new List<SObject>();
         for (SObject testSpecificTemplate : testSpecificTemplateList) {
@@ -22,10 +14,10 @@ public class XFTY_DummySObjectFactory {
         }
 
         bundle.put(masterTemplate.primaryTargetField, sobjectList);
-        createRelationships(bundle, masterTemplate, inclusivity);
+        createRelationships(context, bundle, masterTemplate);
 
         List<SObject> insertSObjectList = new List<SObject>();
-        switch on insertMode {
+        switch on context.insertMode {
             when NOW {
                 insertSObjectList.addAll(sobjectList);
             }
@@ -42,76 +34,50 @@ public class XFTY_DummySObjectFactory {
     // Create related records --------------------------------------------------------------------------------
 
     private static XFTY_DummySObjectBundle createRelatedRecords(
-            XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup,
+            XFTY_GenerationContext context,
             XFTY_DummySObjectMasterTemplate masterTemplate,
-            Integer quantity,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            Integer quantity
     ) {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        if (XFTY_InsertInclusivityEnum.NONE.equals(inclusivity)) {
+        if (XFTY_InsertInclusivityEnum.NONE.equals(context.inclusivity)) {
             return bundle;
         }
 
-        createRelatedRecords(
-                bundle,
-                quantity,
-                sObjectProviderLookup,
-                masterTemplate.requiredRelationshipBySObjectFieldMap,
-                insertMode,
-                inclusivity
-        );
-        if (!XFTY_InsertInclusivityEnum.ALL.equals(inclusivity)) {
+        createRelatedRecords(bundle, context, quantity, masterTemplate.requiredRelationshipBySObjectFieldMap);
+        if (!XFTY_InsertInclusivityEnum.ALL.equals(context.inclusivity)) {
             return bundle;
         }
 
-        return createRelatedRecords(
-                bundle,
-                quantity,
-                sObjectProviderLookup,
-                masterTemplate.optionalRelationshipBySObjectFieldMap,
-                insertMode,
-                inclusivity
-        );
+        return createRelatedRecords(bundle, context, quantity, masterTemplate.optionalRelationshipBySObjectFieldMap);
     }
 
     private static XFTY_DummySObjectBundle createRelatedRecords(
             XFTY_DummySObjectBundle bundle,
+            XFTY_GenerationContext context,
             Integer quantity,
-            XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup,
-            Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> relationshipsBySObjectField,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> relationshipsBySObjectField
     ) {
         for (SObjectField sObjectField : relationshipsBySObjectField.keySet()) {
             XFTY_DummyDefaultRelationshipIntf relationshipTemplate = relationshipsBySObjectField.get(sObjectField);
-            createRelatedRecords(bundle, quantity, sObjectField, sObjectProviderLookup, relationshipTemplate, insertMode, inclusivity);
+            createRelatedRecords(bundle, context, quantity, sObjectField, relationshipTemplate);
         }
         return bundle;
     }
 
     private static XFTY_DummySObjectBundle createRelatedRecords(
             XFTY_DummySObjectBundle bundle,
+            XFTY_GenerationContext context,
             Integer quantity,
             SObjectField sObjectField,
-            XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup,
-            XFTY_DummyDefaultRelationshipIntf relationshipTemplate,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_DummyDefaultRelationshipIntf relationshipTemplate
     ) {
         SObject sObjectTemplate = relationshipTemplate.getOverrideTemplate();
         XFTY_DummySobjectProviderIntf factoryOutlet
-                = sObjectProviderLookup.get(relationshipTemplate.resolveLookupKey(sObjectProviderLookup));
+                = context.providerLookup.get(relationshipTemplate.resolveLookupKey(context.providerLookup));
 
         XFTY_DummySObjectBundle innerBundle = factoryOutlet.createBundle(
-                sObjectProviderLookup,
-                createClonedTemplateList(quantity, sObjectTemplate),
-                (XFTY_InsertModeEnum.RELATED_ONLY.equals(insertMode))
-                        ? XFTY_InsertModeEnum.NOW
-                        : insertMode,
-                (XFTY_InsertInclusivityEnum.PREVENT_CASCADE.equals(inclusivity))
-                        ? XFTY_InsertInclusivityEnum.NONE
-                        : inclusivity
+                context.forRelated(),
+                createClonedTemplateList(quantity, sObjectTemplate)
         );
 
         return bundle.put(sObjectField, innerBundle)
@@ -143,11 +109,11 @@ public class XFTY_DummySObjectFactory {
     }
 
     private static XFTY_DummySObjectBundle createRelationships(
+            XFTY_GenerationContext context,
             XFTY_DummySObjectBundle bundle,
-            XFTY_DummySObjectMasterTemplate masterTemplate,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_DummySObjectMasterTemplate masterTemplate
     ) {
-        if (XFTY_InsertInclusivityEnum.NONE.equals(inclusivity)) {
+        if (XFTY_InsertInclusivityEnum.NONE.equals(context.inclusivity)) {
             return bundle;
         }
 

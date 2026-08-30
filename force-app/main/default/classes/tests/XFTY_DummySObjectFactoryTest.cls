@@ -249,14 +249,10 @@ private class XFTY_DummySObjectFactoryTest {
         }
 
         public XFTY_DummySObjectBundle createBundle(
-                XFTY_DummySObjectProviderLookupIntf providerLookup,
-                List<SObject> templateSObjectList,
-                XFTY_InsertModeEnum insertMode,
-                XFTY_InsertInclusivityEnum inclusivity
+                XFTY_GenerationContext context,
+                List<SObject> templateSObjectList
         ) {
-            return XFTY_DummySObjectFactory.createBundle(
-                    providerLookup, this.template, templateSObjectList, insertMode, inclusivity
-            );
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
         }
     }
 

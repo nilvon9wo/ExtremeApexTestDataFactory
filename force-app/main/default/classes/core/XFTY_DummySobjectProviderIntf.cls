@@ -4,9 +4,7 @@ public interface XFTY_DummySobjectProviderIntf {
     XFTY_DummySObjectMasterTemplate getMasterTemplate();
 
     XFTY_DummySObjectBundle createBundle(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            List<SObject> templateSObjectList,
-            XFTY_InsertModeEnum insertMode,
-            XFTY_InsertInclusivityEnum inclusivity
+            XFTY_GenerationContext context,
+            List<SObject> templateSObjectList
     );
 }

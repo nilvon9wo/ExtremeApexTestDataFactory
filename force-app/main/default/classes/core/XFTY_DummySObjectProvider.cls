@@ -265,18 +265,16 @@ public class XFTY_DummySObjectProvider {
                 ? this.multiplyByQuantity(templateList)
                 : templateList;
 
+        XFTY_GenerationContext context = new XFTY_GenerationContext(
+                this.sObjectProviderLookup, this.insertMode, this.inclusivity
+        );
+
         // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
         // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own
         // generation logic (e.g. selecting a template by record type).
         XFTY_DummySObjectBundle bundle = this.hasCustomMasterTemplate
-                ? XFTY_DummySObjectFactory.createBundle(
-                        this.sObjectProviderLookup,
-                        this.masterTemplate,
-                        multipliedTemplateList,
-                        insertMode,
-                        inclusivity
-                )
-                : this.factoryOutlet.createBundle(this.sObjectProviderLookup, multipliedTemplateList, insertMode, inclusivity);
+                ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, multipliedTemplateList)
+                : this.factoryOutlet.createBundle(context, multipliedTemplateList);
         return bundle;
     }
 
