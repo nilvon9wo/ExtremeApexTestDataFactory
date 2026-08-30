@@ -45,10 +45,18 @@ private class XFTY_RecordTypeMatchingTest {
 
     @IsTest
     static void matchesComparesResolvedDeveloperNames() {
-        Assert.isTrue(XFTY_RecordTypeMatching.matches(new Account(), null), 'no record type matches the null name');
-        Assert.isFalse(XFTY_RecordTypeMatching.matches(new Account(), 'XFTY_TestBusiness'));
-        Assert.isTrue(XFTY_RecordTypeMatching.matches(
-                new Account(RecordTypeId = businessRtId()), 'XFTY_TestBusiness'
-        ));
+        Assert.isTrue(
+                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, null),
+                'no record type matches the null name'
+        );
+        // developer name differs, and the fallback Id comparison also fails
+        Assert.isFalse(
+                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'XFTY_TestBusiness')
+        );
+        Assert.isTrue(
+                XFTY_RecordTypeMatching.matches(
+                        new Account(RecordTypeId = businessRtId()), Account.SObjectType, 'XFTY_TestBusiness'
+                )
+        );
     }
 }

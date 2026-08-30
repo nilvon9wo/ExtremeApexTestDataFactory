@@ -160,10 +160,34 @@ private class XFTY_LookupKeyTest {
         Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 900).isSatisfiedBy(big), 'equal, not greater');
         Assert.isFalse(XFTY_FieldPredicate.lessThan(Account.NumberOfEmployees, 900).isSatisfiedBy(big), 'equal, not less');
         Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000).isSatisfiedBy(big));
+        Assert.isFalse(XFTY_FieldPredicate.lessThan(Account.NumberOfEmployees, 1).isSatisfiedBy(big));
     }
 
     @IsTest
-    static void fieldPredicatesHandleNullsAndBadInput() {
+    static void greaterThanAndLessThanCompareDatesTimesAndStrings() {
+        // Date
+        Contact earlyBorn = new Contact(Birthdate = Date.newInstance(1980, 1, 1));
+        Contact lateBorn = new Contact(Birthdate = Date.newInstance(2020, 1, 1));
+        Assert.isTrue(XFTY_FieldPredicate.greaterThan(Contact.Birthdate, Date.newInstance(2000, 1, 1)).isSatisfiedBy(lateBorn));
+        Assert.isTrue(XFTY_FieldPredicate.lessThan(Contact.Birthdate, Date.newInstance(2000, 1, 1)).isSatisfiedBy(earlyBorn));
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Contact.Birthdate, Date.newInstance(1980, 1, 1)).isSatisfiedBy(earlyBorn), 'equal');
+
+        // Datetime
+        Datetime noon = Datetime.newInstanceGmt(2024, 1, 1, 12, 0, 0);
+        Event afternoon = new Event(ActivityDateTime = noon.addHours(1));
+        Assert.isTrue(XFTY_FieldPredicate.greaterThan(Event.ActivityDateTime, noon).isSatisfiedBy(afternoon));
+        Assert.isTrue(XFTY_FieldPredicate.lessThan(Event.ActivityDateTime, noon.addHours(2)).isSatisfiedBy(afternoon));
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Event.ActivityDateTime, noon.addHours(1)).isSatisfiedBy(afternoon), 'equal');
+
+        // String (lexicographic)
+        Account acme = new Account(Name = 'Acme');
+        Assert.isTrue(XFTY_FieldPredicate.greaterThan(Account.Name, 'Aardvark').isSatisfiedBy(acme));
+        Assert.isTrue(XFTY_FieldPredicate.lessThan(Account.Name, 'Beta').isSatisfiedBy(acme));
+        Assert.isFalse(XFTY_FieldPredicate.greaterThan(Account.Name, 'Acme').isSatisfiedBy(acme), 'equal');
+    }
+
+    @IsTest
+    static void fieldPredicatesHandleNulls() {
         // null record
         Assert.isFalse(XFTY_FieldPredicate.equalTo(Account.Industry, 'x').isSatisfiedBy(null));
         Assert.isTrue(XFTY_FieldPredicate.isNull(Account.Industry).isSatisfiedBy(null));
@@ -175,14 +199,6 @@ private class XFTY_LookupKeyTest {
 
         // inSet with a null value set
         Assert.isFalse(XFTY_FieldPredicate.inSet(Account.Industry, null).isSatisfiedBy(new Account(Industry = 'x')));
-
-        // greaterThan/lessThan on a non-numeric field
-        try {
-            XFTY_FieldPredicate.greaterThan(Account.Name, 5).isSatisfiedBy(new Account(Name = 'not a number'));
-            Assert.fail('Expected an exception for a non-numeric field');
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('numeric'), ex.getMessage());
-        }
     }
 
     // Lookup keys as Map keys -----------------------------------------------

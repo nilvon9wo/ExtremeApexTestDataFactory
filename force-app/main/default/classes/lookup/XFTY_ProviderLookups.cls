@@ -87,31 +87,25 @@ public class XFTY_ProviderLookups {
             return XFTY_LookupKey.get(sObj.getSObjectType());
         }
 
-        Integer topSpecificity = -1;
+        XFTY_LookupKeyIntf best = null;
+        List<String> topTierHashes = new List<String>();
         for (XFTY_LookupKeyIntf candidate : matches) {
-            if (candidate.getSpecificity() > topSpecificity) {
-                topSpecificity = candidate.getSpecificity();
+            if (best == null || candidate.getSpecificity() > best.getSpecificity()) {
+                best = candidate;
+                topTierHashes = new List<String>{ candidate.getHashKey() };
+            } else if (candidate.getSpecificity() == best.getSpecificity()
+                    && candidate.getHashKey() != best.getHashKey()) {
+                topTierHashes.add(candidate.getHashKey());
             }
         }
 
-        List<XFTY_LookupKeyIntf> topTier = new List<XFTY_LookupKeyIntf>();
-        for (XFTY_LookupKeyIntf candidate : matches) {
-            if (candidate.getSpecificity() == topSpecificity) {
-                topTier.add(candidate);
-            }
-        }
-
-        if (topTier.size() > 1) {
-            List<String> topTierHashes = new List<String>();
-            for (XFTY_LookupKeyIntf key : topTier) {
-                topTierHashes.add(key.getHashKey());
-            }
+        if (topTierHashes.size() > 1) {
             throw new LookupException(
                     'Ambiguous Provider variant for ' + sObj.getSObjectType()
                             + ': ' + topTierHashes + '. Supply an explicit lookup key.'
             );
         }
-        return topTier[0];
+        return best;
     }
 
     // Ready-made map-backed lookups ---------------------------------------

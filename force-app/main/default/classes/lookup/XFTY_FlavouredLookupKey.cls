@@ -74,7 +74,7 @@ public class XFTY_FlavouredLookupKey implements XFTY_RecordTypeLookupKeyIntf {
             return false;
         }
         if (this.recordTypeDeveloperName != null
-                && !XFTY_RecordTypeMatching.matches(sObj, this.recordTypeDeveloperName)) {
+                && !XFTY_RecordTypeMatching.matches(sObj, this.getSObjectType(), this.recordTypeDeveloperName)) {
             return false;
         }
         for (XFTY_SObjectPredicateIntf predicate : this.predicates) {

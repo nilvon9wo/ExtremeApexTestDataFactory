@@ -13,6 +13,17 @@ private class XFTY_DummySObjectProviderTest {
     // Constructor guards --------------------------------------------------------
 
     @IsTest
+    static void exceptionTypesAreConstructable() {
+        // SanityException / ConflictException are exercised by the guard tests below;
+        // IndeterminateSObjectTypeException guards a state the public API cannot
+        // currently reach, so pin its constructability here.
+        Assert.areEqual(
+                'x',
+                new XFTY_DummySObjectProvider.IndeterminateSObjectTypeException('x').getMessage()
+        );
+    }
+
+    @IsTest
     static void constructorRejectsNullSObjectType() {
         try {
             new XFTY_DummySObjectProvider(null, LOOKUP);

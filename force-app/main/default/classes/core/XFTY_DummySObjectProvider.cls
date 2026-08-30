@@ -40,6 +40,9 @@ public class XFTY_DummySObjectProvider {
     private final XFTY_DummySobjectProviderIntf factoryOutlet {
         get {
             if (this.factoryOutlet == null) {
+                if (this.sObjectType == null) {
+                    throw new IndeterminateSObjectTypeException('SObjectType must be set before retrieving its factory.');
+                }
                 this.factoryOutlet = this.sObjectProviderLookup.get(this.sObjectType);
             }
             return this.factoryOutlet;
@@ -50,6 +53,9 @@ public class XFTY_DummySObjectProvider {
     private final XFTY_DummySObjectMasterTemplate masterTemplate {
         get {
             if (this.masterTemplate == null) {
+                if (this.sObjectType == null) {
+                    throw new IndeterminateSObjectTypeException('SObjectType must be set before including default values on the master template.');
+                }
                 this.masterTemplate = this.factoryOutlet.getMasterTemplate()
                         .copy();
             }
@@ -216,5 +222,7 @@ public class XFTY_DummySObjectProvider {
     public class SanityException extends Exception {
     }
     public class ConflictException extends Exception {
+    }
+    public class IndeterminateSObjectTypeException extends Exception {
     }
 }
