@@ -236,16 +236,14 @@ private class XFTY_DummySObjectFactoryTest {
             return this.byKeyHash.get(lookupKey.getHashKey());
         }
 
-        public XFTY_LookupKeyIntf keyFor(SObject sObj) {
-            XFTY_LookupKeyIntf defaultKey = XFTY_LookupKey.get(sObj.getSObjectType());
+        public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
+            Set<XFTY_LookupKeyIntf> matches = new Set<XFTY_LookupKeyIntf>();
             for (XFTY_LookupKeyIntf key : this.keys) {
-                if (key.getHashKey() != defaultKey.getHashKey()
-                        && key.getSObjectType() == sObj.getSObjectType()
-                        && key.isInstanceOf(sObj)) {
-                    return key;
+                if (key.getSObjectType() == sObj.getSObjectType() && key.isInstanceOf(sObj)) {
+                    matches.add(key);
                 }
             }
-            return defaultKey;
+            return matches;
         }
     }
 

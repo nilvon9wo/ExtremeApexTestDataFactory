@@ -6,7 +6,7 @@
  *
  * Instances are flyweights - obtain them with `XFTY_LookupKey.get(...)`, never
  * `new` (the constructor is private). Refined keys
- * ({@link XFTY_RecordTypeLookupKey}, {@link XFTY_FlavorLookupKey}, or your own)
+ * ({@link XFTY_RecordTypeLookupKey}, {@link XFTY_FlavouredLookupKey}, or your own)
  * *compose* an `XFTY_LookupKey` rather than extend it (`@IsTest` classes cannot
  * be virtual).
  */
@@ -45,5 +45,9 @@ public class XFTY_LookupKey implements XFTY_LookupKeyIntf {
 
     public String getHashKey() {
         return String.valueOf(this.sObjectType);
+    }
+
+    public Integer getSpecificity() {
+        return 0;
     }
 }

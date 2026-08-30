@@ -20,7 +20,7 @@ public class XFTY_DefaultSObjectProviderLookup implements XFTY_DummySObjectProvi
         return this.registry.get(lookupKey);
     }
 
-    public XFTY_LookupKeyIntf keyFor(SObject sObj) {
-        return this.registry.keyFor(sObj);
+    public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
+        return this.registry.keysFor(sObj);
     }
 }

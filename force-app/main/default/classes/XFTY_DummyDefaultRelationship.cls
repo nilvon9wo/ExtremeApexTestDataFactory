@@ -54,7 +54,7 @@ public class XFTY_DummyDefaultRelationship implements XFTY_DummyDefaultRelations
         if (this.resolvedLookupKey == null) {
             this.resolvedLookupKey = (this.explicitLookupKey != null)
                     ? this.explicitLookupKey
-                    : providerLookup.keyFor(this.overrideTemplate);
+                    : XFTY_LookupKeys.resolve(providerLookup, this.overrideTemplate);
         }
         return this.resolvedLookupKey;
     }

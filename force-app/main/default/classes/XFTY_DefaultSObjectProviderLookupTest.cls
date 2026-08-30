@@ -1,6 +1,6 @@
 /**
  * Coverage for `XFTY_DefaultSObjectProviderLookup` and the resolution /
- * registration behaviour it inherits from `XFTY_AbstractSObjectProviderLookup`.
+ * registration behaviour it delegates to `XFTY_SObjectProviderLookup`.
  */
 @IsTest
 private class XFTY_DefaultSObjectProviderLookupTest {
@@ -36,12 +36,17 @@ private class XFTY_DefaultSObjectProviderLookupTest {
     }
 
     @IsTest
-    static void keyForFallsBackToThePlainKeyWhenNothingRefinedMatches() {
+    static void keysForReturnsNoRefinedKeysForTheDefaultProviders() {
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-        XFTY_LookupKeyIntf key = lookup.keyFor(new Account());
+        // The default lookup registers only plain type keys, which match.
+        Set<String> hashes = new Set<String>();
+        for (XFTY_LookupKeyIntf key : lookup.keysFor(new Account())) {
+            hashes.add(key.getHashKey());
+        }
+        Assert.areEqual(new Set<String>{ 'Account' }, hashes);
 
-        Assert.areEqual(XFTY_LookupKey.get(Account.SObjectType).getHashKey(), key.getHashKey());
+        Assert.areEqual('Account', XFTY_LookupKeys.resolve(lookup, new Account()).getHashKey());
     }
 
     @IsTest

@@ -20,7 +20,7 @@ private class XFTY_DummyDefaultRelationshipTest {
 
     @IsTest
     static void anExplicitKeyIsUsedAsIs() {
-        XFTY_LookupKeyIntf explicitKey = XFTY_FlavorLookupKey.get(Account.SObjectType, 'big');
+        XFTY_LookupKeyIntf explicitKey = new XFTY_FlavouredLookupKey(Account.SObjectType, 'big');
         XFTY_DummyDefaultRelationship relationship =
                 new XFTY_DummyDefaultRelationship(explicitKey, new Account());
 
@@ -35,13 +35,13 @@ private class XFTY_DummyDefaultRelationshipTest {
         XFTY_LookupKeyIntf firstCall = relationship.resolveLookupKey(lookup);
         XFTY_LookupKeyIntf secondCall = relationship.resolveLookupKey(lookup);
 
-        Assert.areEqual(1, lookup.keyForCalls, 'Derivation should happen only once');
+        Assert.areEqual(1, lookup.keysForCalls, 'Derivation should happen only once');
         Assert.areEqual(firstCall, secondCall, 'The memoised key is returned on later calls');
         Assert.areEqual('Account', firstCall.getHashKey());
     }
 
     private class CountingLookup implements XFTY_DummySObjectProviderLookupIntf {
-        private Integer keyForCalls = 0;
+        private Integer keysForCalls = 0;
 
         public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
             return null;
@@ -49,9 +49,9 @@ private class XFTY_DummyDefaultRelationshipTest {
         public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
             return null;
         }
-        public XFTY_LookupKeyIntf keyFor(SObject sObj) {
-            this.keyForCalls++;
-            return XFTY_LookupKey.get(sObj.getSObjectType());
+        public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
+            this.keysForCalls++;
+            return new Set<XFTY_LookupKeyIntf>();
         }
     }
 }

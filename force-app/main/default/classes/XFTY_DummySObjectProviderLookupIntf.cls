@@ -1,9 +1,8 @@
 /**
  * Resolves which Provider should generate a given record.
  *
- * Most implementations should extend {@link XFTY_AbstractSObjectProviderLookup},
- * which implements all three methods on top of a `register(key, providerType)`
- * call, and only register their keys.
+ * Most implementations should compose an {@link XFTY_SObjectProviderLookup},
+ * which implements all three methods on top of a `register(key, provider)` call.
  */
 public interface XFTY_DummySObjectProviderLookupIntf {
     /** Convenience for the common case; equivalent to `get(XFTY_LookupKey.get(sObjectType))`. */
@@ -13,9 +12,10 @@ public interface XFTY_DummySObjectProviderLookupIntf {
     XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey);
 
     /**
-     * Derive the best-matching registered key for a record (used when a
-     * relationship supplies only an override template). Falls back to a plain
-     * `XFTY_LookupKey` for the record's SObject type.
+     * Every registered key whose `isInstanceOf(sObj)` is true. Used when a
+     * relationship supplies only an override template: the caller picks the most
+     * specific match. Empty when nothing refined matches - the caller falls back
+     * to `XFTY_LookupKey.get(sObj.getSObjectType())`.
      */
-    XFTY_LookupKeyIntf keyFor(SObject sObj);
+    Set<XFTY_LookupKeyIntf> keysFor(SObject sObj);
 }

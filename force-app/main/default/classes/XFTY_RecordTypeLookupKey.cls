@@ -2,14 +2,14 @@
  * Selects a Provider variant by `SObjectType` + record type developer name.
  *
  * The record type Id is never hard-coded - it is resolved from the developer
- * name through the SObject describe (no SOQL). `isInstanceOf` converts a
- * record's `RecordTypeId` back to a developer name the same way, so a key built
- * from a developer name matches a record carrying the corresponding Id.
+ * name through the SObject describe (no SOQL). `isInstanceOf` matches a record
+ * whose `RecordTypeId` resolves to the same developer name, or equals this key's
+ * resolved record type Id directly.
  *
  * Instances are flyweights - obtain them with `XFTY_RecordTypeLookupKey.get(...)`.
  */
 @IsTest
-public class XFTY_RecordTypeLookupKey implements XFTY_LookupKeyIntf {
+public class XFTY_RecordTypeLookupKey implements XFTY_RecordTypeLookupKeyIntf {
     private static final Map<String, XFTY_RecordTypeLookupKey> INSTANCE_BY_HASH
             = new Map<String, XFTY_RecordTypeLookupKey>();
 
@@ -31,7 +31,7 @@ public class XFTY_RecordTypeLookupKey implements XFTY_LookupKeyIntf {
 
     /** Derive the key from a record's `RecordTypeId` (or the null developer name if it has none). */
     public static XFTY_RecordTypeLookupKey get(SObject sObj) {
-        return get(sObj == null ? null : sObj.getSObjectType(), developerNameOf(sObj));
+        return get(sObj == null ? null : sObj.getSObjectType(), XFTY_RecordTypeMatching.developerNameOf(sObj));
     }
 
     public SObjectType getSObjectType() {
@@ -42,39 +42,24 @@ public class XFTY_RecordTypeLookupKey implements XFTY_LookupKeyIntf {
         return this.recordTypeDeveloperName;
     }
 
-    /** The matching record type Id, resolved from the describe, or null if there is no such record type. */
     public Id getRecordTypeId() {
-        Schema.RecordTypeInfo info = this.getSObjectType().getDescribe()
-                .getRecordTypeInfosByDeveloperName()
-                .get(this.recordTypeDeveloperName);
-        return (info == null) ? null : info.getRecordTypeId();
+        return XFTY_RecordTypeMatching.idFor(this.getSObjectType(), this.recordTypeDeveloperName);
     }
 
     public Boolean isInstanceOf(SObject sObj) {
-        return this.base.isInstanceOf(sObj) && this.recordTypeDeveloperName == developerNameOf(sObj);
+        return this.base.isInstanceOf(sObj)
+                && XFTY_RecordTypeMatching.matches(sObj, this.getSObjectType(), this.recordTypeDeveloperName);
     }
 
     public String getHashKey() {
         return hashOf(this.base, this.recordTypeDeveloperName);
     }
 
-    private static String hashOf(XFTY_LookupKey base, String recordTypeDeveloperName) {
-        return base.getHashKey() + '::recordType=' + recordTypeDeveloperName;
+    public Integer getSpecificity() {
+        return 10;
     }
 
-    private static String developerNameOf(SObject sObj) {
-        if (sObj == null) {
-            return null;
-        }
-        Schema.DescribeSObjectResult describe = sObj.getSObjectType().getDescribe();
-        if (!describe.fields.getMap().containsKey('recordtypeid')) {
-            return null;
-        }
-        Id recordTypeId = (Id) sObj.get('RecordTypeId');
-        if (recordTypeId == null) {
-            return null;
-        }
-        Schema.RecordTypeInfo info = describe.getRecordTypeInfosById().get(recordTypeId);
-        return (info == null) ? null : info.getDeveloperName();
+    private static String hashOf(XFTY_LookupKey base, String recordTypeDeveloperName) {
+        return base.getHashKey() + '::recordType=' + recordTypeDeveloperName;
     }
 }

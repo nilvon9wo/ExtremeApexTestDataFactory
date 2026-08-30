@@ -6,8 +6,8 @@
 private class XFTY_MultiVariantProviderTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    private static final XFTY_LookupKeyIntf ENTERPRISE = XFTY_FlavorLookupKey.get(Account.SObjectType, 'enterprise');
-    private static final XFTY_LookupKeyIntf SMB = XFTY_FlavorLookupKey.get(Account.SObjectType, 'smb');
+    private static final XFTY_LookupKeyIntf ENTERPRISE = new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise');
+    private static final XFTY_LookupKeyIntf SMB = new XFTY_FlavouredLookupKey(Account.SObjectType, 'smb');
 
     private static XFTY_SObjectProviderLookup newLookup() {
         return new XFTY_SObjectProviderLookup()
@@ -129,7 +129,7 @@ private class XFTY_MultiVariantProviderTest {
                     .putRequired(
                             Contact.AccountId,
                             new XFTY_DummyDefaultRelationship(
-                                    XFTY_FlavorLookupKey.get(Account.SObjectType, 'enterprise'),
+                                    new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise'),
                                     new Account()
                             )
                     );
