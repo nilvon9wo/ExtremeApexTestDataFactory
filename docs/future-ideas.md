@@ -174,7 +174,12 @@ Since we are already making breaking changes, changing `XFTY_DummyDefaultValueIn
 itself is also on the table.
 
 `XFTY_GenerationContext` would expose the record being built (and its
-already-set fields) plus the generated ancestor bundle.
+already-set fields) plus the generated ancestor bundle - **and the insert mode**.
+The shared-ancestors design (`XFTY_SharedAncestor.getId(name)` called before a
+generation call fixes a mode) needs the insert mode carried explicitly rather
+than guessed; it is a concrete forcing function for building this context object,
+even ahead of the full sibling/ancestor reads. See
+[design/shared-ancestors.md](design/shared-ancestors.md) decision 9.
 
 **Ordering.** The factory discovers the graph child-first (see *Dynamic Ancestor
 Configuration* below), so a *sibling* read is straightforward - evaluate that

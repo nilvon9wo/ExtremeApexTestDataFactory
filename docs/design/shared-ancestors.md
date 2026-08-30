@@ -395,14 +395,31 @@ kind-dependent behaviour as `get(...)`:
 | declared, not `require`d | throws the "not declared" error |
 | unknown | throws |
 
-Open: `getId` may be called while a test is *building* an override template,
-before any `XFTY_DummySObjectProvider` call has fixed an insert mode - so at that
-point the registry doesn't yet know whether this ancestor will end up inserted.
-Likely answer: `getId` resolves the record in memory and hands back a mock `Id`
-now; if a later generation call runs in `NOW`, the same record is inserted then
-and keeps that identity (the shared-ancestor batch already has to reconcile
-in-memory records with their inserted rows). To be pinned down with the S1-S3
-mechanics.
+`getId` needs to know the **insert mode**, because it may be called while a test
+is still *building* an override template - before any `XFTY_DummySObjectProvider`
+call has fixed one. Mocking an `Id` by default and hoping a later `NOW` run
+reconciles it is too fragile - it invites `INVALID_CROSS_REFERENCE` /
+"id value of incorrect type" errors when a mock `Id` leaks into real DML, and
+mock-vs-real drift is exactly the class of bug this framework exists to prevent.
+
+So the insert mode is **declared with the ancestors**, up front:
+
+```apex
+XFTY_SharedAncestor.context(XFTY_InsertModeEnum.NOW).require('root', 'level1');
+// ... now get('root') / getId('root') resolve against NOW
+```
+
+`getId` (or `get`) for an unresolved on-demand name with **no context established**
+throws a clear error asking the author to set one. Inline resolution during a
+`supplyBundle()` already has the mode (the generation call's) and needs no
+`context(...)`.
+
+This is the narrow, shared-ancestor slice of the larger **"bring a generation
+context into the build"** question (see
+[future-ideas.md - Context-Aware Value Generation](../future-ideas.md#context-aware-value-generation)).
+A real `XFTY_GenerationContext` - carrying at least the insert mode, and later the
+record being built and its ancestors - is the more robust and flexible answer,
+and shared ancestors are a good forcing function for it.
 
 A test that declares nothing and uses only on-demand ancestors pays only for what
 it references. A test working deep in a hierarchy declares the spine it needs and
