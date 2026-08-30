@@ -56,6 +56,16 @@ private class XFTY_GenerationContextTest {
     }
 
     @IsTest
+    static void withForcedRelationshipPathsToleratesNull() {
+        XFTY_GenerationContext context = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
+        ).withForcedRelationshipPaths(null);
+
+        Assert.isNotNull(context.forcedRelationshipPaths);
+        Assert.isTrue(context.forcedRelationshipPaths.isEmpty());
+    }
+
+    @IsTest
     static void baseContextHasNoPerRecordState() {
         XFTY_GenerationContext context = new XFTY_GenerationContext(
                 LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE

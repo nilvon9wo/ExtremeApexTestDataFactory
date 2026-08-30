@@ -386,4 +386,26 @@ private class XFTY_DummySObjectFactoryTest {
             Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
         }
     }
+
+    @IsTest
+    static void includeOptionalAncestorRejectsANullPath() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+                    .includeOptionalAncestor(null);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void includeOptionalAncestorRejectsANullStep() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+                    .includeOptionalAncestor(new List<SObjectField>{ Contact.AccountId, null });
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('cannot be null'), ex.getMessage());
+        }
+    }
 }
