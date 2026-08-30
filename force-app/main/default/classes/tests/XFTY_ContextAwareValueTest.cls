@@ -145,6 +145,15 @@ private class XFTY_ContextAwareValueTest {
     }
 
     @IsTest
+    static void copyFromAncestorIsNullWhenHandedAContextWithNoAncestors() {
+        // a base context (not scoped to a record) has no ancestor bundle
+        Object value = new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name)
+                .get(new XFTY_GenerationContext(LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE));
+
+        Assert.isNull(value);
+    }
+
+    @IsTest
     static void copyFromAncestorRejectsNullFields() {
         try {
             new XFTY_CopyFromAncestor(null, Account.Name);

@@ -30,9 +30,10 @@ public class XFTY_CopyFromAncestor implements XFTY_ContextAwareValueIntf {
     }
 
     public Object get(XFTY_GenerationContext context) {
-        List<SObject> ancestors = (context.ancestorBundle == null)
-                ? null
-                : context.ancestorBundle.getList(this.relationshipField);
+        if (context.ancestorBundle == null) {
+            return null;
+        }
+        List<SObject> ancestors = context.ancestorBundle.getList(this.relationshipField);
         if (ancestors == null || context.rowIndex < 0 || context.rowIndex >= ancestors.size()) {
             return null;
         }
