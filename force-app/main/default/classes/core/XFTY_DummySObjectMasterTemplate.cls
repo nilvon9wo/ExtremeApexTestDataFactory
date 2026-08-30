@@ -2,14 +2,15 @@
 public class XFTY_DummySObjectMasterTemplate {
     public SObjectField primaryTargetField { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultValueIntf> defaultBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_ContextAwareValueIntf> contextAwareBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap { get; private set; }
 
-    // Insertion order of the value fields. Apex Map iteration order is not
-    // guaranteed, and the context-aware value pass needs a deterministic order
-    // (a context-aware value may read an earlier one). Kept in step with
-    // defaultBySObjectFieldMap by put(...) / remove(...) / copy().
-    private final List<SObjectField> defaultFieldOrder;
+    // Insertion order of the value fields (plain + context-aware). Apex Map
+    // iteration order is not guaranteed, and the value passes need a deterministic
+    // order - a context-aware value may read an earlier one. Kept in step by
+    // put(...) / remove(...) / copy().
+    private final List<SObjectField> valueFieldOrder;
 
     public XFTY_DummySObjectMasterTemplate(
             SObjectField primaryTargetField,
@@ -19,9 +20,10 @@ public class XFTY_DummySObjectMasterTemplate {
     ) {
         this.primaryTargetField = primaryTargetField;
         this.defaultBySObjectFieldMap = defaultBySObjectFieldMap;
+        this.contextAwareBySObjectFieldMap = new Map<SObjectField, XFTY_ContextAwareValueIntf>();
         this.requiredRelationshipBySObjectFieldMap = requiredRelationshipBySObjectFieldMap;
         this.optionalRelationshipBySObjectFieldMap = optionalRelationshipBySObjectFieldMap;
-        this.defaultFieldOrder = new List<SObjectField>(defaultBySObjectFieldMap.keySet());
+        this.valueFieldOrder = new List<SObjectField>(defaultBySObjectFieldMap.keySet());
     }
 
     public XFTY_DummySObjectMasterTemplate(SObjectField primaryFieldTarget) {
@@ -34,10 +36,16 @@ public class XFTY_DummySObjectMasterTemplate {
     }
 
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultValueIntf valueTemplate) {
-        if (!this.defaultBySObjectFieldMap.containsKey(sObjectField)) {
-            this.defaultFieldOrder.add(sObjectField);
-        }
+        this.trackFieldOrder(sObjectField);
+        this.contextAwareBySObjectFieldMap.remove(sObjectField);
         this.defaultBySObjectFieldMap.put(sObjectField, valueTemplate);
+        return this;
+    }
+
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ContextAwareValueIntf contextAwareValue) {
+        this.trackFieldOrder(sObjectField);
+        this.defaultBySObjectFieldMap.remove(sObjectField);
+        this.contextAwareBySObjectFieldMap.put(sObjectField, contextAwareValue);
         return this;
     }
 
@@ -52,15 +60,18 @@ public class XFTY_DummySObjectMasterTemplate {
     }
 
     /**
-     * Convenience overload. A value strategy is routed to its typed overload; any
-     * other value is treated as an exact literal and wrapped in
-     * `XFTY_DummyDefaultValueExact`, so Providers can write
-     * `.put(Account.Type, 'Customer')`.
-     *
-     * Relationships are rejected here: their requiredness has to be stated, so
-     * use `putRequired(...)` / `putOptional(...)` explicitly.
+     * Convenience overload. Routed by type:
+     * - `XFTY_ContextAwareValueIntf` -> the context-aware slot;
+     * - `XFTY_DummyDefaultValueIntf` -> the plain value slot;
+     * - a relationship -> rejected (its requiredness has to be stated, so use
+     *   `putRequired(...)` / `putOptional(...)`);
+     * - anything else -> treated as an exact literal, so a Provider can write
+     *   `.put(Account.Type, 'Customer')`.
      */
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, Object value) {
+        if (value instanceof XFTY_ContextAwareValueIntf) {
+            return this.put(sObjectField, (XFTY_ContextAwareValueIntf) value);
+        }
         if (value instanceof XFTY_DummyDefaultValueIntf) {
             return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
         }
@@ -72,20 +83,19 @@ public class XFTY_DummySObjectMasterTemplate {
         return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
     }
 
-    /** The value fields in the order they were `put`, for a deterministic value pass. */
-    public List<SObjectField> orderedDefaultFields() {
-        return this.defaultFieldOrder.clone();
+    /** Every value field (plain + context-aware) in the order it was `put`. */
+    public List<SObjectField> orderedValueFields() {
+        return this.valueFieldOrder.clone();
     }
 
     /**
      * Returns an independent copy of this template.
      *
-     * The three field maps (and the field-order list) are recreated so that
-     * callers (typically `XFTY_DummySObjectProvider`) can add or remove entries
-     * without mutating the shared, statically-held Master Template a Provider
-     * exposes. The value and relationship strategy instances themselves are
-     * intentionally shared: they are treated as immutable configuration by the
-     * engine.
+     * The field maps (and the field-order list) are recreated so that callers
+     * (typically `XFTY_DummySObjectProvider`) can add or remove entries without
+     * mutating the shared, statically-held Master Template a Provider exposes. The
+     * strategy instances themselves are intentionally shared: they are treated as
+     * immutable configuration by the engine.
      *
      * The implicit Apex `clone()` is a shallow copy and would leave these maps
      * aliased to the original, so it must not be used for this purpose.
@@ -97,20 +107,29 @@ public class XFTY_DummySObjectMasterTemplate {
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.requiredRelationshipBySObjectFieldMap),
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.optionalRelationshipBySObjectFieldMap)
         );
-        theCopy.defaultFieldOrder.clear();
-        theCopy.defaultFieldOrder.addAll(this.defaultFieldOrder);
+        theCopy.contextAwareBySObjectFieldMap.putAll(this.contextAwareBySObjectFieldMap);
+        theCopy.valueFieldOrder.clear();
+        theCopy.valueFieldOrder.addAll(this.valueFieldOrder);
         return theCopy;
     }
 
     public XFTY_DummySObjectMasterTemplate remove(SObjectField sObjectField) {
         this.defaultBySObjectFieldMap.remove(sObjectField);
+        this.contextAwareBySObjectFieldMap.remove(sObjectField);
         this.requiredRelationshipBySObjectFieldMap.remove(sObjectField);
         this.optionalRelationshipBySObjectFieldMap.remove(sObjectField);
-        for (Integer i = this.defaultFieldOrder.size() - 1; i >= 0; i--) {
-            if (this.defaultFieldOrder[i] == sObjectField) {
-                this.defaultFieldOrder.remove(i);
+        for (Integer i = this.valueFieldOrder.size() - 1; i >= 0; i--) {
+            if (this.valueFieldOrder[i] == sObjectField) {
+                this.valueFieldOrder.remove(i);
             }
         }
         return this;
+    }
+
+    private void trackFieldOrder(SObjectField sObjectField) {
+        if (!this.defaultBySObjectFieldMap.containsKey(sObjectField)
+                && !this.contextAwareBySObjectFieldMap.containsKey(sObjectField)) {
+            this.valueFieldOrder.add(sObjectField);
+        }
     }
 }

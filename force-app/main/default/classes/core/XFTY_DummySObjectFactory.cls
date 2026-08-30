@@ -186,9 +186,9 @@ public class XFTY_DummySObjectFactory {
             SObject testSpecificTemplate
     ) {
         SObject filledTemplate = perfectClone(testSpecificTemplate);
-        for (SObjectField sObjectField : masterTemplate.orderedDefaultFields()) {
+        for (SObjectField sObjectField : masterTemplate.orderedValueFields()) {
             XFTY_DummyDefaultValueIntf strategy = masterTemplate.defaultBySObjectFieldMap.get(sObjectField);
-            if (filledTemplate.get(sObjectField) == null && !(strategy instanceof XFTY_ContextAwareValueIntf)) {
+            if (strategy != null && filledTemplate.get(sObjectField) == null) {
                 filledTemplate.put(sObjectField, strategy.get());
             }
         }
@@ -208,13 +208,16 @@ public class XFTY_DummySObjectFactory {
             XFTY_DummySObjectBundle bundle,
             List<SObject> sobjectList
     ) {
+        if (masterTemplate.contextAwareBySObjectFieldMap.isEmpty()) {
+            return;
+        }
         for (Integer i = 0; i < sobjectList.size(); i++) {
             SObject record = sobjectList[i];
             XFTY_GenerationContext recordContext = context.forRecord(record, bundle, i);
-            for (SObjectField sObjectField : masterTemplate.orderedDefaultFields()) {
-                XFTY_DummyDefaultValueIntf strategy = masterTemplate.defaultBySObjectFieldMap.get(sObjectField);
-                if (strategy instanceof XFTY_ContextAwareValueIntf && record.get(sObjectField) == null) {
-                    record.put(sObjectField, ((XFTY_ContextAwareValueIntf) strategy).get(recordContext));
+            for (SObjectField sObjectField : masterTemplate.orderedValueFields()) {
+                XFTY_ContextAwareValueIntf strategy = masterTemplate.contextAwareBySObjectFieldMap.get(sObjectField);
+                if (strategy != null && record.get(sObjectField) == null) {
+                    record.put(sObjectField, strategy.get(recordContext));
                 }
             }
         }

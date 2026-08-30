@@ -25,10 +25,4 @@ public class XFTY_CopyFromSibling implements XFTY_ContextAwareValueIntf {
     public Object get(XFTY_GenerationContext context) {
         return context.recordBeingBuilt.get(this.sourceField);
     }
-
-    public Object get() {
-        throw new XFTY_DummySObjectFtyProviderException(
-                'XFTY_CopyFromSibling is context-aware - it can only be used where the generation engine supplies a context.'
-        );
-    }
 }

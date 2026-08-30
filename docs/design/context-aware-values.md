@@ -32,24 +32,22 @@ differ in **timing**:
 
 ---
 
-## Decision 1 - how a strategy receives the context
+## Decision 1 - how a strategy receives the context — *resolved: B*
 
-Options:
+**`XFTY_ContextAwareValueIntf` is a separate interface** (one method,
+`Object get(XFTY_GenerationContext context)`), *not* a subtype of
+`XFTY_DummyDefaultValueIntf`.
 
-| | Shape | Cost |
-|-|-------|------|
-| **A** *(recommended)* | New `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`, adding `Object get(XFTY_GenerationContext context)`. The factory dispatches on `instanceof`. | A context-aware strategy implements *both* `get()` and `get(context)`. Its `get()` throws a clear "needs a generation context" error (it is only reached if the strategy is used somewhere the engine has no context, which shouldn't happen). |
-| **B** | `XFTY_ContextAwareValueIntf` as a *separate* interface (no `extends`). | `XFTY_DummySObjectMasterTemplate.defaultBySObjectFieldMap` can no longer be `Map<SObjectField, XFTY_DummyDefaultValueIntf>` - becomes `Map<SObjectField, Object>` or a wrapper. Looser typing everywhere. |
-| **C** | Change `XFTY_DummyDefaultValueIntf.get()` to `get(XFTY_GenerationContext)`. | Every value strategy - the six bundled ones and every consumer's custom strategy - changes signature, most to ignore the argument. Big blast radius for little gain. |
+Rejected **A** (extend `XFTY_DummyDefaultValueIntf`, no-arg `get()` throws): that
+is a Liskov violation - a context-aware value handed to code expecting a plain
+one blows up. Rejected **C** (change `XFTY_DummyDefaultValueIntf.get()` itself):
+breaks every existing strategy for no gain.
 
-**A** keeps the Master Template map typed, keeps all existing strategies working
-untouched, and the dispatch is one `instanceof` where values are resolved:
-
-```apex
-Object value = (strategy instanceof XFTY_ContextAwareValueIntf)
-        ? ((XFTY_ContextAwareValueIntf) strategy).get(context)
-        : strategy.get();
-```
+The Master Template keeps its typed `defaultBySObjectFieldMap` and gains a second
+typed map, `contextAwareBySObjectFieldMap`. `put(field, someObject)` routes:
+context-aware -> its map; plain value -> its map; relationship -> rejected;
+anything else -> exact literal. `orderedValueFields()` covers both maps in `put`
+order.
 
 ---
 
@@ -162,35 +160,37 @@ mini-expression-language.
 
 ### Increment 1 - sibling + ancestor (done)
 
-1. `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`;
-   `XFTY_GenerationContext.forRecord(record, bundleSoFar, rowIndex)` + the
-   nullable fields.
-2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, skips
-   context-aware) + `completeContextAwareValues` (pass 2, after wiring).
-3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` (single hop) + tests.
-4. Docs: customization.md section, internals.md two-pass detail.
+1. `XFTY_ContextAwareValueIntf` (separate interface, decision 1: B);
+   `XFTY_DummySObjectMasterTemplate.contextAwareBySObjectFieldMap` + a routing
+   `put(field, Object)`; `XFTY_GenerationContext.forRecord(record, bundleSoFar,
+   rowIndex)`.
+2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, plain map)
+   + `completeContextAwareValues` (pass 2, context-aware map, after wiring).
+3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` (single + multi-hop) + tests.
+4. Docs: customization.md section, internals.md value-passes detail.
 
 ### Increment 2 - descendant reads (decision 4)
 
-Either `context.requestingChildTemplate` (light) or the full deferred up-flow
-pass. Decide alongside the depth-batched-insert work.
+Either `context.requestingChildTemplate` (light) or the `DEFERRED` insert mode
+([deferred-persistence.md](deferred-persistence.md)). Decide alongside that work.
 
 ### Later
 
-Multi-hop `XFTY_CopyFromAncestor` path; topological / lazy sibling resolution if
-the insertion-order limitation bites.
+Topological / lazy sibling resolution if the insertion-order limitation bites
+(decision 3 - do the lazy `context.sibling(field)` if it fits governor limits).
 
 ---
 
 ## Resolved decisions
 
-- **1** - **A**: `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`,
-  `instanceof` dispatch. Existing strategies untouched.
-- **3** - two-pass, insertion order. Documented limitation: a context-aware value
-  reading another only sees it if that one was `put(...)` first.
-- `XFTY_CopyFromAncestor` ships single-hop; multi-hop is a later increment.
+- **1** - **B**: `XFTY_ContextAwareValueIntf` is a separate interface, second map
+  on the Master Template. No LSP violation, no throwing no-arg `get()`.
+- **3** - two-pass, insertion order, shipped. Also worth doing lazy
+  `context.sibling(field)` (option C) later; only option B (declared deps +
+  topological sort) is rejected as hard to consume.
+- `XFTY_CopyFromAncestor` ships single- and multi-hop.
 
 ## Open
 
-- **Decision 4** - `requestingChildTemplate` vs. full deferred pass for descendant
+- **Decision 4** - `requestingChildTemplate` vs. `DEFERRED` mode for descendant
   reads.

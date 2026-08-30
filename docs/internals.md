@@ -238,13 +238,13 @@ This separation greatly simplifies recursion while ensuring every lookup points 
 Field values are filled in **two passes**, so a strategy can be aware of the rest
 of the record:
 
-1. **Plain values** - every strategy that is a plain `XFTY_DummyDefaultValueIntf`,
-   in the order the fields were `put` on the Master Template (the template keeps
-   an explicit order list - Apex `Map` iteration order is not guaranteed).
-2. **Context-aware values** - strategies implementing `XFTY_ContextAwareValueIntf`,
-   after the ancestor records exist and lookups are wired. Each is handed a
-   `XFTY_GenerationContext` scoped to its record (`recordBeingBuilt`,
-   `bundleSoFar`, `rowIndex`).
+1. **Plain values** - the `XFTY_DummyDefaultValueIntf` strategies (Master Template
+   `defaultBySObjectFieldMap`), in the order the fields were `put` (the template
+   keeps an explicit order list - Apex `Map` iteration order is not guaranteed).
+2. **Context-aware values** - the `XFTY_ContextAwareValueIntf` strategies (a
+   separate map, `contextAwareBySObjectFieldMap`), after the ancestor records
+   exist and lookups are wired. Each is handed a `XFTY_GenerationContext` scoped
+   to its record (`recordBeingBuilt`, `bundleSoFar`, `rowIndex`).
 
 A context-aware value therefore sees all plain values, all wired lookups, and any
 context-aware value `put` before it. It cannot see a later context-aware value or

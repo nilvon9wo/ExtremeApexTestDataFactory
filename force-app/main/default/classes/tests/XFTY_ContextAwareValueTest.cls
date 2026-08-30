@@ -71,19 +71,12 @@ private class XFTY_ContextAwareValueTest {
     }
 
     @IsTest
-    static void aContextAwareValueGetWithNoContextThrows() {
-        try {
-            new XFTY_CopyFromSibling(Account.Name).get();
-            Assert.fail('Expected an exception');
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('context-aware'), ex.getMessage());
-        }
-        try {
-            new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name).get();
-            Assert.fail('Expected an exception');
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('context-aware'), ex.getMessage());
-        }
+    static void aContextAwareStrategyIsNotAPlainValueStrategy() {
+        // B, not A: XFTY_ContextAwareValueIntf does not extend XFTY_DummyDefaultValueIntf,
+        // so there is no misleading no-arg get() to call.
+        Object strategy = new XFTY_CopyFromSibling(Account.Name);
+        Assert.isFalse(strategy instanceof XFTY_DummyDefaultValueIntf);
+        Assert.isTrue(strategy instanceof XFTY_ContextAwareValueIntf);
     }
 
     // --- XFTY_CopyFromAncestor ---------------------------------------------
@@ -242,9 +235,6 @@ private class XFTY_ContextAwareValueTest {
             Date birthdate = (Date) context.recordBeingBuilt.get(this.birthdateField);
             return (birthdate != null && birthdate.addYears(18) > Date.today()) ? 'MINOR' : 'ADULT';
         }
-        public Object get() {
-            throw new XFTY_DummySObjectFtyProviderException('context-aware');
-        }
     }
 
     // --- bundleSoFar sees the sibling primary records --------------------
@@ -273,9 +263,6 @@ private class XFTY_ContextAwareValueTest {
         public Object get(XFTY_GenerationContext context) {
             Integer siblingCount = context.bundleSoFar.getList(Account.Id).size();
             return (context.rowIndex + 1) + ' of ' + siblingCount;
-        }
-        public Object get() {
-            throw new XFTY_DummySObjectFtyProviderException('context-aware');
         }
     }
 }

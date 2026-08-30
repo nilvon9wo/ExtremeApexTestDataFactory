@@ -62,10 +62,4 @@ public class XFTY_CopyFromAncestor implements XFTY_ContextAwareValueIntf {
         SObject record = records[context.rowIndex];
         return (record == null) ? null : record.get(sourceField);
     }
-
-    public Object get() {
-        throw new XFTY_DummySObjectFtyProviderException(
-                'XFTY_CopyFromAncestor is context-aware - it can only be used where the generation engine supplies a context.'
-        );
-    }
 }

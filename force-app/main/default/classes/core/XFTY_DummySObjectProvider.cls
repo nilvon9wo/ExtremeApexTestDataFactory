@@ -208,6 +208,13 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ContextAwareValueIntf contextAwareValue) {
+        this.masterTemplate.remove(sObjectField);
+        this.masterTemplate.put(sObjectField, contextAwareValue);
+        this.hasCustomMasterTemplate = true;
+        return this;
+    }
+
     public XFTY_DummySObjectProvider putRequired(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.masterTemplate.remove(sObjectField);
         this.masterTemplate.putRequired(sObjectField, relationshipTemplate);
@@ -224,11 +231,14 @@ public class XFTY_DummySObjectProvider {
 
     /**
      * Convenience overload mirroring `XFTY_DummySObjectMasterTemplate.put(SObjectField, Object)`:
-     * a bare literal is wrapped in `XFTY_DummyDefaultValueExact`; a value strategy
-     * is routed to its typed overload. Relationships are rejected - use
-     * `putRequired(...)` / `putOptional(...)`.
+     * a context-aware strategy, a plain value strategy, or (anything else) a bare
+     * literal wrapped in `XFTY_DummyDefaultValueExact`. Relationships are rejected -
+     * use `putRequired(...)` / `putOptional(...)`.
      */
     public XFTY_DummySObjectProvider put(SObjectField sObjectField, Object value) {
+        if (value instanceof XFTY_ContextAwareValueIntf) {
+            return this.put(sObjectField, (XFTY_ContextAwareValueIntf) value);
+        }
         if (value instanceof XFTY_DummyDefaultValueIntf) {
             return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
         }

@@ -252,8 +252,8 @@ Two are bundled:
 }))
 ```
 
-For anything with logic, implement `XFTY_ContextAwareValueIntf` (it extends
-`XFTY_DummyDefaultValueIntf`, so it drops into `put(...)` like any strategy):
+For anything with logic, implement `XFTY_ContextAwareValueIntf` - one method, and
+`put(...)` accepts it directly:
 
 ```apex
 public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
@@ -261,9 +261,12 @@ public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
         Date birthdate = (Date) context.recordBeingBuilt.get(Contact.Birthdate);
         return birthdate != null && birthdate.addYears(18) <= Date.today();
     }
-    public Object get() { throw new IllegalArgumentException('needs a context'); }
 }
 ```
+
+`XFTY_ContextAwareValueIntf` is a separate interface, not a subtype of
+`XFTY_DummyDefaultValueIntf` - a context-aware value has no meaningful no-argument
+`get()`, so it does not pretend to.
 
 `context` exposes:
 

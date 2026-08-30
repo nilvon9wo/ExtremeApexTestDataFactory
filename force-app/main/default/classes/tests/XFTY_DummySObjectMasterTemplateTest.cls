@@ -28,6 +28,38 @@ private class XFTY_DummySObjectMasterTemplateTest {
     }
 
     @IsTest
+    static void putRoutesAContextAwareStrategyToItsOwnSlot() {
+        XFTY_ContextAwareValueIntf contextAware = new XFTY_CopyFromSibling(Contact.FirstName);
+
+        XFTY_DummySObjectMasterTemplate typed = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.LastName, contextAware);
+        XFTY_DummySObjectMasterTemplate untyped = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.LastName, (Object) contextAware);
+
+        for (XFTY_DummySObjectMasterTemplate template : new List<XFTY_DummySObjectMasterTemplate>{ typed, untyped }) {
+            Assert.areEqual(contextAware, template.contextAwareBySObjectFieldMap.get(Contact.LastName));
+            Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Contact.LastName),
+                    'not in the plain-value map');
+            Assert.isTrue(new Set<SObjectField>(template.orderedValueFields()).contains(Contact.LastName),
+                    'still in the ordered value fields');
+        }
+    }
+
+    @IsTest
+    static void putSwitchesAFieldBetweenPlainAndContextAwareAndCopyCarriesIt() {
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_DummyDefaultValueExact('plain'))
+                .put(Account.Name, new XFTY_CopyFromSibling(Account.AccountNumber)); // now context-aware
+
+        Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Account.Name));
+        Assert.isTrue(template.contextAwareBySObjectFieldMap.containsKey(Account.Name));
+
+        XFTY_DummySObjectMasterTemplate copy = template.copy();
+        Assert.isTrue(copy.contextAwareBySObjectFieldMap.containsKey(Account.Name),
+                'the copy carries the context-aware entry');
+    }
+
+    @IsTest
     static void untypedPutRejectsARelationship() {
         try {
             new XFTY_DummySObjectMasterTemplate(Contact.Id)
@@ -49,11 +81,11 @@ private class XFTY_DummySObjectMasterTemplateTest {
 
         Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Contact.LastName));
         Assert.isFalse(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
-        Assert.isFalse(new Set<SObjectField>(template.orderedDefaultFields()).contains(Contact.LastName));
+        Assert.isFalse(new Set<SObjectField>(template.orderedValueFields()).contains(Contact.LastName));
     }
 
     @IsTest
-    static void orderedDefaultFieldsFollowsPutOrderAcrossPutRemoveAndCopy() {
+    static void orderedValueFieldsFollowsPutOrderAcrossPutRemoveAndCopy() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
                 .put(Account.Name, new XFTY_DummyDefaultValueExact('n'))
                 .put(Account.Industry, new XFTY_DummyDefaultValueExact('i'))
@@ -61,26 +93,26 @@ private class XFTY_DummySObjectMasterTemplateTest {
 
         Assert.areEqual(
                 new List<SObjectField>{ Account.Name, Account.Industry, Account.Type },
-                template.orderedDefaultFields()
+                template.orderedValueFields()
         );
 
         template.remove(Account.Industry);
         template.put(Account.Name, new XFTY_DummyDefaultValueExact('n2')); // re-put keeps its place
         Assert.areEqual(
                 new List<SObjectField>{ Account.Name, Account.Type },
-                template.orderedDefaultFields()
+                template.orderedValueFields()
         );
 
         XFTY_DummySObjectMasterTemplate copy = template.copy();
         copy.put(Account.Rating, new XFTY_DummyDefaultValueExact('r'));
         Assert.areEqual(
                 new List<SObjectField>{ Account.Name, Account.Type },
-                template.orderedDefaultFields(),
+                template.orderedValueFields(),
                 'the original is unchanged by the copy'
         );
         Assert.areEqual(
                 new List<SObjectField>{ Account.Name, Account.Type, Account.Rating },
-                copy.orderedDefaultFields()
+                copy.orderedValueFields()
         );
     }
 
