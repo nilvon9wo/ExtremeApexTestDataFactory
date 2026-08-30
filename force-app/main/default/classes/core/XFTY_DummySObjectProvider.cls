@@ -161,15 +161,29 @@ public class XFTY_DummySObjectProvider {
      * Pin the Provider variant explicitly (e.g.
      * `XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount')`),
      * instead of letting it be derived from the override template. Must be called
-     * before any `put(...)` / `removeFromMasterTemplate(...)`.
+     * before any `put(...)` / `removeFromMasterTemplate(...)`, and the key must be
+     * for this Provider's `SObjectType`.
      */
     public XFTY_DummySObjectProvider withVariant(XFTY_LookupKeyIntf variantKey) {
         if (this.hasCustomMasterTemplate) {
             // put(...) already resolved the Provider from the default variant.
             throw new SanityException('Call withVariant(...) before customizing the template with put(...).');
         }
+        this.assertVariantKeyMatchesType(variantKey);
         this.explicitVariantKey = variantKey;
         return this;
+    }
+
+    private void assertVariantKeyMatchesType(XFTY_LookupKeyIntf variantKey) {
+        if (variantKey == null) {
+            throw new SanityException('A variant key is required.');
+        }
+        if (variantKey.getSObjectType() != this.sObjectType) {
+            throw new ConflictException(
+                    'Variant key is for ' + variantKey.getSObjectType()
+                            + ' but this Provider requests ' + this.sObjectType + '.'
+            );
+        }
     }
 
     public XFTY_DummySObjectProvider setInsertMode(XFTY_InsertModeEnum insertMode) {

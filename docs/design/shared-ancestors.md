@@ -41,9 +41,14 @@ XFTY_SharedAncestor.get('john').of(new Contact(LastName = 'Doe'));
 
 `XFTY_SharedAncestorRegistry` - a `static Map<String, XFTY_SharedAncestor>`.
 `XFTY_SharedAncestor.get(name)` interns through it. Being static, a resolved
-ancestor survives across `supplyBundle()` calls in the same test - the point of
-requirement 3 - and inherits the framework's existing `@TestSetup` caveat
-(see [salesforce-considerations.md](../salesforce-considerations.md)).
+ancestor survives across `supplyBundle()` calls **within one test method** - the
+point of requirement 3.
+
+No reset hook is needed and none will be added. Salesforce isolates every test
+method: static state never survives from one test method to the next (nor from
+`@TestSetup`, which is why XFTY documents not using it - see
+[salesforce-considerations.md](../salesforce-considerations.md)). Each test method
+starts with an empty registry.
 
 Each `XFTY_SharedAncestor` holds:
 
@@ -136,26 +141,80 @@ sub-graph once.
 
 ## Open decisions
 
-1. **Where do S0-S2 run?** In `XFTY_DummySObjectProvider.supplyBundle()` (knows
-   the entry Master Template) or inside `XFTY_DummySObjectFactory` (recursive
-   already, but no "run starts here" hook)?
-2. **Collection without executing Providers.** S0 wants the shared ancestors
-   *reachable* from a Master Template without generating anything - walk the
-   relationship maps, resolve each Provider, recurse into its Master Template. A
-   second traversal of the template graph. Acceptable?
-3. **Depth batching in S2.** Computing each record's depth means inspecting its
-   populated lookup fields to see which point at another record in the pending
-   set - `getPopulatedFieldsAsMap()` + describe of each field's referenceTo.
-   Feasible; how much describe cost is acceptable? A cycle (John.Account = HQ,
-   HQ.PrimaryContact = John) - detect and error, or break with a second-pass
-   `update`?
-4. **Insert mode.** Does a shared ancestor honour the *first* caller's insert
-   mode, or does the registry default to `NOW` (sharing across calls only makes
-   sense for inserted records)?
-5. **Reset between tests.** Static state needs `XFTY_SharedAncestorRegistry.clear()`
-   for isolation - consumer's job (Apex has no per-method static reset hook)?
-6. **`reusing(existingRecord)`** - seed the registry with a record the test
-   inserted itself?
+### 1. What kicks off resolution (S0-S2)? — *direction given*
+
+Ideal: fully implicit and lazy. `XFTY_SharedAncestor.get('acme-hq')` called
+*anywhere* starts the whole chain resolving, and the consumer never has to call a
+"begin" method. Apex may not make that clean (a `get` that triggers DML and
+Provider execution as a side effect is surprising and hard to bound).
+
+Fallback, and probably the design: hook the **first call into
+`XFTY_DummySObjectProviderLookupIntf` to fetch a Provider**. That is the last
+moment where "nothing has been generated yet" is still true, and any shared
+ancestor necessarily relates to a Provider reachable from that lookup, so the
+lookup is the natural coordination point. Concretely: `supplyBundle()` (or the
+factory) runs S0-S2 once, lazily, the first time it needs a Provider from the
+lookup, then proceeds.
+
+Still open: whether to support **multiple `XFTY_DummySObjectProviderLookupIntf`
+instances in play at once** in the same test. Leaning towards "not a supported
+scenario" unless a real need appears.
+
+### 2. Collection without executing Providers — *accepted*
+
+S0 walks the relationship maps and recurses into each resolved Provider's Master
+Template without generating anything - a second, read-only traversal of the
+template graph. Accepted as reasonable; watch the downstream implications as it's
+built.
+
+### 3. Depth batching cost + cycles — *needs load testing*
+
+Computing each record's depth means inspecting its populated lookup fields
+(`getPopulatedFieldsAsMap()` + describe of each field's `referenceTo`). Before
+committing to it:
+
+- **Real load tests against worst-case graphs.** The feature must leave *plenty*
+  of DML headroom - the code under test and the rest of the test's own setup both
+  need DML too. Establish where it breaks and a safe working range.
+- **Document the findings** so consumers know the limits.
+- **Provide off-switches:** disable generation of a specific record, and disable
+  the entire shared-ancestor feature, per run.
+
+Cycles (`John.Account = HQ`, `HQ.PrimaryContact = John`) can't be one `insert`
+either way - detect and either error or break with a follow-up `update`.
+
+### 4. Insert mode — *honour the caller's mode*
+
+A shared ancestor honours the top-level call's insert mode. It is **not** forced
+to `NOW`.
+
+Rationale: shared ancestors are not only about satisfying validation rules on
+insert - they also express **data-integrity / shared-data models**. A test may
+need "these three records all point at the *same* parent" to be true in memory
+(`MOCK`, `NEVER`) without any DML at all. The sharing guarantee is independent of
+persistence.
+
+### 5. Reset between tests — *not needed*
+
+Removed. Salesforce isolates every test method; static state never leaks between
+them. No `clear()` hook. (See "The registry" above.)
+
+### 6. `reusing(existingRecord)` — *needs a clearer proposal*
+
+The idea: let a test hand XFTY a record it created itself and register it as a
+named shared ancestor, so subsequent `XFTY_SharedAncestor.get('root')` references
+resolve to *that* record instead of generating one:
+
+```apex
+MyHierarchyObj__c root = /* the test inserts its own root */;
+XFTY_SharedAncestor.reusing('Root', root);   // from here, get('Root') == this record
+```
+
+Use cases: (a) the record already exists because of `@TestSetup`-free shared
+setup logic the test ran itself; (b) an org-wide singleton (like the `Root` in
+the acceptance scenario) that a prior step in the same test already inserted, so
+regenerating it would violate the constraint. To be fleshed out into a concrete
+API + semantics (what if it's called after the name already resolved?).
 
 ---
 
@@ -247,9 +306,11 @@ XFTY_SharedAncestor.get('Root').of(new MyHierarchyObj__c())
    throws "not wired" if used).
 2. Phase S3 wiring in the factory + a manual
    `XFTY_SharedAncestorRegistry.resolveAll(lookup, insertMode)` a test can call.
-3. Phases S0-S2 automatic from `supplyBundle()`.
-4. Nested ancestors; depth batching; cycle detection.
-5. `reusing(...)`, `clear()`, docs, worked example.
+3. Phases S0-S2 automatic, triggered lazily from the first
+   `XFTY_DummySObjectProviderLookupIntf` fetch (decision 1).
+4. Nested ancestors; depth batching; cycle detection; load tests + documented
+   limits + off-switches (decision 3).
+5. `reusing(...)` (decision 6), docs, worked example (the deep-hierarchy scenario).
 
 ---
 

@@ -72,6 +72,22 @@ strictly `removeFromMasterTemplate`'s job? Probably keep them distinct:
 
 ---
 
+## Mixed-Type Template Lists — idea
+
+`new XFTY_DummySObjectProvider(List<SObject> templates, lookup)` (and
+`setOverrideTemplateList`) currently require every template to be the same
+`SObjectType` (`ConflictException` otherwise). A future version could **chunk a
+mixed-type list by `SObjectType`**, resolve a Provider per chunk, and return a
+Bundle spanning all of them - one call to seed a heterogeneous set of records.
+
+Open questions: what do `supply()` / `supplyList()` return when the result is
+heterogeneous (probably restricted to `supplyBundle()`); how the per-chunk
+variant is chosen; interaction with `withVariant` (which becomes per-chunk).
+Ties into the depth-batched mixed-type insert in
+[design/shared-ancestors.md](design/shared-ancestors.md).
+
+---
+
 ## Relationship Consolidation — implemented
 
 `XFTY_DummyDefaultRelationshipRequired` and `XFTY_DummyDefaultRelationshipOptional`

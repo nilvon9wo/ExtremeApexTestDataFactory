@@ -101,6 +101,18 @@ private class XFTY_DummySObjectProviderTest {
     }
 
     @IsTest
+    static void withVariantRejectsAKeyForAnotherSObjectType() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .withVariant(XFTY_LookupKey.get(Account.SObjectType));
+            Assert.fail('Expected a ConflictException');
+        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
+            Assert.isTrue(ex.getMessage().contains('Account'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('Contact'), ex.getMessage());
+        }
+    }
+
+    @IsTest
     static void withVariantRejectsALateCallAfterPut() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
