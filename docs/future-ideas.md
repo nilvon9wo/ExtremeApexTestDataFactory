@@ -2,27 +2,10 @@
 
 Although XFTY is stable, several ideas have been considered for future versions.
 
-## Implicit Exact Values
+## Implicit Exact Values — implemented
 
-Most fields in a Master Template are populated with fixed values.
-
-Currently these must be wrapped explicitly using `XFTY_DummyDefaultValueExact`.
-
-```apex
-.put(Account.Type, new XFTY_DummyDefaultValueExact("Customer"))
-```
-
-Although this makes the implementation consistent, it also introduces a considerable amount of boilerplate because exact values are a very common case.
-
-A future version may allow arbitrary values to be passed directly to `put(...)`.
-
-```apex
-.put(Account.Type, "Customer")
-```
-
-If the supplied object does not implement either `XFTY_DummyDefaultValueIntf` or `XFTY_DummyDefaultRelationshipIntf`, the framework could automatically wrap it in `XFTY_DummyDefaultValueExact`.
-
-This would preserve the existing extensibility model while making Provider implementations significantly cleaner and more readable.
+`put(...)` now accepts a bare literal and wraps it in `XFTY_DummyDefaultValueExact`
+automatically. See [Customization → Implicit Exact Values](customization.md#implicit-exact-values).
 
 ---
 

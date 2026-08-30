@@ -125,6 +125,24 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    /**
+     * Convenience overload mirroring `XFTY_DummySObjectMasterTemplate.put(SObjectField, Object)`:
+     * a bare literal is wrapped in `XFTY_DummyDefaultValueExact`; strategy and
+     * relationship objects are routed to their typed overloads.
+     */
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, Object value) {
+        if (value instanceof XFTY_DummyDefaultValueIntf) {
+            return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
+        }
+        if (value instanceof XFTY_DummyDefaultRelationshipRequired) {
+            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipRequired) value);
+        }
+        if (value instanceof XFTY_DummyDefaultRelationshipOptional) {
+            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipOptional) value);
+        }
+        return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
+    }
+
     //noinspection ApexUnusedDeclaration
     public XFTY_DummySObjectProvider removeFromMasterTemplate(SObjectField sObjectField){
         this.masterTemplate.remove(sObjectField);

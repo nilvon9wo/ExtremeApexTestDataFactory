@@ -35,10 +35,9 @@ silently switches to `Account` instead of throwing. Only a **mixed-type list**
 (`[new Contact(), new Account()]`) currently throws `ConflictException`.
 Question: should an explicit constructor type always win?
 
-### `XFTY_InsertMocker` is dead code
-Byte-for-byte an earlier version of `XFTY_IdMocker`, referenced nowhere.
-Candidate for deletion (kept for now in case a downstream project imported it
-directly).
+### ~~`XFTY_InsertMocker` is dead code~~ (deleted)
+Was a byte-for-byte earlier version of `XFTY_IdMocker`, referenced nowhere.
+Removed on the `multi-variant-providers` branch.
 
 ### `ALL` inclusivity + a self-referential optional relationship recurses forever
 e.g. an optional `Account.ParentId -> Account`. `PREVENT_CASCADE` is the current

@@ -41,6 +41,36 @@ private class XFTY_DummySObjectMasterTemplateTest {
     }
 
     @IsTest
+    static void putWrapsABareLiteralAsAnExactValue() {
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Type, 'Customer');
+
+        Assert.isTrue(template.defaultBySObjectFieldMap.containsKey(Account.Type));
+        Assert.areEqual('Customer', template.defaultBySObjectFieldMap.get(Account.Type).get());
+    }
+
+    @IsTest
+    static void putDoesNotDoubleWrapAnExistingStrategyPassedAsObject() {
+        XFTY_DummyDefaultValueIntf strategy = new XFTY_DummyDefaultValueIncrementingString('Acct');
+
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, (Object) strategy);
+
+        Assert.areEqual(strategy, template.defaultBySObjectFieldMap.get(Account.Name));
+    }
+
+    @IsTest
+    static void putRoutesARelationshipObjectPassedAsObject() {
+        Object relationship = new XFTY_DummyDefaultRelationshipRequired(new Account());
+
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.AccountId, relationship);
+
+        Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+        Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Contact.AccountId));
+    }
+
+    @IsTest
     static void copyIsIndependentOfTheOriginal() {
         XFTY_DummySObjectMasterTemplate original = new XFTY_DummySObjectMasterTemplate(Account.Id)
                 .put(Account.Name, new XFTY_DummyDefaultValueExact('Original'));

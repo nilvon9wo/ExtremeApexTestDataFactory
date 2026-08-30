@@ -31,6 +31,26 @@ public class XFTY_DummySObjectMasterTemplate {
         return this;
     }
 
+    /**
+     * Convenience overload. Anything that is already a generation strategy or a
+     * relationship template is routed to its typed overload; any other value is
+     * treated as an exact literal and wrapped in `XFTY_DummyDefaultValueExact`,
+     * so Providers can write `.put(Account.Type, 'Customer')` instead of
+     * `.put(Account.Type, new XFTY_DummyDefaultValueExact('Customer'))`.
+     */
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, Object value) {
+        if (value instanceof XFTY_DummyDefaultValueIntf) {
+            return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
+        }
+        if (value instanceof XFTY_DummyDefaultRelationshipRequired) {
+            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipRequired) value);
+        }
+        if (value instanceof XFTY_DummyDefaultRelationshipOptional) {
+            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipOptional) value);
+        }
+        return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
+    }
+
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipRequired relationshipTemplate) {
         this.requiredRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
         return this;

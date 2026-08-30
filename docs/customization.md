@@ -173,6 +173,30 @@ Test Contact 3
 
 ---
 
+# Implicit Exact Values
+
+`put(...)` also accepts a bare value. Anything that is not already a value
+strategy or a relationship template is treated as an exact literal and wrapped in
+`XFTY_DummyDefaultValueExact` automatically.
+
+```apex
+.put(Account.Type, 'Customer')
+.put(Account.NumberOfEmployees, 500)
+```
+
+is equivalent to
+
+```apex
+.put(Account.Type, new XFTY_DummyDefaultValueExact('Customer'))
+.put(Account.NumberOfEmployees, new XFTY_DummyDefaultValueExact(500))
+```
+
+The explicit form still works and is required only when you need a non-default
+strategy. This convenience applies both to Provider Master Templates and to
+`put(...)` on `XFTY_DummySObjectProvider`.
+
+---
+
 # Value Providers
 
 Simple values are generated using implementations of

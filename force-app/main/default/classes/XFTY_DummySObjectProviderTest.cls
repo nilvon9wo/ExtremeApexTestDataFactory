@@ -111,6 +111,19 @@ private class XFTY_DummySObjectProviderTest {
     }
 
     @IsTest
+    static void putAcceptsABareLiteralAndTreatsItAsExact() {
+        Contact result;
+        Test.startTest();
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .put(Contact.FirstName, 'LiteralFirstName')
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        Assert.areEqual('LiteralFirstName', result.FirstName);
+    }
+
+    @IsTest
     static void removeFromMasterTemplateDropsAGeneratedValue() {
         Contact result;
         Test.startTest();
