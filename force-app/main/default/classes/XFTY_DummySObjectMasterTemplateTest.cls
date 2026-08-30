@@ -19,8 +19,8 @@ private class XFTY_DummySObjectMasterTemplateTest {
     static void putRoutesEachStrategyTypeToItsOwnMap() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                 .put(Contact.LastName, new XFTY_DummyDefaultValueExact('Doe'))
-                .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account()))
-                .put(Contact.ReportsToId, new XFTY_DummyDefaultRelationshipOptional(new Contact()));
+                .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
+                .putOptionalRelationship(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
 
         Assert.isTrue(template.defaultBySObjectFieldMap.containsKey(Contact.LastName));
         Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
@@ -28,10 +28,19 @@ private class XFTY_DummySObjectMasterTemplateTest {
     }
 
     @IsTest
+    static void untypedPutTreatsARelationshipAsRequired() {
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+
+        Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+        Assert.isFalse(template.optionalRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+    }
+
+    @IsTest
     static void removeClearsAFieldFromEveryMap() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                 .put(Contact.LastName, new XFTY_DummyDefaultValueExact('Doe'))
-                .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account()));
+                .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
 
         template.remove(Contact.LastName);
         template.remove(Contact.AccountId);
@@ -61,7 +70,7 @@ private class XFTY_DummySObjectMasterTemplateTest {
 
     @IsTest
     static void putRoutesARelationshipObjectPassedAsObject() {
-        Object relationship = new XFTY_DummyDefaultRelationshipRequired(new Account());
+        Object relationship = new XFTY_DummyDefaultRelationship(new Account());
 
         XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                 .put(Contact.AccountId, relationship);

@@ -8,7 +8,7 @@ public class XFTY_DefaultContactDataProvider implements XFTY_DummySobjectProvide
     private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
 
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-            .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account(
+            .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(
                     Description = DEFAULT_ACCOUNT_DESCRIPTION
             )))
             .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))

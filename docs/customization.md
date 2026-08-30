@@ -222,14 +222,15 @@ Additional strategies can easily be created by implementing
 
 # Relationship Providers
 
-Relationships are also configured using `put(...)`.
+Relationships are configured with `putRequiredRelationship(...)` /
+`putOptionalRelationship(...)` and an `XFTY_DummyDefaultRelationship`.
 
 For example:
 
 ```apex
-.put(
+.putRequiredRelationship(
     Contact.AccountId,
-    new XFTY_DummyDefaultRelationshipRequired(new Account(
+    new XFTY_DummyDefaultRelationship(new Account(
             Description = 'Integration Test Account'
     ))
 )
@@ -239,7 +240,7 @@ Whenever a Contact requires an Account, XFTY generates one automatically.
 
 The supplied `Account` acts as an Override Template for the generated Account.
 
-This is why relationship providers receive an `SObject` rather than an `SObjectType`.
+This is why relationships receive an `SObject` rather than an `SObjectType`.
 
 Each generated Account inherits its remaining values from the Account Provider's Master Template.
 
@@ -247,24 +248,27 @@ Each generated Account inherits its remaining values from the Account Provider's
 
 # Required vs Optional Relationships
 
-Two relationship strategies are available.
+The same `XFTY_DummyDefaultRelationship` is *required* or *optional* depending on
+the slot it occupies.
 
 ## Required
 
 ```apex
-new XFTY_DummyDefaultRelationshipRequired(...)
+.putRequiredRelationship(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 The relationship is generated whenever relationship generation includes required relationships.
 
 Use this only for relationships that are genuinely required for valid test data.
 
+(A relationship passed to the untyped `put(field, ...)` is treated as required.)
+
 ---
 
 ## Optional
 
 ```apex
-new XFTY_DummyDefaultRelationshipOptional(...)
+.putOptionalRelationship(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 Optional relationships are generated only when the Provider is configured with:
@@ -367,7 +371,7 @@ The methods describe above can be combined.
 ```apex
 XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER)
         .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Test'))
-        .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(
+        .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(
                 new Account(Description = 'Integration Test Account')
         ))
         .setQuantityPerTemplate(2)

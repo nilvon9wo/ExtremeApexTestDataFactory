@@ -19,14 +19,13 @@ This guide explains:
 
 # Relationship Providers
 
-A relationship is defined using one of XFTY's relationship providers.
-
-For example:
+A relationship is defined with `XFTY_DummyDefaultRelationship` and placed in
+either the *required* or the *optional* slot of the Master Template.
 
 ```apex
-.put(
+.putRequiredRelationship(
     Contact.AccountId,
-    new XFTY_DummyDefaultRelationshipRequired(
+    new XFTY_DummyDefaultRelationship(
         new Account(
             Description = 'Integration Test Account'
         )
@@ -35,6 +34,12 @@ For example:
 ```
 
 Whenever a Contact requires an Account, XFTY automatically creates one.
+
+> Earlier versions used two classes, `XFTY_DummyDefaultRelationshipRequired` and
+> `XFTY_DummyDefaultRelationshipOptional`. These were merged into
+> `XFTY_DummyDefaultRelationship`; requiredness is now decided by the slot
+> (`putRequiredRelationship` vs `putOptionalRelationship`), which lets one
+> implementation serve both roles.
 
 The supplied `Account` acts as an Override Template for the generated Account.
 
@@ -49,7 +54,7 @@ At first glance it may seem unusual that relationship providers receive an
 `SObject` rather than an `SObjectType`.
 
 ```apex
-new XFTY_DummyDefaultRelationshipRequired(
+new XFTY_DummyDefaultRelationship(
     new Account(...)
 )
 ```
@@ -68,6 +73,25 @@ relationship.
 This allows tests and Providers to customize related records while still
 benefiting from the defaults defined by the related Provider.
 
+## Choosing a Provider variant
+
+The related record's `SObjectType` normally identifies which Provider generates
+it. When a type has several Provider variants (see
+[Providers → Record Types](providers.md#record-types)), pin one with a lookup
+key:
+
+```apex
+new XFTY_DummyDefaultRelationship(
+    XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'),
+    new Account()
+)
+```
+
+Without an explicit key, the Provider Lookup derives one from the override
+template - matching a registered record-type key against the template's
+`RecordTypeId`, and otherwise falling back to the plain type. The derived key is
+computed once and reused.
+
 ---
 
 # Required Relationships
@@ -79,9 +103,9 @@ For example, if every Contact must belong to an Account, the relationship
 should be marked as required.
 
 ```apex
-.put(
+.putRequiredRelationship(
     Contact.AccountId,
-    new XFTY_DummyDefaultRelationshipRequired(
+    new XFTY_DummyDefaultRelationship(
         new Account()
     )
 )
@@ -98,9 +122,9 @@ Optional relationships provide richer test data without making those
 relationships mandatory.
 
 ```apex
-.put(
+.putOptionalRelationship(
     Contact.OwnerId,
-    new XFTY_DummyDefaultRelationshipOptional(
+    new XFTY_DummyDefaultRelationship(
         new User()
     )
 )

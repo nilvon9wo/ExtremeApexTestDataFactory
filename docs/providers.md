@@ -82,7 +82,7 @@ public class DefaultContactDataProvider implements XFTY_DummySobjectProviderIntf
     private static final SObjectField PRIMARY_TARGET_FIELD = Contact.Id;
     
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-            .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account(
+            .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(
                     Description = DEFAULT_ACCOUNT_DESCRIPTION
             )))
             .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
@@ -146,7 +146,7 @@ For example:
 new XFTY_DummySObjectMasterTemplate(Contact.Id)
     .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString( 'Contact'))
     .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail('test.contact'))
-    .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account()));
+    .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
 ```
 
 Think of a Master Template as the canonical definition of a valid object.
@@ -220,16 +220,16 @@ Relationships deserve special consideration.
 
 Ask for every relationship: Can this object reasonably exist without the related record?
 
-If the answer is **no**, use
+If the answer is **no**, put it in the required slot:
 
 ```apex
-XFTY_DummyDefaultRelationshipRequired
+.putRequiredRelationship(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
-If the answer is **yes**, use
+If the answer is **yes**, put it in the optional slot:
 
 ```apex
-XFTY_DummyDefaultRelationshipOptional
+.putOptionalRelationship(field, new XFTY_DummyDefaultRelationship(...))
 ```
 
 This distinction has a significant impact on test performance.
@@ -238,29 +238,31 @@ This distinction has a significant impact on test performance.
 
 # Provider Lookups
 
-Providers are discovered through an implementation of
+Providers are discovered through an `XFTY_DummySObjectProviderLookupIntf`. The
+easiest way to build one is to configure an `XFTY_SObjectProviderLookup`:
 
 ```apex
-XFTY_DummySObjectProviderLookupIntf
+XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_SObjectProviderLookup()
+        .register(XFTY_LookupKey.get(Account.SObjectType), AccountDataProvider.class)
+        .register(XFTY_LookupKey.get(Contact.SObjectType), ContactDataProvider.class)
+        .register(XFTY_LookupKey.get(Opportunity.SObjectType), OpportunityDataProvider.class);
 ```
 
-A typical implementation simply maps each supported `SObjectType` to its Provider.
+Each registered Provider needs a public no-arg constructor (it is instantiated
+lazily via `Type.newInstance()`); use the `register(key, providerInstance)`
+overload for Providers that need constructor arguments.
 
-```text
-Account
-    ▼
-Account Provider
+Wrap one in a named class if you prefer `new MyProjectLookup()` at call sites -
+see `XFTY_DefaultSObjectProviderLookup`. (`@IsTest` classes cannot be abstract,
+so there is no base class to extend - compose an `XFTY_SObjectProviderLookup`
+instead.)
 
-Contact
-    ▼
-Contact Provider
+Separating lookup from generation lets different projects provide different
+implementations without modifying XFTY itself.
 
-Opportunity
-    ▼
-Opportunity Provider
-```
-
-Separating lookup from generation allows different projects to provide different implementations without modifying XFTY itself.
+The interface has three methods: `get(SObjectType)`, `get(XFTY_LookupKeyIntf)`,
+and `keyFor(SObject)` (used to derive a variant key from a relationship's
+override template). `XFTY_SObjectProviderLookup` implements all three.
 
 ---
 
@@ -278,52 +280,42 @@ This allows XFTY to be shared across packages without introducing unwanted compi
 
 ---
 
-# Record Types
+# Record Types and Variants
 
-XFTY currently keys Providers exclusively by `SObjectType`.
+A single `SObjectType` can have several Providers, chosen by a **lookup key**.
+The key is one of:
 
-This means a single Provider is responsible for all Record Types belonging to a particular object.
+| Key | Selects by |
+|-----|-----------|
+| `XFTY_LookupKey.get(type)` | `SObjectType` only (the default) |
+| `XFTY_RecordTypeLookupKey.get(type, developerName)` | `SObjectType` + record type |
+| `XFTY_FlavorLookupKey.get(type, flavor)` | `SObjectType` + an arbitrary developer-chosen string |
+| your own `XFTY_LookupKeyIntf` | anything |
 
-For many objects this is sufficient.
+Keys are flyweights - always obtain them with `.get(...)`, never `new`.
 
-However, some objects have Record Types that differ so significantly that they effectively behave like different entities.
-
-A common example is Business Accounts versus Person Accounts.
-
-In these situations, Providers typically select the appropriate Master Template themselves based on information contained in the supplied Override Template.
-
-For example:
+Register a Provider per variant:
 
 ```apex
-	public XFTY_DummySObjectBundle createBundle(
-			XFTY_DummySObjectProviderLookupIntf providerLookup,
-			List<SObject> templateSObjectList,
-			XFTY_InsertModeEnum insertMode,
-			XFTY_InsertInclusivityEnum inclusivity
-	) {
-
-		// This is a bit hacky, but it allows us to control which template to use when creating a bundle.
-		// We can use a different SObject field to control this, but the same master needs to be used for each
-		// record at the top level of the bundle.
-		// (Control at a deeper level has not been investigated, but it may be necessary to use a differed XFTY_DummySObjectFactoryOutletLookupIntf.)
-		Id requiredRecordTypeId = (Id) templateSObjectList[0].get(Account.RecordTypeId);
-		XFTY_DummySObjectMasterTemplate masterTemplate = (requiredRecordTypeId == PERSON_RECORD_TYPE_ID)
-                      ? PERSON_TEMPLATE 
-                      : MASTER_TEMPLATE;
-
-		if (masterTemplate == null) {
-			throw new XFTY_DummySObjectFtyProviderException('Unsupported Account Record Type: ');
-		}
-
-		return XFTY_DummySObjectFactory.createBundle(providerLookup, masterTemplate, templateSObjectList, insertMode, inclusivity);
-	}
+XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_SObjectProviderLookup()
+        .register(XFTY_LookupKey.get(Account.SObjectType), BusinessAccountProvider.class)
+        .register(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), PersonAccountProvider.class);
 ```
 
-The Provider can then select an appropriate Master Template before delegating to the factory.
+Resolution:
 
-This approach works, although it does require Provider-specific logic and means that every record generated at the top level of a single Bundle shares the same Master Template.
+- `lookup.get(someKey)` - explicit.
+- A relationship with an explicit key -
+  `new XFTY_DummyDefaultRelationship(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), new Account())`.
+- A relationship with only an override template - the lookup's `keyFor(sObj)`
+  matches the template's `RecordTypeId` against registered record-type keys,
+  falling back to the plain type key. The `XFTY_RecordTypeLookupKey` resolves the
+  record type Id from its developer name through the describe (no SOQL, nothing
+  hard-coded).
 
-Future versions of XFTY may support richer lookup keys (for example `SObjectType + RecordType + Flavor`), but the additional complexity has so far outweighed the practical benefits.
+Each top-level Provider still owns one Master Template, so a single generation
+call produces one variant at a time. Provider-specific `createBundle` logic
+(inspecting the override template) is no longer needed for record types.
 
 
 ---

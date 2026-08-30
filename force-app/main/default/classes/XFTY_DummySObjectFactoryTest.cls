@@ -171,16 +171,38 @@ private class XFTY_DummySObjectFactoryTest {
     // ---------------------------------------------------------------------------
 
     private class CustomLookup implements XFTY_DummySObjectProviderLookupIntf {
-        private final Map<SObjectType, XFTY_DummySobjectProviderIntf> byType =
-                new Map<SObjectType, XFTY_DummySobjectProviderIntf>();
+        private final Map<String, XFTY_DummySobjectProviderIntf> byKeyHash =
+                new Map<String, XFTY_DummySobjectProviderIntf>();
+        private final List<XFTY_LookupKeyIntf> keys = new List<XFTY_LookupKeyIntf>();
 
-        private CustomLookup register(SObjectType type, XFTY_DummySobjectProviderIntf provider) {
-            this.byType.put(type, provider);
+        private CustomLookup register(XFTY_LookupKeyIntf key, XFTY_DummySobjectProviderIntf provider) {
+            this.byKeyHash.put(key.getHashKey(), provider);
+            this.keys.add(key);
             return this;
         }
 
+        private CustomLookup register(SObjectType type, XFTY_DummySobjectProviderIntf provider) {
+            return this.register(XFTY_LookupKey.get(type), provider);
+        }
+
         public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
-            return this.byType.get(sObjectType);
+            return this.get((XFTY_LookupKeyIntf) XFTY_LookupKey.get(sObjectType));
+        }
+
+        public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
+            return this.byKeyHash.get(lookupKey.getHashKey());
+        }
+
+        public XFTY_LookupKeyIntf keyFor(SObject sObj) {
+            XFTY_LookupKeyIntf defaultKey = XFTY_LookupKey.get(sObj.getSObjectType());
+            for (XFTY_LookupKeyIntf key : this.keys) {
+                if (key.getHashKey() != defaultKey.getHashKey()
+                        && key.getSObjectType() == sObj.getSObjectType()
+                        && key.isInstanceOf(sObj)) {
+                    return key;
+                }
+            }
+            return defaultKey;
         }
     }
 
@@ -218,7 +240,7 @@ private class XFTY_DummySObjectFactoryTest {
         private OptionalParentContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Optional Parent Contact'))
-                    .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipOptional(new Account()));
+                    .putOptionalRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
 
@@ -226,7 +248,7 @@ private class XFTY_DummySObjectFactoryTest {
         private DeepAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
                     .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Deep Account'))
-                    .put(Account.OwnerId, new XFTY_DummyDefaultRelationshipRequired(new User()));
+                    .putRequiredRelationship(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
     }
 
@@ -234,7 +256,7 @@ private class XFTY_DummySObjectFactoryTest {
         private DeepContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Deep Contact'))
-                    .put(Contact.AccountId, new XFTY_DummyDefaultRelationshipRequired(new Account()));
+                    .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
 }

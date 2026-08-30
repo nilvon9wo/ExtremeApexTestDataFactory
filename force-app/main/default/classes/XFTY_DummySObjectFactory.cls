@@ -83,8 +83,7 @@ public class XFTY_DummySObjectFactory {
     ) {
         for (SObjectField sObjectField : relationshipsBySObjectField.keySet()) {
             XFTY_DummyDefaultRelationshipIntf relationshipTemplate = relationshipsBySObjectField.get(sObjectField);
-            SObject sObjectTemplate = relationshipTemplate.getOverrideTemplate();
-            createRelatedRecords(bundle, quantity, sObjectField, sObjectProviderLookup, sObjectTemplate, insertMode, inclusivity);
+            createRelatedRecords(bundle, quantity, sObjectField, sObjectProviderLookup, relationshipTemplate, insertMode, inclusivity);
         }
         return bundle;
     }
@@ -94,12 +93,13 @@ public class XFTY_DummySObjectFactory {
             Integer quantity,
             SObjectField sObjectField,
             XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup,
-            SObject sObjectTemplate,
+            XFTY_DummyDefaultRelationshipIntf relationshipTemplate,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
+        SObject sObjectTemplate = relationshipTemplate.getOverrideTemplate();
         XFTY_DummySobjectProviderIntf factoryOutlet
-                = sObjectProviderLookup.get(sObjectTemplate.getSObjectType());
+                = sObjectProviderLookup.get(relationshipTemplate.resolveLookupKey(sObjectProviderLookup));
 
         XFTY_DummySObjectBundle innerBundle = factoryOutlet.createBundle(
                 sObjectProviderLookup,

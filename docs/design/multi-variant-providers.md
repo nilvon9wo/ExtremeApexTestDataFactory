@@ -1,7 +1,26 @@
 # Design: Multi-Variant Providers
 
-Status: **proposal** — infrastructure not yet built. `XFTY_InsertMocker` removal
-and implicit exact values are already on this branch; this is the large piece.
+Status: **implemented** on the `multi-variant-providers` branch. The rest of this
+document is the design record; where the implementation deviated:
+
+- **No inheritance.** `@IsTest` classes cannot be abstract or virtual, so
+  `XFTY_AbstractSObjectProviderLookup` became a concrete, *composed*
+  `XFTY_SObjectProviderLookup` (configure it, don't extend it), and
+  `XFTY_RecordTypeLookupKey` / `XFTY_FlavorLookupKey` wrap an `XFTY_LookupKey`
+  instead of subclassing it.
+- **Keys are flyweights.** Obtain them with `XFTY_LookupKey.get(...)` etc.;
+  constructors are private and instances are interned.
+- **Deferred + memoised key resolution**, as proposed:
+  `XFTY_DummyDefaultRelationshipIntf.resolveLookupKey(lookup)`.
+- **`Required` + `Optional` merged** into `XFTY_DummyDefaultRelationship`;
+  requiredness moved to the Master Template slot
+  (`putRequiredRelationship` / `putOptionalRelationship`; untyped `put` ⇒ required).
+- **`XFTY_FlavorLookupKey`** shipped alongside `XFTY_RecordTypeLookupKey`.
+- `XFTY_SObjectProviderLookup.register` has a `(key, providerInstance)` overload
+  for Providers that need constructor arguments (and for tests).
+- `XFTY_DefaultAccountDataProvider` was **not** rewritten as a Person/Business
+  example (scratch orgs lack Person Accounts); `XFTY_MultiVariantProviderTest`
+  is the worked example instead.
 
 ---
 

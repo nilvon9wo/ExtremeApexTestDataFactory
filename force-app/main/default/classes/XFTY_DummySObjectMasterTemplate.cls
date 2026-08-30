@@ -2,14 +2,14 @@
 public class XFTY_DummySObjectMasterTemplate {
     public SObjectField primaryTargetField { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultValueIntf> defaultBySObjectFieldMap { get; private set; }
-    public Map<SObjectField, XFTY_DummyDefaultRelationshipRequired> requiredRelationshipBySObjectFieldMap { get; private set; }
-    public Map<SObjectField, XFTY_DummyDefaultRelationshipOptional> optionalRelationshipBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap { get; private set; }
 
     public XFTY_DummySObjectMasterTemplate(
             SObjectField primaryTargetField,
             Map<SObjectField, XFTY_DummyDefaultValueIntf> defaultBySObjectFieldMap,
-            Map<SObjectField, XFTY_DummyDefaultRelationshipRequired> requiredRelationshipBySObjectFieldMap,
-            Map<SObjectField, XFTY_DummyDefaultRelationshipOptional> optionalRelationshipBySObjectFieldMap
+            Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap,
+            Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap
     ) {
         this.primaryTargetField = primaryTargetField;
         this.defaultBySObjectFieldMap = defaultBySObjectFieldMap;
@@ -21,8 +21,8 @@ public class XFTY_DummySObjectMasterTemplate {
         this(
                 primaryFieldTarget,
                 new Map<SObjectField, XFTY_DummyDefaultValueIntf>(),
-                new Map<SObjectField, XFTY_DummyDefaultRelationshipRequired>(),
-                new Map<SObjectField, XFTY_DummyDefaultRelationshipOptional>()
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(),
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>()
         );
     }
 
@@ -32,33 +32,38 @@ public class XFTY_DummySObjectMasterTemplate {
     }
 
     /**
+     * A relationship passed to the untyped `put` is treated as *required*. Use
+     * `putOptionalRelationship(...)` for optional relationships.
+     */
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+        return this.putRequiredRelationship(sObjectField, relationshipTemplate);
+    }
+
+    public XFTY_DummySObjectMasterTemplate putRequiredRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+        this.requiredRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
+        return this;
+    }
+
+    public XFTY_DummySObjectMasterTemplate putOptionalRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+        this.optionalRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
+        return this;
+    }
+
+    /**
      * Convenience overload. Anything that is already a generation strategy or a
-     * relationship template is routed to its typed overload; any other value is
-     * treated as an exact literal and wrapped in `XFTY_DummyDefaultValueExact`,
-     * so Providers can write `.put(Account.Type, 'Customer')` instead of
-     * `.put(Account.Type, new XFTY_DummyDefaultValueExact('Customer'))`.
+     * relationship template is routed to its typed overload (a relationship is
+     * treated as required); any other value is treated as an exact literal and
+     * wrapped in `XFTY_DummyDefaultValueExact`, so Providers can write
+     * `.put(Account.Type, 'Customer')`.
      */
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, Object value) {
         if (value instanceof XFTY_DummyDefaultValueIntf) {
             return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
         }
-        if (value instanceof XFTY_DummyDefaultRelationshipRequired) {
-            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipRequired) value);
-        }
-        if (value instanceof XFTY_DummyDefaultRelationshipOptional) {
-            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipOptional) value);
+        if (value instanceof XFTY_DummyDefaultRelationshipIntf) {
+            return this.putRequiredRelationship(sObjectField, (XFTY_DummyDefaultRelationshipIntf) value);
         }
         return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
-    }
-
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipRequired relationshipTemplate) {
-        this.requiredRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
-        return this;
-    }
-
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipOptional relationshipTemplate) {
-        this.optionalRelationshipBySObjectFieldMap.put(sObjectField, relationshipTemplate);
-        return this;
     }
 
     /**
@@ -77,8 +82,8 @@ public class XFTY_DummySObjectMasterTemplate {
         return new XFTY_DummySObjectMasterTemplate(
                 this.primaryTargetField,
                 new Map<SObjectField, XFTY_DummyDefaultValueIntf>(this.defaultBySObjectFieldMap),
-                new Map<SObjectField, XFTY_DummyDefaultRelationshipRequired>(this.requiredRelationshipBySObjectFieldMap),
-                new Map<SObjectField, XFTY_DummyDefaultRelationshipOptional>(this.optionalRelationshipBySObjectFieldMap)
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.requiredRelationshipBySObjectFieldMap),
+                new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.optionalRelationshipBySObjectFieldMap)
         );
     }
 

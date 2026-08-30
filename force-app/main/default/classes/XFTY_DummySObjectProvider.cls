@@ -111,34 +111,37 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipRequired relationshipTemplate) {
+    /** A relationship passed to the untyped `put` is treated as required. */
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
+        return this.putRequiredRelationship(sObjectField, relationshipTemplate);
+    }
+
+    public XFTY_DummySObjectProvider putRequiredRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.masterTemplate.remove(sObjectField);
-        this.masterTemplate.put(sObjectField, relationshipTemplate);
+        this.masterTemplate.putRequiredRelationship(sObjectField, relationshipTemplate);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultRelationshipOptional relationshipTemplate) {
+    public XFTY_DummySObjectProvider putOptionalRelationship(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.masterTemplate.remove(sObjectField);
-        this.masterTemplate.put(sObjectField, relationshipTemplate);
+        this.masterTemplate.putOptionalRelationship(sObjectField, relationshipTemplate);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
     /**
      * Convenience overload mirroring `XFTY_DummySObjectMasterTemplate.put(SObjectField, Object)`:
-     * a bare literal is wrapped in `XFTY_DummyDefaultValueExact`; strategy and
-     * relationship objects are routed to their typed overloads.
+     * a bare literal is wrapped in `XFTY_DummyDefaultValueExact`; strategy objects
+     * and relationship templates (treated as required) are routed to their typed
+     * overloads.
      */
     public XFTY_DummySObjectProvider put(SObjectField sObjectField, Object value) {
         if (value instanceof XFTY_DummyDefaultValueIntf) {
             return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
         }
-        if (value instanceof XFTY_DummyDefaultRelationshipRequired) {
-            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipRequired) value);
-        }
-        if (value instanceof XFTY_DummyDefaultRelationshipOptional) {
-            return this.put(sObjectField, (XFTY_DummyDefaultRelationshipOptional) value);
+        if (value instanceof XFTY_DummyDefaultRelationshipIntf) {
+            return this.putRequiredRelationship(sObjectField, (XFTY_DummyDefaultRelationshipIntf) value);
         }
         return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
     }

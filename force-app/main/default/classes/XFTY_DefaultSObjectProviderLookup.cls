@@ -1,30 +1,26 @@
+/**
+ * The Provider Lookup for XFTY's bundled Providers (Account, Contact, User).
+ *
+ * Projects typically build their own with {@link XFTY_SObjectProviderLookup},
+ * registering the Providers that compile in that package, rather than adding to
+ * this one.
+ */
 @IsTest
 public class XFTY_DefaultSObjectProviderLookup implements XFTY_DummySObjectProviderLookupIntf {
-	private static final Map<SObjectType, Type> OUTLET_TYPE_BY_SOBJECT_TYPE
-			= new Map<SObjectType, Type>{
-					Account.SObjectType => XFTY_DefaultAccountDataProvider.class,
-					Contact.SObjectType => XFTY_DefaultContactDataProvider.class,
-					User.SObjectType => XFTY_DefaultUserDataProvider.class
-			};
+    private final XFTY_SObjectProviderLookup registry = new XFTY_SObjectProviderLookup()
+            .register(XFTY_LookupKey.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class)
+            .register(XFTY_LookupKey.get(Contact.SObjectType), XFTY_DefaultContactDataProvider.class)
+            .register(XFTY_LookupKey.get(User.SObjectType), XFTY_DefaultUserDataProvider.class);
 
-	private static final Map<SObjectType, XFTY_DummySobjectProviderIntf> OUTLET_INSTANCE_BY_SOBJECT_TYPE
-			= new Map<SObjectType, XFTY_DummySobjectProviderIntf>();
+    public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
+        return this.registry.get(sObjectType);
+    }
 
-	public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
-		if (!OUTLET_INSTANCE_BY_SOBJECT_TYPE.containsKey(sObjectType)) {
-			if (!(OUTLET_TYPE_BY_SOBJECT_TYPE.containsKey(sObjectType))) {
-				throw new LookupException('No data provider found for : ' + sObjectType);
-			}
-			OUTLET_INSTANCE_BY_SOBJECT_TYPE.put(
-					sObjectType,
-					(XFTY_DummySobjectProviderIntf) (OUTLET_TYPE_BY_SOBJECT_TYPE.get(sObjectType)).newInstance()
-			);
-		}
-		return OUTLET_INSTANCE_BY_SOBJECT_TYPE.get(sObjectType);
-	}
+    public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
+        return this.registry.get(lookupKey);
+    }
 
-	// --------------------------------------------------------------------------
-
-	public class LookupException extends XFTY_DummySObjectFtyProviderException {
-	}
+    public XFTY_LookupKeyIntf keyFor(SObject sObj) {
+        return this.registry.keyFor(sObj);
+    }
 }

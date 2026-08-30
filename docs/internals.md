@@ -59,12 +59,14 @@ Each component has a single responsibility.
 |-----------|----------------|
 | `XFTY_DummySObjectProvider` | Public fluent API used by tests. |
 | `XFTY_DummySObjectProviderLookupIntf` | Resolves which Provider should generate a particular `SObject`. |
+| `XFTY_SObjectProviderLookup` | Configurable implementation of that interface. |
+| `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavor). |
 | `XFTY_DummySobjectProviderIntf` | Describes how one `SObject` type should be generated. |
 | `XFTY_DummySObjectMasterTemplate` | Declarative description of default values and relationships. |
 | `XFTY_DummySObjectFactory` | Engine that constructs the object graph. |
 | `XFTY_DummySObjectBundle` | Represents the generated graph. |
 | `XFTY_DummyDefaultValueIntf` | Strategy interface for generating field values. |
-| `XFTY_DummyDefaultRelationship...` | Strategy for generating related records. |
+| `XFTY_DummyDefaultRelationship` | Strategy for generating related records. |
 | `XFTY_IdMocker` | Generates realistic Salesforce Ids without DML. |
 
 Keeping these responsibilities separate makes each component relatively small and easy to reason about.
@@ -92,8 +94,8 @@ Providers instead declare *what* should exist.
 new XFTY_DummySObjectMasterTemplate(Account.Id)
     .put(Account.Name,
          new XFTY_DummyDefaultValueIncrementingString("Account"))
-    .put(Account.OwnerId,
-         new XFTY_DummyDefaultRelationshipRequired(
+    .putRequiredRelationship(Account.OwnerId,
+         new XFTY_DummyDefaultRelationship(
              new User()
          ));
 ```
@@ -341,17 +343,24 @@ Although this is usually `Id`, using a configurable field makes the framework mo
 
 ---
 
-# Record Types
+# Record Types and Variants
 
-Record Types are one area where XFTY intentionally remains simple.
+Provider Lookup keys a Provider by an `XFTY_LookupKeyIntf`, not a bare
+`SObjectType`. The default key (`XFTY_LookupKey`) *is* just the type, so the
+common case is unchanged; refined keys (`XFTY_RecordTypeLookupKey`,
+`XFTY_FlavorLookupKey`, or a custom one) add a discriminator.
 
-Provider Lookup currently maps a single Provider to each `SObjectType`.
+Keys are value-compared by `getHashKey()` and are flyweights, so the lookup
+stores providers in a `Map<String, ...>` and never worries about instance
+identity. When a relationship supplies only an override template, the lookup
+derives a key from it (`keyFor`), matching registered record-type keys against
+the template's `RecordTypeId`; the result is memoised on the relationship.
 
-As a result, supporting multiple Record Types for the same object currently requires custom Provider logic.
-
-A common approach is for the Provider to inspect the override template and choose the appropriate Master Template internally.
-
-Although somewhat manual, this keeps the framework itself relatively simple.
+`@IsTest` classes cannot be abstract or virtual, which ruled out an abstract
+lookup base and a subclassable key hierarchy - hence the composition-based design
+(`XFTY_SObjectProviderLookup` is configured, not extended; refined keys wrap an
+`XFTY_LookupKey` rather than subclass it). See
+[docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
 
 ---
 

@@ -9,19 +9,13 @@ automatically. See [Customization → Implicit Exact Values](customization.md#im
 
 ---
 
-## Multi-Variant Providers
+## Multi-Variant Providers — implemented
 
-Instead of resolving Providers using only `SObjectType`, a future implementation may support keys such as:
-
-```text
-SObjectType
-+ Record Type
-+ Flavor
-```
-
-where *Flavor* is an arbitrary identifier chosen by the developer.
-
-This would allow multiple default configurations for the same object without custom Provider logic.
+Providers are now keyed by `XFTY_LookupKeyIntf` (`SObjectType`, optionally +
+record type via `XFTY_RecordTypeLookupKey` or + flavor via
+`XFTY_FlavorLookupKey`). See
+[Providers → Record Types and Variants](providers.md#record-types-and-variants)
+and [docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
 
 ---
 
@@ -30,6 +24,12 @@ This would allow multiple default configurations for the same object without cus
 Currently, each generated child receives its own generated parent.
 
 Although tests can re-parent records afterwards, some scenarios—particularly hierarchical data—would benefit from declaratively generating shared parents.
+
+Now that `XFTY_DummyDefaultRelationship` is a single type behind
+`XFTY_DummyDefaultRelationshipIntf`, a shared-ancestor implementation
+(e.g. `XFTY_SharedAncestorRelationship`) can slot into the required *or* optional
+relationship map and generate the parent once per bundle, caching it by lookup
+key. A concrete proposal for this is a good next step.
 
 ---
 
@@ -46,11 +46,13 @@ Future versions may allow finer-grained control over which optional relationship
 
 ---
 
-## Relationship Consolidation
+## Relationship Consolidation — implemented
 
-`XFTY_DummyDefaultRelationshipRequired` and `XFTY_DummyDefaultRelationshipOptional` currently exist as separate types.
-
-Although this provides clean polymorphism, a future implementation may instead represent requiredness as metadata within a single relationship class, simplifying the API while enabling more sophisticated inclusion policies.
+`XFTY_DummyDefaultRelationshipRequired` and `XFTY_DummyDefaultRelationshipOptional`
+were merged into `XFTY_DummyDefaultRelationship`. Requiredness is decided by the
+Master Template slot (`putRequiredRelationship` / `putOptionalRelationship`), so a
+single implementation - including a future shared-ancestor implementation - can
+serve either role.
 
 ---
 
@@ -86,9 +88,9 @@ Relationship override templates already allow customization of generated parent 
 For example:
 
 ```apex
-.put(
+.putRequiredRelationship(
     Foo__c.Account__c,
-    new XFTY_DummyDefaultRelationshipRequired(
+    new XFTY_DummyDefaultRelationship(
         new Account(Bar__c = someId)
     )
 )

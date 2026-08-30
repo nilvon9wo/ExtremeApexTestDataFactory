@@ -1,6 +1,6 @@
 /**
- * Coverage for `XFTY_DefaultSObjectProviderLookup`, the built-in registry that
- * maps the standard supported SObject types to their Providers.
+ * Coverage for `XFTY_DefaultSObjectProviderLookup` and the resolution /
+ * registration behaviour it inherits from `XFTY_AbstractSObjectProviderLookup`.
  */
 @IsTest
 private class XFTY_DefaultSObjectProviderLookupTest {
@@ -15,6 +15,16 @@ private class XFTY_DefaultSObjectProviderLookupTest {
     }
 
     @IsTest
+    static void getBySObjectTypeAndGetByPlainKeyAreEquivalent() {
+        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
+
+        Assert.areEqual(
+                lookup.get(Account.SObjectType),
+                lookup.get(XFTY_LookupKey.get(Account.SObjectType))
+        );
+    }
+
+    @IsTest
     static void cachesProviderInstancesBetweenCalls() {
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
@@ -26,14 +36,23 @@ private class XFTY_DefaultSObjectProviderLookupTest {
     }
 
     @IsTest
+    static void keyForFallsBackToThePlainKeyWhenNothingRefinedMatches() {
+        XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
+
+        XFTY_LookupKeyIntf key = lookup.keyFor(new Account());
+
+        Assert.areEqual(XFTY_LookupKey.get(Account.SObjectType).getHashKey(), key.getHashKey());
+    }
+
+    @IsTest
     static void throwsAFriendlyExceptionForAnUnregisteredType() {
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
         try {
             lookup.get(Case.SObjectType);
             Assert.fail('Expected a LookupException');
-        } catch (XFTY_DefaultSObjectProviderLookup.LookupException ex) {
-            Assert.isTrue(ex.getMessage().contains('No data provider found for'), ex.getMessage());
+        } catch (XFTY_SObjectProviderLookup.LookupException ex) {
+            Assert.isTrue(ex.getMessage().contains('No data provider registered'), ex.getMessage());
         }
     }
 }
