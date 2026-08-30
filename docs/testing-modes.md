@@ -58,7 +58,7 @@ Insert Modes determine what happens **after** records have been generated.
 | `RELATED_ONLY` | Insert only generated related records. |
 | `NOW` | Insert all generated records. |
 | `LATER` | Behaves like `NEVER` while documenting that insertion will occur later. |
-| `DEFERRED` | Generate like `NEVER`, but register every record so `XFTY_DeferredInsert.flush()` can insert the whole set - across many `supplyBundle()` calls - in one depth-batched pass. |
+| `DEFERRED` | Generate like `NEVER`, but register every record so `XFTY_DeferredInserter.flush()` can insert the whole set - across many `supplyBundle()` calls - in one depth-batched pass. |
 
 The generated data itself is identical regardless of Insert Mode.
 
@@ -175,11 +175,11 @@ XFTY_DummySObjectBundle contacts = new XFTY_DummySObjectProvider(Contact.SObject
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
         .supplyBundle();
 
-XFTY_DeferredInsert.flush();   // every graph from every DEFERRED call, inserted now
+XFTY_DeferredInserter.flush();   // every graph from every DEFERRED call, inserted now
 ```
 
 `DEFERRED` generates exactly like `NEVER` - no Ids, no DML - but registers every
-record. `XFTY_DeferredInsert.flush()` then inserts everything registered so far,
+record. `XFTY_DeferredInserter.flush()` then inserts everything registered so far,
 **depth-batched** (one `insert` per dependency depth, across all the graphs), and
 because the records handed back are the same instances, their `Id` fields are now
 populated.
@@ -201,12 +201,12 @@ call first, then generate the later one:
 
 ```apex
 XFTY_DummySObjectBundle parents = parentProvider.setInsertMode(DEFERRED).supplyBundle();
-XFTY_DeferredInsert.flush();                                    // parents now have Ids
+XFTY_DeferredInserter.flush();                                    // parents now have Ids
 
 Id parentId = parents.getList(Account.Id)[0].Id;
 childProvider.setOverrideTemplate(new Contact(AccountId = parentId))
         .setInsertMode(DEFERRED).supplyBundle();
-XFTY_DeferredInsert.flush();
+XFTY_DeferredInserter.flush();
 ```
 
 Within a single `flush()` group, XFTY only wires lookups it generated itself -

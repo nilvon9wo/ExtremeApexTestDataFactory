@@ -1,5 +1,5 @@
 /**
- * The `DEFERRED` insert mode and its registry, `XFTY_DeferredInsert`.
+ * The `DEFERRED` insert mode and its registry, `XFTY_DeferredInserter`.
  *
  * `DEFERRED` generates like `NEVER` and registers every record; `flush()` saves
  * the whole accumulated set - from every `supplyBundle()` call - in one
@@ -8,7 +8,7 @@
  * Real DML, so `XFTY_Integration`.
  */
 @IsTest
-private class XFTY_DeferredInsertTest {
+private class XFTY_DeferredInserterTest {
 
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
@@ -58,18 +58,18 @@ private class XFTY_DeferredInsertTest {
             dml = flushCountingDml();
         }
         Assert.areEqual(0, dml);
-        Assert.areEqual(0, XFTY_DeferredInsert.pendingCount());
+        Assert.areEqual(0, XFTY_DeferredInserter.pendingCount());
     }
 
     @IsTest
     static void flushClearsTheRegistry() {
         System.runAs(TEST_ADMIN) {
             deferredContactWithAccount('Once');
-            Assert.isTrue(XFTY_DeferredInsert.pendingCount() > 0);
+            Assert.isTrue(XFTY_DeferredInserter.pendingCount() > 0);
 
-            XFTY_DeferredInsert.flush();
+            XFTY_DeferredInserter.flush();
 
-            Assert.areEqual(0, XFTY_DeferredInsert.pendingCount());
+            Assert.areEqual(0, XFTY_DeferredInserter.pendingCount());
             Assert.areEqual(0, flushCountingDml(), 'a second flush() is a no-op');
             Assert.areEqual(1, [SELECT COUNT() FROM Contact]);
         }
@@ -82,7 +82,7 @@ private class XFTY_DeferredInsertTest {
             insert existing;
 
             XFTY_DummySObjectBundle bundle = deferredContactUnder(existing.Id);
-            XFTY_DeferredInsert.flush();
+            XFTY_DeferredInserter.flush();
 
             Assert.areEqual(existing.Id, contactOf(bundle).get(Contact.AccountId));
             Assert.areEqual(1, [SELECT COUNT() FROM Account], 'the existing Account is not re-inserted');
@@ -93,11 +93,11 @@ private class XFTY_DeferredInsertTest {
     static void flushingBetweenCallsLetsALaterGraphUseTheEarlierIds() {
         System.runAs(TEST_ADMIN) {
             XFTY_DummySObjectBundle parents = deferredAccount('Flush First');
-            XFTY_DeferredInsert.flush();
+            XFTY_DeferredInserter.flush();
             Id parentId = accountOf(parents).Id;
 
             XFTY_DummySObjectBundle children = deferredContactUnder(parentId);
-            XFTY_DeferredInsert.flush();
+            XFTY_DeferredInserter.flush();
 
             Assert.areEqual(parentId, contactOf(children).get(Contact.AccountId));
             Assert.areEqual(1, [SELECT COUNT() FROM Contact]);
@@ -113,7 +113,7 @@ private class XFTY_DeferredInsertTest {
                     .setInsertMode(XFTY_InsertModeEnum.NOW)
                     .supply();
 
-            XFTY_DeferredInsert.flush();
+            XFTY_DeferredInserter.flush();
 
             Assert.isNotNull(accountOf(deferred).Id);
             Assert.areEqual(2, [SELECT COUNT() FROM Account], 'the NOW Account was not touched by flush()');
@@ -168,12 +168,15 @@ private class XFTY_DeferredInsertTest {
 
     private static SObject accountOf(XFTY_DummySObjectBundle bundle) {
         List<SObject> parents = bundle.getList(Contact.AccountId);
-        return (parents != null) ? parents[0] : bundle.getList(Account.Id)[0];
+        List<SObject> lone = bundle.getList(Account.Id);
+        return (parents != null)
+                ? parents[0]
+                : lone[0];
     }
 
     private static Integer flushCountingDml() {
         Integer before = Limits.getDmlStatements();
-        XFTY_DeferredInsert.flush();
+        XFTY_DeferredInserter.flush();
         return Limits.getDmlStatements() - before;
     }
 }

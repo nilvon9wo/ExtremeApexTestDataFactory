@@ -10,7 +10,7 @@
  * also clears statics) or with shared ancestors (refused during generation).
  */
 @IsTest
-public class XFTY_DeferredInsert {
+public class XFTY_DeferredInserter {
 
     private static XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
 

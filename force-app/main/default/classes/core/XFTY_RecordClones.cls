@@ -2,14 +2,14 @@
 @IsTest
 public class XFTY_RecordClones {
 
-    public static SObject of(SObject record) {
+    public static SObject deepClone(SObject record) {
         return record.clone(true, true, true, true);
     }
 
-    public static List<SObject> of(SObject record, Integer quantity) {
+    public static List<SObject> deepClone(SObject record, Integer quantity) {
         List<SObject> clones = new List<SObject>();
         for (Integer i = 0; i < quantity; i++) {
-            SObject copy = of(record);
+            SObject copy = deepClone(record);
             clones.add(copy);
         }
         return clones;

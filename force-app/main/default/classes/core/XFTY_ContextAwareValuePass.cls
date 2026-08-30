@@ -5,42 +5,34 @@
 @IsTest
 public class XFTY_ContextAwareValuePass {
 
-    public static void complete(
-            XFTY_GenerationContext context,
-            XFTY_DummySObjectMasterTemplate template,
-            XFTY_DummySObjectBundle bundle,
-            List<SObject> records
-    ) {
-        XFTY_ContextAwareValuePass pass = new XFTY_ContextAwareValuePass(context, template);
-        pass.into(bundle, records);
-    }
-
     private final XFTY_GenerationContext context;
     private final XFTY_DummySObjectMasterTemplate template;
+    private XFTY_DummySObjectBundle bundle;
 
-    private XFTY_ContextAwareValuePass(XFTY_GenerationContext context, XFTY_DummySObjectMasterTemplate template) {
+    public XFTY_ContextAwareValuePass(XFTY_GenerationContext context, XFTY_DummySObjectMasterTemplate template) {
         this.context = context;
         this.template = template;
     }
 
-    private void into(XFTY_DummySObjectBundle bundle, List<SObject> records) {
+    public void complete(XFTY_DummySObjectBundle bundle, List<SObject> records) {
         if (this.template.contextAwareBySObjectFieldMap.isEmpty()) {
             return;
         }
+        this.bundle = bundle;
         for (Integer row = 0; row < records.size(); row++) {
             SObject record = records[row];
-            this.completeRow(bundle, record, row);
+            this.completeRow(record, row);
         }
     }
 
-    private void completeRow(XFTY_DummySObjectBundle bundle, SObject record, Integer row) {
-        XFTY_GenerationContext scoped = this.context.forRecord(record, bundle, row);
+    private void completeRow(SObject record, Integer row) {
+        XFTY_GenerationContext scoped = this.context.forRecord(record, this.bundle, row);
         for (SObjectField field : this.template.orderedValueFields()) {
-            this.completeField(record, field, scoped);
+            this.completeField(record, scoped, field);
         }
     }
 
-    private void completeField(SObject record, SObjectField field, XFTY_GenerationContext scoped) {
+    private void completeField(SObject record, XFTY_GenerationContext scoped, SObjectField field) {
         XFTY_ContextAwareValueIntf strategy = this.template.contextAwareBySObjectFieldMap.get(field);
         Boolean noStrategy = strategy == null;
         Boolean alreadySet = record.get(field) != null;

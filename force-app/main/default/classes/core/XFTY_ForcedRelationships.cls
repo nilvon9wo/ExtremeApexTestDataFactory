@@ -5,7 +5,7 @@
 @IsTest
 public class XFTY_ForcedRelationships {
 
-    public static XFTY_DummySObjectMasterTemplate appliedTo(
+    public static XFTY_DummySObjectMasterTemplate apply(
             List<List<SObjectField>> paths,
             XFTY_DummySObjectMasterTemplate template
     ) {
@@ -14,17 +14,17 @@ public class XFTY_ForcedRelationships {
         }
         XFTY_DummySObjectMasterTemplate forced = template.copy();
         for (List<SObjectField> path : paths) {
-            SObjectField head = path[0];
-            promote(forced, template, head);
+            promoteHead(path, forced, template);
         }
         return forced;
     }
 
-    private static void promote(
+    private static void promoteHead(
+            List<SObjectField> path,
             XFTY_DummySObjectMasterTemplate forced,
-            XFTY_DummySObjectMasterTemplate source,
-            SObjectField head
+            XFTY_DummySObjectMasterTemplate source
     ) {
+        SObjectField head = path[0];
         XFTY_DummyDefaultRelationshipIntf optional = source.optionalRelationshipBySObjectFieldMap.get(head);
         if (optional == null) {
             assertIsRelationship(source, head);

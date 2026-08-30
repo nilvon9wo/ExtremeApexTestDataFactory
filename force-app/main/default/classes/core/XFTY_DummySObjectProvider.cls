@@ -350,17 +350,17 @@ public class XFTY_DummySObjectProvider {
         if (this.flushesGraphWhenThisCallEnds()) {
             XFTY_DeferredInsertBuffer.insertGraph(bundle);
         } else if (this.deferredToRegistry()) {
-            XFTY_DeferredInsert.register(bundle);
+            XFTY_DeferredInserter.register(bundle);
         }
     }
 
     private XFTY_GenerationContext buildContext() {
         XFTY_InsertModeEnum mode = this.contextInsertMode();
-        XFTY_GenerationContext base = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity);
-        XFTY_GenerationContext withPaths = base.withForcedRelationshipPaths(this.forcedRelationshipPaths);
+        XFTY_GenerationContext context = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity)
+                .withForcedRelationshipPaths(this.forcedRelationshipPaths);
         return this.buildsStructurallyForBatchedInsert()
-                ? withPaths.forBatchedInsert()
-                : withPaths;
+                ? context.forBatchedInsert()
+                : context;
     }
 
     private XFTY_InsertModeEnum contextInsertMode() {
@@ -376,9 +376,8 @@ public class XFTY_DummySObjectProvider {
     }
 
     private Boolean flushesGraphWhenThisCallEnds() {
-        Boolean optedIn = this.depthBatched;
         Boolean nowMode = XFTY_InsertModeEnum.NOW.equals(this.insertMode);
-        return optedIn && nowMode;
+        return this.depthBatched && nowMode;
     }
 
     private Boolean deferredToRegistry() {
@@ -387,8 +386,7 @@ public class XFTY_DummySObjectProvider {
 
     private List<SObject> templatesToFill() {
         List<SObject> templates = this.suppliedOrBlankTemplates();
-        Boolean multiply = this.quantityPerListedTemplate > 1;
-        return multiply
+        return (this.quantityPerListedTemplate > 1)
                 ? this.multiplyByQuantity(templates)
                 : templates;
     }

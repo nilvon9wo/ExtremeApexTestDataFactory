@@ -14,7 +14,7 @@ Both ideas that move DML out of the recursion are **done** - full design
 
 - **Depth-batched persistence** - the opt-in `.depthBatched()` Provider flag: one
   mixed-type `insert` per dependency depth instead of one per Provider.
-- **The `DEFERRED` insert mode** + `XFTY_DeferredInsert.flush()` - generate like
+- **The `DEFERRED` insert mode** + `XFTY_DeferredInserter.flush()` - generate like
   `NEVER` across many `supplyBundle()` calls, then insert the whole set in one
   depth-batched pass with Ids back-filled on the instances already handed out.
 

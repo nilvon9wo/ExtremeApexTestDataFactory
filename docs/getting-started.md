@@ -218,7 +218,7 @@ XFTY supports six insertion strategies.
 | RELATED_ONLY | Insert only related records. |
 | NOW | Insert every generated record. |
 | LATER | Behaves like NEVER while documenting that insertion will happen later. |
-| DEFERRED | Generate like NEVER over many calls; `XFTY_DeferredInsert.flush()` inserts them all at once. |
+| DEFERRED | Generate like NEVER over many calls; `XFTY_DeferredInserter.flush()` inserts them all at once. |
 
 For most tests:
 

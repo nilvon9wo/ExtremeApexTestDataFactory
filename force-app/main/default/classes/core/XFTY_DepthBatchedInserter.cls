@@ -10,12 +10,12 @@
 public class XFTY_DepthBatchedInserter {
 
     public static void insertAll(List<SObject> records, List<ParentLink> links) {
-        Boolean nothingToDo = (records == null) || records.isEmpty();
-        if (nothingToDo) {
+        Boolean nothingToInsert = (records == null) || records.isEmpty();
+        if (nothingToInsert) {
             return;
         }
-        XFTY_DepthBatchedInserter run = new XFTY_DepthBatchedInserter(records, links);
-        run.insertLayerByLayer();
+        new XFTY_DepthBatchedInserter(records, links)
+                .insertLayerByLayer();
     }
 
     /** `records[childIndex].field` should end up pointing at `records[parentIndex]`. */
@@ -36,23 +36,23 @@ public class XFTY_DepthBatchedInserter {
     }
 
     private final List<SObject> records;
-    private final List<List<ParentLink>> parentLinksByChild;
+    private final List<List<ParentLink>> linksByChild;
 
     private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links) {
         this.records = records;
-        this.parentLinksByChild = linksByChild(records.size(), links);
+        this.linksByChild = groupLinksByChild(records.size(), links);
     }
 
     private void insertLayerByLayer() {
-        Set<Integer> unpersisted = allIndices(this.records.size());
+        Set<Integer> unpersisted = allIndexes(this.records.size());
         while (!unpersisted.isEmpty()) {
-            List<Integer> layer = this.nextLayer(unpersisted);
+            List<Integer> layer = this.takeNextLayer(unpersisted);
             this.insertLayer(layer);
             unpersisted.removeAll(layer);
         }
     }
 
-    private List<Integer> nextLayer(Set<Integer> unpersisted) {
+    private List<Integer> takeNextLayer(Set<Integer> unpersisted) {
         List<Integer> layer = new List<Integer>();
         for (Integer index : unpersisted) {
             if (this.parentsPersisted(index, unpersisted)) {
@@ -63,7 +63,7 @@ public class XFTY_DepthBatchedInserter {
     }
 
     private Boolean parentsPersisted(Integer child, Set<Integer> unpersisted) {
-        List<ParentLink> links = this.parentLinksByChild[child];
+        List<ParentLink> links = this.linksByChild[child];
         for (ParentLink link : links) {
             if (unpersisted.contains(link.parentIndex)) {
                 return false;
@@ -72,9 +72,9 @@ public class XFTY_DepthBatchedInserter {
         return true;
     }
 
-    private void insertLayer(List<Integer> indices) {
+    private void insertLayer(List<Integer> indexes) {
         List<SObject> layer = new List<SObject>();
-        for (Integer index : indices) {
+        for (Integer index : indexes) {
             this.pointAtParents(index);
             SObject record = this.records[index];
             layer.add(record);
@@ -84,11 +84,10 @@ public class XFTY_DepthBatchedInserter {
 
     private void pointAtParents(Integer child) {
         SObject childRecord = this.records[child];
-        List<ParentLink> links = this.parentLinksByChild[child];
+        List<ParentLink> links = this.linksByChild[child];
         for (ParentLink link : links) {
             SObject parentRecord = this.records[link.parentIndex];
-            Id parentId = parentRecord.Id;
-            childRecord.put(link.field, parentId);
+            childRecord.put(link.field, parentRecord.Id);
         }
     }
 
@@ -99,12 +98,13 @@ public class XFTY_DepthBatchedInserter {
         throw new CyclicGraphException('record lookups form a cycle - no insert order works');
     }
 
-    private static List<List<ParentLink>> linksByChild(Integer recordCount, List<ParentLink> links) {
+    private static List<List<ParentLink>> groupLinksByChild(Integer recordCount, List<ParentLink> links) {
         List<List<ParentLink>> byChild = new List<List<ParentLink>>();
         for (Integer i = 0; i < recordCount; i++) {
             byChild.add(new List<ParentLink>());
         }
-        for (ParentLink link : orEmpty(links)) {
+        List<ParentLink> safeLinks = orEmpty(links);
+        for (ParentLink link : safeLinks) {
             List<ParentLink> childLinks = byChild[link.childIndex];
             childLinks.add(link);
         }
@@ -117,11 +117,11 @@ public class XFTY_DepthBatchedInserter {
                 : links;
     }
 
-    private static Set<Integer> allIndices(Integer count) {
-        Set<Integer> indices = new Set<Integer>();
+    private static Set<Integer> allIndexes(Integer count) {
+        Set<Integer> indexes = new Set<Integer>();
         for (Integer i = 0; i < count; i++) {
-            indices.add(i);
+            indexes.add(i);
         }
-        return indices;
+        return indexes;
     }
 }

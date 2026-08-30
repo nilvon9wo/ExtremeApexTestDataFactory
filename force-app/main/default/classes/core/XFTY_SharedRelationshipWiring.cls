@@ -5,30 +5,19 @@
 @IsTest
 public class XFTY_SharedRelationshipWiring {
 
-    public static void wire(
-            XFTY_GenerationContext context,
-            XFTY_SharedRelationshipIntf shared,
-            XFTY_DummySObjectBundle bundle,
-            SObjectField field,
-            Integer quantity
-    ) {
-        XFTY_SharedRelationshipWiring wiring = new XFTY_SharedRelationshipWiring(context, shared);
-        wiring.into(bundle, field, quantity);
-    }
-
     private final XFTY_GenerationContext context;
     private final XFTY_SharedRelationshipIntf shared;
 
-    private XFTY_SharedRelationshipWiring(XFTY_GenerationContext context, XFTY_SharedRelationshipIntf shared) {
+    public XFTY_SharedRelationshipWiring(XFTY_GenerationContext context, XFTY_SharedRelationshipIntf shared) {
         this.context = context;
         this.shared = shared;
     }
 
-    private void into(XFTY_DummySObjectBundle bundle, SObjectField field, Integer quantity) {
+    public void wire(XFTY_DummySObjectBundle bundle, SObjectField field, Integer quantity) {
         this.assertNotBatchedInsert();
         SObject record = this.shared.resolveSharedRecord(this.context);
         this.assertSavedConsistently();
-        List<SObject> children = this.repeated(record, quantity);
+        List<SObject> children = this.repeat(record, quantity);
         bundle.put(field, children);
         this.placeResolvedBundle(bundle, field);
     }
@@ -41,12 +30,12 @@ public class XFTY_SharedRelationshipWiring {
         bundle.put(field, resolved);
     }
 
-    private List<SObject> repeated(SObject record, Integer times) {
-        List<SObject> records = new List<SObject>();
+    private List<SObject> repeat(SObject record, Integer times) {
+        List<SObject> copies = new List<SObject>();
         for (Integer i = 0; i < times; i++) {
-            records.add(record);
+            copies.add(record);
         }
-        return records;
+        return copies;
     }
 
     private void assertNotBatchedInsert() {
@@ -59,10 +48,10 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     private void assertSavedConsistently() {
-        Boolean runsInNowMode = XFTY_InsertModeEnum.NOW.equals(this.context.insertMode);
-        Boolean recordUnsaved = !this.shared.isResolvedRecordPersisted();
-        Boolean carriesAPhantomId = runsInNowMode && recordUnsaved;
-        if (!carriesAPhantomId) {
+        Boolean nowMode = XFTY_InsertModeEnum.NOW.equals(this.context.insertMode);
+        Boolean unsaved = !this.shared.isResolvedRecordPersisted();
+        Boolean carriesPhantomId = nowMode && unsaved;
+        if (!carriesPhantomId) {
             return;
         }
         String message = 'Shared ancestor "' + this.name() + '" was resolved without being inserted, but this NOW run '

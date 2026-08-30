@@ -6,7 +6,7 @@ to move DML out of the recursion:
 1. **Depth-batched persistence** - the opt-in `.depthBatched()` Provider flag: one
    mixed-type `insert` per dependency depth instead of one per Provider.
 2. **The `DEFERRED` insert mode** - generate like `NEVER` over many
-   `supplyBundle()` calls, then `XFTY_DeferredInsert.flush()` inserts the whole
+   `supplyBundle()` calls, then `XFTY_DeferredInserter.flush()` inserts the whole
    set (reusing idea 1's machinery) with Ids back-filled on the handed-out
    instances.
 
@@ -98,17 +98,17 @@ XFTY_DummySObjectBundle a = new XFTY_DummySObjectProvider(Account.SObjectType, l
 XFTY_DummySObjectBundle c = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED).supplyBundle();
 
-XFTY_DeferredInsert.flush();   // inserts everything registered so far, one pass,
+XFTY_DeferredInserter.flush();   // inserts everything registered so far, one pass,
                                // and the Ids appear on the records already handed out
 ```
 
 ### What is built
 
-`XFTY_InsertModeEnum.DEFERRED` + `XFTY_DeferredInsert` (static registry).
+`XFTY_InsertModeEnum.DEFERRED` + `XFTY_DeferredInserter` (static registry).
 
 - A `DEFERRED` Provider call generates exactly like `NEVER` (context forced to
   `NEVER` + `forBatchedInsert()`), then `XFTY_DummySObjectProvider` calls
-  `XFTY_DeferredInsert.register(bundle)` instead of inserting.
+  `XFTY_DeferredInserter.register(bundle)` instead of inserting.
 - `register` hands the bundle to a static `XFTY_DeferredInsertBuffer` (the same
   bundle-walk as `.depthBatched()`), accumulating records + links across every
   call - global indices, so one `flush()` covers many graphs.
@@ -126,7 +126,7 @@ XFTY_DeferredInsert.flush();   // inserts everything registered so far, one pass
 - Static, so it resets between test methods. A test that never calls `flush()`
   gets `NEVER` semantics - no surprise DML.
 
-`XFTY_DeferredInsertTest` (`XFTY_Integration`): no Ids until flush, 2-insert depth
+`XFTY_DeferredInserterTest` (`XFTY_Integration`): no Ids until flush, 2-insert depth
 batching, many graphs in one flush, no-flush = no DML, flush clears the set, a
 `DEFERRED` record pointing at an already-saved record, a `NOW` insert interleaved
 untouched by `flush()`, flush-between-calls to use earlier Ids, shared ancestor

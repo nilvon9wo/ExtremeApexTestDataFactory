@@ -5,7 +5,7 @@
  *
  * `.depthBatched()` collects one bundle and saves it at the end of the same call;
  * the `DEFERRED` insert mode keeps a running buffer across many `supplyBundle()`
- * calls and saves on `XFTY_DeferredInsert.flush()`.
+ * calls and saves on `XFTY_DeferredInserter.flush()`.
  *
  * Each bundle is a tree - the engine clones every template and generates a
  * distinct parent per child row - so a record never appears twice and the walk
@@ -37,83 +37,72 @@ public class XFTY_DeferredInsertBuffer {
         XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks);
     }
 
-    private List<Integer> collect(XFTY_DummySObjectBundle bundle) {
-        Boolean nothingToCollect = (bundle == null) || (bundle.primaryRecords() == null);
-        if (nothingToCollect) {
-            return new List<Integer>();
+    private List<XFTY_PendingRecord> collect(XFTY_DummySObjectBundle bundle) {
+        List<SObject> primaries = primaryRecordsOf(bundle);
+        if (primaries == null) {
+            return new List<XFTY_PendingRecord>();
         }
-        List<SObject> primaries = bundle.primaryRecords();
-        List<Integer> childIndices = this.append(primaries);
-        this.linkToParents(bundle, childIndices);
-        return childIndices;
+        List<XFTY_PendingRecord> children = this.append(primaries);
+        this.linkToParents(bundle, children);
+        return children;
     }
 
-    private void linkToParents(XFTY_DummySObjectBundle bundle, List<Integer> childIndices) {
+    private void linkToParents(XFTY_DummySObjectBundle bundle, List<XFTY_PendingRecord> children) {
         for (SObjectField parentField : bundle.relationshipFields()) {
-            this.linkToParentsOn(bundle, childIndices, parentField);
+            this.linkToParentsOn(bundle, children, parentField);
         }
     }
 
     private void linkToParentsOn(
             XFTY_DummySObjectBundle bundle,
-            List<Integer> childIndices,
+            List<XFTY_PendingRecord> children,
             SObjectField parentField
     ) {
         XFTY_DummySObjectBundle parentBundle = bundle.getBundle(parentField);
         if (parentBundle == null) {
             return;
         }
-        List<SObject> children = bundle.primaryRecords();
-        List<Integer> parentIndices = this.collect(parentBundle);
-        this.linkUnsetLookups(children, childIndices, parentIndices, parentField);
+        List<XFTY_PendingRecord> parents = this.collect(parentBundle);
+        this.linkRows(children, parents, parentField);
     }
 
-    private void linkUnsetLookups(
-            List<SObject> children,
-            List<Integer> childIndices,
-            List<Integer> parentIndices,
+    private void linkRows(
+            List<XFTY_PendingRecord> children,
+            List<XFTY_PendingRecord> parents,
             SObjectField field
     ) {
-        Integer rows = rowCount(childIndices, parentIndices);
+        Integer rows = Math.min(children.size(), parents.size());
         for (Integer row = 0; row < rows; row++) {
-            this.linkRow(children, childIndices, parentIndices, field, row);
+            XFTY_PendingRecord child = children[row];
+            XFTY_PendingRecord parent = parents[row];
+            this.linkChildToParent(child, parent, field);
         }
     }
 
-    private void linkRow(
-            List<SObject> children,
-            List<Integer> childIndices,
-            List<Integer> parentIndices,
-            SObjectField field,
-            Integer row
-    ) {
-        SObject child = children[row];
-        Boolean alreadySet = child.get(field) != null;
+    private void linkChildToParent(XFTY_PendingRecord child, XFTY_PendingRecord parent, SObjectField field) {
+        Boolean alreadySet = child.record.get(field) != null;
         if (alreadySet) {
             return;
         }
-        Integer childIndex = childIndices[row];
-        Integer parentIndex = parentIndices[row];
-        this.recordLink(childIndex, parentIndex, field);
-    }
-
-    private List<Integer> append(List<SObject> records) {
-        List<Integer> indices = new List<Integer>();
-        for (SObject record : records) {
-            this.pendingRecords.add(record);
-            Integer index = this.pendingRecords.size() - 1;
-            indices.add(index);
-        }
-        return indices;
-    }
-
-    private void recordLink(Integer childIndex, Integer parentIndex, SObjectField field) {
         XFTY_DepthBatchedInserter.ParentLink link =
-                new XFTY_DepthBatchedInserter.ParentLink(childIndex, parentIndex, field);
+                new XFTY_DepthBatchedInserter.ParentLink(child.index, parent.index, field);
         this.pendingLinks.add(link);
     }
 
-    private static Integer rowCount(List<Integer> childIndices, List<Integer> parentIndices) {
-        return Math.min(childIndices.size(), parentIndices.size());
+    private List<XFTY_PendingRecord> append(List<SObject> records) {
+        List<XFTY_PendingRecord> pending = new List<XFTY_PendingRecord>();
+        for (SObject record : records) {
+            this.pendingRecords.add(record);
+            Integer index = this.pendingRecords.size() - 1;
+            XFTY_PendingRecord entry = new XFTY_PendingRecord(record, index);
+            pending.add(entry);
+        }
+        return pending;
+    }
+
+    private static List<SObject> primaryRecordsOf(XFTY_DummySObjectBundle bundle) {
+        return (bundle == null)
+                ? null
+                : bundle.primaryRecords();
     }
 }
