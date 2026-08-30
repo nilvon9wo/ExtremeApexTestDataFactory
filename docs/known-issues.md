@@ -52,7 +52,22 @@ workaround. Cycle detection in the engine would make `ALL` safe to use here.
 Harmless (an empty `insert` is a no-op) but unnecessary for `MOCK` / `NEVER` /
 `LATER`.
 
-### `XFTY_DefaultAccountDataProvider.createBundle` carries dead record-type logic
-The commented-out Person Account branch leaves a `masterTemplate == null` check
-that can never be true. Either wire up record-type selection or remove the
-scaffold.
+### `XFTY_DefaultAccountDataProvider.createBundle` carries a Person Account scaffold
+The commented-out record-type-selection block and its `masterTemplate == null`
+guard are kept as a worked example of per-Provider template selection (the guard
+is a documented defensive line). With `XFTY_RecordTypeLookupKey` this is no
+longer the recommended approach - decide whether to wire it up as a real
+Person/Business example or drop it.
+
+### `IndeterminateSObjectTypeException` guards an unreachable state
+`XFTY_DummySObjectProvider`'s constructor guarantees a non-null `SObjectType` and
+nothing can clear it, so the two guards in the lazy getters cannot fire today.
+Kept (with `IndeterminateSObjectTypeException`, which is public API) for a
+possible future "construct now, set the type later" flow. Decide: keep, or drop
+the guards and keep only the exception type.
+
+### `XFTY_DefaultUserDataProvider` has an unfinished UserRole lookup
+`createUserRoleIdByUserRoleNameMap` / `CEO_USERROLE_ID` are all `private` and
+nothing consumes them - scaffolding for role-based test users that was never
+finished. Kept for now (a `CEO` role in `test-support/` makes it run in CI).
+Decide: finish the feature (expose role-based `TEST_*_USER` accessors) or remove.

@@ -247,16 +247,23 @@ same core/test-support split, so doing it once serves both goals.
 ## Framework Test Coverage — done
 
 The framework is at **100% line coverage** (verified by temporarily stripping
-`@IsTest` and running `sf apex run test --code-coverage`). Unreachable / dead
-branches were removed rather than left uncovered. Salesforce does not compute
-*branch* coverage and reports nothing for `@IsTest` classes, so this is a
-manual + strip-to-measure exercise; it should be re-checked whenever the engine
-changes.
+`@IsTest` and running `sf apex run test --code-coverage --detailed-coverage`),
+**except for three intentionally-unreachable defensive lines** that are kept, not
+deleted:
 
-The behavioural suite covers every value strategy, the Id mocker, bundles,
-master templates, the provider fluent API, the factory (inclusivity x insert
-modes, `relatedField`, quantity), the lookup and lookup keys, multi-variant
-resolution, and the bundled Providers. ~100 tests, run in CI on a scratch org.
+- `XFTY_DummySObjectProvider` - the two `sObjectType == null` guards in the lazy
+  getters (protect a future "set the type later" flow);
+- `XFTY_DefaultAccountDataProvider.createBundle` - the `masterTemplate == null`
+  guard (matters when a project copies the method and adds template selection).
+
+`XFTY_InsertModeEnum` / `XFTY_InsertInclusivityEnum` / the base
+`XFTY_DummySObjectFtyProviderException` show 0% but have no coverable lines and
+are excluded from the org-wide figure.
+
+Salesforce computes only *line* coverage and none for `@IsTest` classes, so this
+is a manual strip-to-measure exercise - re-run it whenever the engine changes.
+122 tests, run in CI on a scratch org (which also carries the `test-support/`
+record type + role).
 
 Remaining gaps worth closing: deeper multi-level graphs, circular-relationship
 edge cases beyond `PREVENT_CASCADE`, and the open items in
