@@ -1,12 +1,14 @@
 # Design: Deferred Persistence
 
-Status: **proposal** - not started. Two related ideas that both move DML out of
-the recursion:
+Status: **in progress** on branch `deferred-persistence`. Two related ideas that
+both move DML out of the recursion:
 
 1. **Depth-batched persistence** - a performance change to the existing engine.
+   The standalone mechanism (`XFTY_DepthBatchedInserter`) is **built and tested**;
+   engine wiring and the opt-in flag are not done yet.
 2. **A reference-preserving insert mode** - a new, opt-in `XFTY_InsertModeEnum`
    value for tests that call the framework several times and want the whole set
-   inserted (and Ids back-filled) at the end.
+   inserted (and Ids back-filled) at the end. Not started.
 
 Neither requires rewriting `XFTY_DummySObjectFactory`.
 
@@ -44,17 +46,37 @@ instead of one per Provider:
 The Task example drops from 3 to 2. A wide graph (a record with five parents of
 five types) drops from 6 to 2.
 
-### Questions
+### What is built
+
+`XFTY_DepthBatchedInserter.insertAll(List<SObject> records, List<Edge> edges)` -
+`@IsTest`, in `core/`. Records are identified by **index** in `records` (Apex
+`SObject` map/list membership is value-based, so an index is the only safe handle
+on an instance). Each `Edge` is `{childIndex, parentIndex, lookupField,
+parentSourceField}` - `parentSourceField` null means wire from the parent's Id,
+non-null means wire from that field (the related-field relationship form).
+
+`insertAll` computes each record's depth = longest chain of edges to a leaf
+(memoised DFS, `visiting`/`done` state to detect cycles), groups by depth, then
+inserts shallowest depth first, re-pointing each child's lookup to its now-inserted
+parent between depths. A cycle (including a self-reference) throws
+`CyclicGraphException`. Empty/null `records` is a true no-op (0 DML).
+
+`XFTY_DepthBatchedInserterTest` (`XFTY_Integration`) pins the DML counts: flat set
+= 1, two levels = 2, five mixed-type parents at one depth = 2, deep chain = one
+per level, shared parent inserted once. 100% line coverage (strip-to-measure),
+every branch hand-checked.
+
+### Questions still open
 
 - **Opt-in or always-on?** Always-on gives everyone the win but changes insert
   order and (for a consumer asserting an exact DML count, or relying on a
   trigger firing mid-generation) is a visible behaviour change. Opt-in
   (`.depthBatched()` on the Provider) is safe for a first release.
-- **Depth-computation cost.** `getPopulatedFieldsAsMap()` + describe of each
-  field's `referenceTo`, cached per `SObjectType`. Load-test it.
-- **Where it lives.** A `XFTY_DepthBatchedInserter` that takes the flat record set
-  + a "is this in the pending set" test, unit-tested against hand-built graphs,
-  then wired into `createBundle` after the structural build.
+- **Depth-computation cost** for the *engine* path: building the `Edge` list means
+  walking the bundle tree after the structural build. Load-test it.
+- **Wiring.** `createBundle` needs a "collect, don't insert" structural pass, then
+  one `XFTY_DepthBatchedInserter.insertAll` at the top level instead of the
+  per-recursion `insert`. This is the same plumbing idea 2 needs.
 
 ---
 
