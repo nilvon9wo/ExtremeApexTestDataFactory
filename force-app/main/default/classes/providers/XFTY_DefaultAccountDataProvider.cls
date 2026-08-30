@@ -55,6 +55,9 @@ public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProvide
 //                    ? PERSON_TEMPLATE :
                         MASTER_TEMPLATE;
 
+		// Defensive: MASTER_TEMPLATE is always non-null here. This guard matters
+		// once the commented-out record-type selection above is wired up, or when
+		// a project copies this method and adds its own template selection.
 		if (masterTemplate == null) {
 			throw new XFTY_DummySObjectFtyProviderException('Unsupported Account Record Type: ');
 		}

@@ -65,11 +65,10 @@ public class XFTY_FieldPredicate {
                 when GT {
                     return actual != null && this.value != null && compare(actual, this.value) > 0;
                 }
-                when LT {
+                when else { // LT
                     return actual != null && this.value != null && compare(actual, this.value) < 0;
                 }
             }
-            return false;
         }
 
         private Integer compare(Object a, Object b) {
@@ -78,15 +77,17 @@ public class XFTY_FieldPredicate {
                 Decimal db = Decimal.valueOf(String.valueOf(b));
                 return (da == db) ? 0 : (da > db ? 1 : -1);
             }
-            if (a instanceof Datetime && b instanceof Datetime) {
-                Datetime dta = (Datetime) a;
-                Datetime dtb = (Datetime) b;
-                return (dta == dtb) ? 0 : (dta > dtb ? 1 : -1);
-            }
+            // Date must be checked before Datetime: in Apex a Date value is also
+            // `instanceof Datetime`, but not the reverse.
             if (a instanceof Date && b instanceof Date) {
                 Date da = (Date) a;
                 Date db = (Date) b;
                 return (da == db) ? 0 : (da > db ? 1 : -1);
+            }
+            if (a instanceof Datetime && b instanceof Datetime) {
+                Datetime dta = (Datetime) a;
+                Datetime dtb = (Datetime) b;
+                return (dta == dtb) ? 0 : (dta > dtb ? 1 : -1);
             }
             String sa = String.valueOf(a);
             String sb = String.valueOf(b);

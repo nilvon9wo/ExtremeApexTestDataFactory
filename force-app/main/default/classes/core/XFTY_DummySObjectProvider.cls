@@ -37,6 +37,11 @@ public class XFTY_DummySObjectProvider {
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
     private Boolean hasCustomMasterTemplate = false;
 
+    // The two `sObjectType == null` guards below are defensive: the constructor
+    // rejects a null type and no public method can clear it, so they cannot fire
+    // today. They (and IndeterminateSObjectTypeException) are kept for a possible
+    // future "construct now, set the type later" flow.
+
     private final XFTY_DummySobjectProviderIntf factoryOutlet {
         get {
             if (this.factoryOutlet == null) {
