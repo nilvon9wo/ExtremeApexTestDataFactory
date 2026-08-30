@@ -269,6 +269,36 @@ recursive relationship generation is its primary purpose.
 
 ---
 
+# One-Off Exceptions: `includeOptional` / `excludeRelationship`
+
+Inclusivity is one setting for the whole call. When a single test needs one
+exception, override it per relationship - on the `XFTY_DummySObjectProvider`
+instance, not the shared Master Template:
+
+```apex
+new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .includeOptional(Opportunity.Pricebook2Id)   // generate this optional one too
+    .excludeRelationship(Opportunity.OwnerId)     // do not generate this one
+```
+
+- **`includeOptional(field)`** promotes one optional relationship to be generated
+  for this call, on top of whatever inclusivity covers. Throws if `field` is not
+  an optional relationship on this Provider.
+- **`excludeRelationship(field)`** makes one relationship - required or optional -
+  non-existent for this call: not generated, not attached, not left as an orphan
+  reference. Throws if `field` is not a relationship (use
+  `removeFromMasterTemplate(...)` for plain value fields).
+
+Both act only on the instance they are called on, so a different Provider using
+the same Master Template still generates the relationship. Call them before any
+`put(...)` (same ordering rule as `withVariant`).
+
+Reaching deeper into the graph - "make the generated Opportunity's Pricebook's
+Owner required, just here" - is [still on the roadmap](future-ideas.md#more-granular-relationship-generation).
+
+---
+
 # Cascading Relationships
 
 Providers generate relationships recursively.

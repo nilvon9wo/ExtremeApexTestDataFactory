@@ -231,6 +231,89 @@ private class XFTY_DummySObjectProviderTest {
         Assert.areEqual(1, underAll.getList(Contact.ReportsToId).size(), 'optional relationship generated for ALL');
     }
 
+    // includeOptional / excludeRelationship -------------------------------------
+
+    @IsTest
+    static void includeOptionalGeneratesJustThatOptionalRelationshipUnderRequired() {
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                    .includeOptional(Contact.ReportsToId)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        Assert.areEqual(1, bundle.getList(Contact.ReportsToId).size(), 'the included optional relationship is generated');
+        Assert.areEqual(1, bundle.getList(Contact.AccountId).size(), 'the required Account is still generated');
+    }
+
+    @IsTest
+    static void includeOptionalRejectsAFieldThatIsNotAnOptionalRelationship() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .includeOptional(Contact.AccountId); // AccountId is required, not optional
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('no optional relationship'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void excludeRelationshipSkipsARequiredRelationship() {
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .excludeRelationship(Contact.AccountId)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        Assert.isNull(bundle.getList(Contact.AccountId), 'the excluded relationship is not generated');
+        Contact contact = (Contact) bundle.getList(Contact.Id)[0];
+        Assert.isNull(contact.AccountId, 'and not left as an orphan reference');
+    }
+
+    @IsTest
+    static void excludeRelationshipIsInstanceLocal() {
+        XFTY_DummySObjectBundle excluded;
+        XFTY_DummySObjectBundle normal;
+        Test.startTest();
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            excluded = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .excludeRelationship(Contact.AccountId)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+            normal = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        Assert.isNull(excluded.getList(Contact.AccountId));
+        Assert.areEqual(1, normal.getList(Contact.AccountId).size(),
+                'a separate Provider on the same lookup still generates the relationship');
+    }
+
+    @IsTest
+    static void excludeRelationshipRejectsAPlainValueField() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .excludeRelationship(Contact.FirstName);
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('no relationship'), ex.getMessage());
+        }
+    }
+
     // supply / supplyList / supplyBundle -------------------------------------
 
     @IsTest

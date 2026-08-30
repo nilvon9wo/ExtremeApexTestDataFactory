@@ -246,6 +246,54 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    // Per-call relationship control ------------------------------------------------------------------------------------------
+    // Both act only on THIS Provider instance (its own copy of the Master Template) - a
+    // different Provider sharing the same static Master Template is unaffected. Call
+    // before customizing with put(...) (same rule as withVariant).
+
+    /**
+     * Generate one specific *optional* relationship on this call, on top of
+     * whatever `setInclusivity(...)` covers - i.e. promote it to required for this
+     * instance. Throws if `sObjectField` is not an optional relationship on this
+     * Provider.
+     */
+    public XFTY_DummySObjectProvider includeOptional(SObjectField sObjectField) {
+        XFTY_DummyDefaultRelationshipIntf relationship =
+                this.masterTemplate.optionalRelationshipBySObjectFieldMap.get(sObjectField);
+        if (relationship == null) {
+            throw new SanityException(
+                    'includeOptional(' + sObjectField + '): ' + this.sObjectType
+                            + ' has no optional relationship on that field.'
+            );
+        }
+        this.masterTemplate.remove(sObjectField);
+        this.masterTemplate.putRequired(sObjectField, relationship);
+        this.hasCustomMasterTemplate = true;
+        return this;
+    }
+
+    /**
+     * Do not generate one specific relationship on this call - required or
+     * optional. For this instance the relationship becomes non-existent: not
+     * generated, not attached, not left as an orphan. Throws if `sObjectField` is
+     * not a relationship on this Provider (use `removeFromMasterTemplate(...)` for
+     * plain value fields).
+     */
+    public XFTY_DummySObjectProvider excludeRelationship(SObjectField sObjectField) {
+        Boolean isRelationship =
+                this.masterTemplate.requiredRelationshipBySObjectFieldMap.containsKey(sObjectField)
+                        || this.masterTemplate.optionalRelationshipBySObjectFieldMap.containsKey(sObjectField);
+        if (!isRelationship) {
+            throw new SanityException(
+                    'excludeRelationship(' + sObjectField + '): ' + this.sObjectType
+                            + ' has no relationship on that field.'
+            );
+        }
+        this.masterTemplate.remove(sObjectField);
+        this.hasCustomMasterTemplate = true;
+        return this;
+    }
+
     // Supply methods ----------------------------------------------------------------------------------------------------------
 
     public XFTY_DummySObjectBundle supplyBundle() {
