@@ -126,4 +126,42 @@ private class XFTY_DefaultDataProviderTest {
         Assert.isTrue(generated.Username.contains(XFTY_DefaultUserDataProvider.DEFAULT_USERNAME_PREFIX));
     }
 
+    @IsTest
+    static void profileIdForResolvesAndCaches() {
+        Integer before = Limits.getQueries();
+        Id adminId = XFTY_DefaultUserDataProvider.profileIdFor(XFTY_DefaultUserDataProvider.SYSTEM_ADMIN);
+        XFTY_DefaultUserDataProvider.profileIdFor(XFTY_DefaultUserDataProvider.SYSTEM_ADMIN); // cached
+        // The first call already ran during static init (TEST_ADMIN), so no new query here.
+        Assert.areEqual(before, Limits.getQueries(), 'resolution is cached across calls');
+        Assert.areEqual(TEST_ADMIN.ProfileId, adminId);
+        Assert.isNull(XFTY_DefaultUserDataProvider.profileIdFor('No Such Profile Name'));
+    }
+
+    @IsTest
+    static void roleIdForResolvesByDeveloperName() {
+        // 'CEO' exists via test-support/roles; unknown names return null.
+        Id ceoRoleId = XFTY_DefaultUserDataProvider.roleIdFor('CEO');
+        Assert.isNotNull(ceoRoleId, 'the CEO role from test-support should resolve');
+        Assert.areEqual(ceoRoleId, [SELECT Id FROM UserRole WHERE DeveloperName = 'CEO' LIMIT 1].Id);
+        Assert.areEqual(ceoRoleId, XFTY_DefaultUserDataProvider.roleIdFor('CEO'), 'cached on repeat');
+        Assert.isNull(XFTY_DefaultUserDataProvider.roleIdFor('No_Such_Role'));
+    }
+
+    @IsTest
+    static void aRoleCanBeAppliedViaAnOverrideTemplate() {
+        // Assigning the role at insert time is a platform concern; this only checks
+        // that roleIdFor(...) plugs into the normal override-template flow.
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(User.SObjectType, LOOKUP)
+                    .setOverrideTemplate(new User(UserRoleId = XFTY_DefaultUserDataProvider.roleIdFor('CEO')))
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        User generated = (User) bundle.getList(User.Id)[0];
+        Assert.areEqual(XFTY_DefaultUserDataProvider.roleIdFor('CEO'), generated.UserRoleId);
+    }
 }

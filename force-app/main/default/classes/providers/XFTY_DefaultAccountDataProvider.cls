@@ -1,3 +1,11 @@
+/**
+ * The bundled Business Account Provider.
+ *
+ * Record-type / Person-Account variants are handled with lookup keys and a
+ * separate Provider, not by inspecting the template in `createBundle` - see
+ * `test-support/` for a worked `PersonAccount` flavour + Provider, and
+ * docs/providers.md "Record Types and Variants".
+ */
 @IsTest
 public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProviderIntf {
 	public static final String DEFAULT_NAME_PREFIX = 'Test Account Name';
@@ -19,17 +27,6 @@ public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProvide
 					.put(Account.ShippingCountry, new XFTY_DummyDefaultValueExact(DEFAULT_SHIPPING_COUNTRY))
 					.put(Account.Type, new XFTY_DummyDefaultValueExact(DEFAULT_TYPE));
 
-//	private static final XFTY_DummySObjectMasterTemplate PERSON_TEMPLATE
-//			= new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-//					.put(Account.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
-//					.put(Account.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
-//					.put(Account.PersonHomePhone, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_PHONE_NUMBER_PREFIX))
-//					.put(Account.PersonMobilePhone, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_PHONE_NUMBER_PREFIX))
-//					.put(Account.PersonBirthdate, new XFTY_DummyDefaultValueExact(TODAY.addYears(-20)))
-//					.put(Account.PersonMailingStreet, new XFTY_DummyDefaultValueExact(DEFAULT_MAILING_STREET))
-//					.put(Account.PersonMailingCity, new XFTY_DummyDefaultValueExact(DEFAULT_MAILING_CITY))
-//					.put(Account.PersonMailingCountry, new XFTY_DummyDefaultValueExact(DEFAULT_MAILING_COUNTRY));
-
 	public SObjectField getPrimaryTargetField() {
 		return PRIMARY_TARGET_FIELD;
 	}
@@ -44,24 +41,6 @@ public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProvide
 			XFTY_InsertModeEnum insertMode,
 			XFTY_InsertInclusivityEnum inclusivity
 	) {
-
-		// This is a bit hacky, but it allows us to control which template to use when creating a bundle.
-		// We can use a different SObject field to control this, but the same master needs to be used for each
-		// record at the top level of the bundle.
-		// (Control at a deeper level has not been investigated, but it may be necessary to use a differed XFTY_DummySObjectFactoryOutletLookupIntf.)
-		// Id requiredRecordTypeId = (Id) templateSObjectList[0].get(Account.RecordTypeId);
-		XFTY_DummySObjectMasterTemplate masterTemplate =
-//                (requiredRecordTypeId == PERSON_RECORD_TYPE_ID)
-//                    ? PERSON_TEMPLATE :
-                        MASTER_TEMPLATE;
-
-		// Defensive: MASTER_TEMPLATE is always non-null here. This guard matters
-		// once the commented-out record-type selection above is wired up, or when
-		// a project copies this method and adds its own template selection.
-		if (masterTemplate == null) {
-			throw new XFTY_DummySObjectFtyProviderException('Unsupported Account Record Type: ');
-		}
-
-		return XFTY_DummySObjectFactory.createBundle(providerLookup, masterTemplate, templateSObjectList, insertMode, inclusivity);
+		return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
 	}
 }

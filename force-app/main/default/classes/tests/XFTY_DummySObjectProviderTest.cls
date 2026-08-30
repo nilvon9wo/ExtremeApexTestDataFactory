@@ -13,17 +13,6 @@ private class XFTY_DummySObjectProviderTest {
     // Constructor guards --------------------------------------------------------
 
     @IsTest
-    static void exceptionTypesAreConstructable() {
-        // SanityException / ConflictException are exercised by the guard tests below;
-        // IndeterminateSObjectTypeException guards a state the public API cannot
-        // currently reach, so pin its constructability here.
-        Assert.areEqual(
-                'x',
-                new XFTY_DummySObjectProvider.IndeterminateSObjectTypeException('x').getMessage()
-        );
-    }
-
-    @IsTest
     static void constructorRejectsNullSObjectType() {
         try {
             new XFTY_DummySObjectProvider(null, LOOKUP);
@@ -52,6 +41,18 @@ private class XFTY_DummySObjectProviderTest {
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('makes no sense'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void withVariantRejectsALateCallAfterPut() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .put(Contact.FirstName, 'x')
+                    .withVariant(XFTY_LookupKey.get(Contact.SObjectType));
+            Assert.fail('Expected a SanityException');
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            Assert.isTrue(ex.getMessage().contains('withVariant'), ex.getMessage());
         }
     }
 

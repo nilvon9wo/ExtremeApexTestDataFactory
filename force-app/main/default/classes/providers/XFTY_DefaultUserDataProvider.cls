@@ -1,3 +1,18 @@
+/**
+ * The bundled User Provider, plus a ready-made admin test user
+ * ({@link #TEST_ADMIN_USER}) and cached Profile / UserRole Id lookups for tests
+ * that need a specific profile or a position in the role hierarchy:
+ *
+ * ```apex
+ * User regionalMgr = (User) new XFTY_DummySObjectProvider(User.SObjectType, lookup)
+ *     .setOverrideTemplate(new User(
+ *         ProfileId  = XFTY_DefaultUserDataProvider.profileIdFor('Standard User'),
+ *         UserRoleId = XFTY_DefaultUserDataProvider.roleIdFor('Regional_Manager')
+ *     ))
+ *     .setInsertMode(XFTY_InsertModeEnum.NOW)
+ *     .supply();
+ * ```
+ */
 @IsTest
 public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIntf {
     public static final String DEFAULT_FIRST_NAME_PREFIX = 'User First Name';
@@ -11,14 +26,10 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
     public static final String DEFAULT_LOCALE_SID = 'en_GB';
     public static final String DEFAULT_TIME_ZONE = 'GMT';
 
-    private static final String SYSTEM_ADMIN = 'System Administrator';
-    private static final Map<String, Id> PROFILE_ID_BY_PROFILE_NAME_MAP = createProfileIdByProfileNameMap();
-    private static final Id SYSTEM_ADMIN_ID = PROFILE_ID_BY_PROFILE_NAME_MAP.get(SYSTEM_ADMIN);
+    public static final String SYSTEM_ADMIN = 'System Administrator';
 
-    private static final String CEO = 'CEO';
-    private static final Map<String, Id> USERROLE_ID_BY_USERROLE_NAME_MAP = createUserRoleIdByUserRoleNameMap();
-    //noinspection ApexUnusedDeclaration
-    private static final Id CEO_USERROLE_ID = USERROLE_ID_BY_USERROLE_NAME_MAP.get(CEO);
+    private static final Map<String, Id> PROFILE_ID_BY_NAME = new Map<String, Id>();
+    private static final Map<String, Id> ROLE_ID_BY_DEVELOPER_NAME = new Map<String, Id>();
 
     private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
@@ -31,13 +42,14 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
                     .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact(DEFAULT_LANGUAGE_LOCAL))
                     .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
                     .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_LOCALE_SID))
-                    .put(User.ProfileId, new XFTY_DummyDefaultValueExact(SYSTEM_ADMIN_ID))
+                    .put(User.ProfileId, new XFTY_DummyDefaultValueExact(profileIdFor(SYSTEM_ADMIN)))
                     .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_TIME_ZONE))
                     .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_USERNAME_PREFIX));
 
     private static final XFTY_DummySObjectProviderLookupIntf DEFAULT_SOBJECT_PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
-    private static final Map<Id, User> TEST_USER_BY_PROFILE_MAP = createStandardTestUserByProfileMap();
-    public static final User TEST_ADMIN_USER = TEST_USER_BY_PROFILE_MAP.get(SYSTEM_ADMIN_ID);
+
+    /** An inserted System Administrator user, for `System.runAs(...)`. */
+    public static final User TEST_ADMIN_USER = createStandardAdminUser();
 
     public SObjectField getPrimaryTargetField() {
         return PRIMARY_TARGET_FIELD;
@@ -56,58 +68,32 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
         return XFTY_DummySObjectFactory.createBundle(providerLookup, MASTER_TEMPLATE, templateSObjectList, insertMode, inclusivity);
     }
 
+    /** Profile Id for a profile's name (cached), or null if there is no such profile in this org. */
+    public static Id profileIdFor(String profileName) {
+        if (!PROFILE_ID_BY_NAME.containsKey(profileName)) {
+            List<Profile> profiles = [SELECT Id FROM Profile WHERE Name = :profileName LIMIT 1];
+            PROFILE_ID_BY_NAME.put(profileName, profiles.isEmpty() ? null : profiles[0].Id);
+        }
+        return PROFILE_ID_BY_NAME.get(profileName);
+    }
 
-    // Helpers ----------------------------------------------------------------------------------------------
+    /** UserRole Id for a role's API (developer) name (cached), or null if there is no such role in this org. */
+    public static Id roleIdFor(String roleDeveloperName) {
+        if (!ROLE_ID_BY_DEVELOPER_NAME.containsKey(roleDeveloperName)) {
+            List<UserRole> roles = [SELECT Id FROM UserRole WHERE DeveloperName = :roleDeveloperName LIMIT 1];
+            ROLE_ID_BY_DEVELOPER_NAME.put(roleDeveloperName, roles.isEmpty() ? null : roles[0].Id);
+        }
+        return ROLE_ID_BY_DEVELOPER_NAME.get(roleDeveloperName);
+    }
 
-    private static Map<Id, User> createStandardTestUserByProfileMap() {
-        List<User> templateUserList = new List<User>{
-                new User(ProfileId = SYSTEM_ADMIN_ID)
-        };
-        List<User> userList = (new XFTY_DefaultUserDataProvider()).createBundle(
+    // ---------------------------------------------------------------------------
+
+    private static User createStandardAdminUser() {
+        return (User) new XFTY_DefaultUserDataProvider().createBundle(
                 DEFAULT_SOBJECT_PROVIDER_LOOKUP,
-                templateUserList,
+                new List<User>{ new User(ProfileId = profileIdFor(SYSTEM_ADMIN)) },
                 XFTY_InsertModeEnum.NOW,
                 XFTY_InsertInclusivityEnum.REQUIRED
-        ).getList(PRIMARY_TARGET_FIELD);
-
-        Map<Id, User> userByProfileId = new Map<Id, User>();
-        for (User user : userList) {
-            userByProfileId.put(user.ProfileId, user);
-        }
-        return userByProfileId;
-    }
-
-    private static Map<String, Id> createProfileIdByProfileNameMap() {
-        Set<String> profileNameSet = new Set<String>{
-                SYSTEM_ADMIN
-        };
-        List<Profile> profileList = [
-                SELECT Id, Name
-                FROM Profile
-                WHERE Name IN :profileNameSet
-        ];
-
-        Map<String, Id> profileIdByProfileNameMap = new Map<String, Id>();
-        for (Profile profile : profileList) {
-            profileIdByProfileNameMap.put(profile.Name, profile.Id);
-        }
-        return profileIdByProfileNameMap;
-    }
-
-    private static Map<String, Id> createUserRoleIdByUserRoleNameMap() {
-        Set<String> userroleNameSet = new Set<String>{
-                CEO
-        };
-        List<UserRole> userRoleList = [
-                SELECT Id, Name
-                FROM UserRole
-                WHERE Name IN :userroleNameSet
-        ];
-
-        Map<String, Id> userRoleIdByUserRoleNameMap = new Map<String, Id>();
-        for (UserRole userRole : userRoleList) {
-            userRoleIdByUserRoleNameMap.put(userRole.Name, userRole.Id);
-        }
-        return userRoleIdByUserRoleNameMap;
+        ).getList(PRIMARY_TARGET_FIELD)[0];
     }
 }

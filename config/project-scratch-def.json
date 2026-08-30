@@ -1,7 +1,7 @@
 {
   "orgName": "Extreme Apex Test Data Factory",
   "edition": "Developer",
-  "features": [],
+  "features": ["PersonAccounts"],
   "settings": {
     "lightningExperienceSettings": {
       "enableS1DesktopEnabled": true

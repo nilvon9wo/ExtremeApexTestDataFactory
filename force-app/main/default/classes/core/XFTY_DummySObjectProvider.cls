@@ -32,35 +32,50 @@ public class XFTY_DummySObjectProvider {
     }
 
     private List<SObject> overrideTemplateList;
+    private XFTY_LookupKeyIntf explicitVariantKey;
     private Integer quantityPerListedTemplate = 1; // If no templates are supplied, a blank one will be created.
     private XFTY_InsertModeEnum insertMode = XFTY_InsertModeEnum.NEVER;
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
     private Boolean hasCustomMasterTemplate = false;
 
-    // The two `sObjectType == null` guards below are defensive: the constructor
-    // rejects a null type and no public method can clear it, so they cannot fire
-    // today. They (and IndeterminateSObjectTypeException) are kept for a possible
-    // future "construct now, set the type later" flow.
+    // `sObjectType` is set non-null by the constructor and only ever reassigned
+    // (in setOverrideTemplateList) to another SObject's type, which is never
+    // null; the class is not subclassable. So these getters never see a null
+    // type - no guard is needed. If a "construct now, set the type later" flow
+    // is ever added, reinstate a guard + a dedicated exception here.
 
     private final XFTY_DummySobjectProviderIntf factoryOutlet {
         get {
             if (this.factoryOutlet == null) {
-                if (this.sObjectType == null) {
-                    throw new IndeterminateSObjectTypeException('SObjectType must be set before retrieving its factory.');
-                }
-                this.factoryOutlet = this.sObjectProviderLookup.get(this.sObjectType);
+                this.factoryOutlet = this.sObjectProviderLookup.get(this.resolveVariantKey());
             }
             return this.factoryOutlet;
         }
         private set;
     }
 
+    /**
+     * Which Provider variant to use: an explicit key from `withVariant(...)`, or
+     * the key derived from the first override template (so a template carrying a
+     * record type reaches the matching Provider), or the plain SObjectType key.
+     *
+     * Only consulted the first time the Provider is resolved - if `put(...)` /
+     * `removeFromMasterTemplate(...)` has already run, the variant is fixed;
+     * `withVariant(...)` therefore rejects a late call.
+     */
+    private XFTY_LookupKeyIntf resolveVariantKey() {
+        if (this.explicitVariantKey != null) {
+            return this.explicitVariantKey;
+        }
+        if (this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty()) {
+            return XFTY_ProviderLookups.resolve(this.sObjectProviderLookup, this.overrideTemplateList[0]);
+        }
+        return XFTY_LookupKey.get(this.sObjectType);
+    }
+
     private final XFTY_DummySObjectMasterTemplate masterTemplate {
         get {
             if (this.masterTemplate == null) {
-                if (this.sObjectType == null) {
-                    throw new IndeterminateSObjectTypeException('SObjectType must be set before including default values on the master template.');
-                }
                 this.masterTemplate = this.factoryOutlet.getMasterTemplate()
                         .copy();
             }
@@ -93,6 +108,21 @@ public class XFTY_DummySObjectProvider {
         return this.setOverrideTemplateList(new List<SObject>{
                 overrideTemplate
         });
+    }
+
+    /**
+     * Pin the Provider variant explicitly (e.g.
+     * `XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount')`),
+     * instead of letting it be derived from the override template. Must be called
+     * before any `put(...)` / `removeFromMasterTemplate(...)`.
+     */
+    public XFTY_DummySObjectProvider withVariant(XFTY_LookupKeyIntf variantKey) {
+        if (this.hasCustomMasterTemplate) {
+            // put(...) already resolved the Provider from the default variant.
+            throw new SanityException('Call withVariant(...) before customizing the template with put(...).');
+        }
+        this.explicitVariantKey = variantKey;
+        return this;
     }
 
     public XFTY_DummySObjectProvider setInsertMode(XFTY_InsertModeEnum insertMode) {
@@ -227,7 +257,5 @@ public class XFTY_DummySObjectProvider {
     public class SanityException extends Exception {
     }
     public class ConflictException extends Exception {
-    }
-    public class IndeterminateSObjectTypeException extends Exception {
     }
 }

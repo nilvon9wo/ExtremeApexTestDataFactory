@@ -1,14 +1,15 @@
 /**
- * Coverage for `XFTY_RecordTypeMatching`. Uses the `XFTY_TestBusiness` Account
- * record type from `test-support/` for the "real record type" paths.
+ * Coverage for `XFTY_RecordTypeMatching`. Uses the built-in `PersonAccount`
+ * Account record type (the scratch org enables Person Accounts) for the
+ * "real record type" paths.
  */
 @IsTest
 private class XFTY_RecordTypeMatchingTest {
 
-    private static Id businessRtId() {
+    private static Id personRtId() {
         return Account.SObjectType.getDescribe()
                 .getRecordTypeInfosByDeveloperName()
-                .get('XFTY_TestBusiness')
+                .get('PersonAccount')
                 .getRecordTypeId();
     }
 
@@ -31,8 +32,8 @@ private class XFTY_RecordTypeMatchingTest {
     @IsTest
     static void developerNameOfResolvesARealRecordType() {
         Assert.areEqual(
-                'XFTY_TestBusiness',
-                XFTY_RecordTypeMatching.developerNameOf(new Account(RecordTypeId = businessRtId()))
+                'PersonAccount',
+                XFTY_RecordTypeMatching.developerNameOf(new Account(RecordTypeId = personRtId()))
         );
     }
 
@@ -40,7 +41,7 @@ private class XFTY_RecordTypeMatchingTest {
     static void idForResolvesFromTheDescribe() {
         Assert.isNull(XFTY_RecordTypeMatching.idFor(Account.SObjectType, null), 'null developer name');
         Assert.isNull(XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'NoSuchRecordType'), 'unknown developer name');
-        Assert.areEqual(businessRtId(), XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'XFTY_TestBusiness'));
+        Assert.areEqual(personRtId(), XFTY_RecordTypeMatching.idFor(Account.SObjectType, 'PersonAccount'));
     }
 
     @IsTest
@@ -51,11 +52,11 @@ private class XFTY_RecordTypeMatchingTest {
         );
         // developer name differs, and the fallback Id comparison also fails
         Assert.isFalse(
-                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'XFTY_TestBusiness')
+                XFTY_RecordTypeMatching.matches(new Account(), Account.SObjectType, 'PersonAccount')
         );
         Assert.isTrue(
                 XFTY_RecordTypeMatching.matches(
-                        new Account(RecordTypeId = businessRtId()), Account.SObjectType, 'XFTY_TestBusiness'
+                        new Account(RecordTypeId = personRtId()), Account.SObjectType, 'PersonAccount'
                 )
         );
     }
