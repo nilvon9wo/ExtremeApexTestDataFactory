@@ -38,27 +38,37 @@ question and the `bundle.getList` contract: **[design/shared-ancestors.md](desig
 Relationship generation currently supports `NONE` / `REQUIRED` / `ALL` /
 `PREVENT_CASCADE` - a single global setting per `supply()` call.
 
-**Sketch.** Rather than a new enum value, let a test opt specific optional
-relationships in or out by field:
+**Design (feedback incorporated).** Two per-invocation toggles - both wanted, not
+just "include optional":
 
 ```apex
 new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .includeOptional(Opportunity.Pricebook2Id)          // this one, on top of REQUIRED
-    .excludeRelationship(Opportunity.OwnerId)           // skip this required one
+    .includeOptional(Opportunity.Pricebook2Id)          // this optional one, on top of REQUIRED
+    .excludeRelationship(Opportunity.OwnerId)           // skip this one entirely
 ```
 
-Implementation: `XFTY_DummySObjectProvider` carries an overrides map
-(`SObjectField -> INCLUDE | EXCLUDE`); it is passed alongside the base
-inclusivity into `XFTY_DummySObjectFactory`, which consults it per field in
-`createRelatedRecords` before falling back to the global rule. The recursive
-call to child Providers passes only the base inclusivity (overrides are
-top-level, matching how `PREVENT_CASCADE` already behaves).
+These affect **only the instance they are called on** - no global or nested side
+effects.
 
-**Open questions.** Do overrides propagate by field path (`Account.OwnerId` two
-levels down) or only at the top level? Does `excludeRelationship` on a *required*
-field produce an invalid record deliberately (useful for validation-rule tests)
-or is that a separate `removeFromMasterTemplate` concern?
+Going deeper needs an explicit path down the graph:
+
+```apex
+.includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })
+// => for this invocation, make the generated Opportunity's Pricebook's Owner required
+```
+
+The engine walks the path, and at each hop hands the remaining tail to the child
+Provider's generation as a scoped override.
+
+**Explicit errors:** toggling a relationship whose target SObjectType has no
+registered Provider must throw a clear error, not silently no-op.
+
+**Open question.** `excludeRelationship` on a *required* field deliberately
+produces an invalid record (useful for validation-rule tests) - or is that
+strictly `removeFromMasterTemplate`'s job? Probably keep them distinct:
+`exclude` skips *generation* but leaves the field for the test to set;
+`removeFromMasterTemplate` drops the field's default entirely.
 
 ---
 
@@ -95,29 +105,33 @@ Examples include:
 
 Whether this should be -- or even can be -- implemented as an extension of `XFTY_DummyDefaultValueIntf` or as a new abstraction remains an open design question.
 
+Context means **both** sibling fields on the same record (`isOver18` from `age`)
+**and** values from generated ancestors / other generated related records.
+
 **Sketch.** `XFTY_DummyDefaultValueIntf.get()` takes no arguments, so a
-context-aware generator needs more. A second interface avoids disturbing the
-simple case:
+context-aware generator needs more. Options, not mutually exclusive:
 
-```apex
-public interface XFTY_ContextAwareValueIntf {
-    Object get(XFTY_GenerationContext context);
-}
-```
+- a second interface `XFTY_DummyDefaultValue2Intf` (or similar) with
+  `get(XFTY_GenerationContext context)`;
+- additional `get(...)` overloads for whatever turns out useful
+  (`get(SObject record)`, `get(XFTY_GenerationContext)`);
+- more than one `XFTY_DummyDefault*Intf` if different shapes are worth it.
 
-where `XFTY_GenerationContext` exposes the record being built, its already-set
-fields, and the generated parent bundle so far. The factory would check
-`instanceof XFTY_ContextAwareValueIntf` in `cloneAndCompleteNonRelationshipValues`
-and pass a context; plain `XFTY_DummyDefaultValueIntf` generators are unchanged.
+Since we are already making breaking changes, changing `XFTY_DummyDefaultValueIntf`
+itself is also on the table.
 
-The hard part is *ordering*: relationships are wired in phase 3, after
-non-relationship values in phase 1, so "copy `Account.Name` onto the child" needs
-either a phase-1.5 pass or a dependency-aware evaluation order. A pragmatic first
-version: only allow context-aware generators to read **parent** values (available
-once phase 2 assigns Ids), evaluated in a new pass between phases 2 and 3.
+`XFTY_GenerationContext` would expose the record being built (and its
+already-set fields) plus the generated ancestor bundle.
 
-Concrete built-ins worth shipping: `XFTY_CopyFromParent(parentField)`,
-`XFTY_CopyFromSibling(siblingField)`.
+**Ordering.** The factory discovers the graph child-first (see *Dynamic Ancestor
+Configuration* below), so a *sibling* read is straightforward - evaluate that
+field after the fields it depends on, on the same record. An *ancestor* read
+needs the ancestor generated first, which the child-first walk already does; the
+value is copied in a pass after ancestors exist but before the child's own
+lookups are wired.
+
+Concrete built-ins worth shipping: `XFTY_CopyFromSibling(field)`,
+`XFTY_CopyFromAncestor(pathToField)`.
 
 ---
 
@@ -144,19 +158,28 @@ Although relatively uncommon, some integration testing scenarios would benefit f
 
 This would likely require extending the generation engine rather than simply adding another implementation of `XFTY_DummyDefaultValueIntf`, and it remains an area for future investigation.
 
-**Sketch.** This largely collapses into *Context-Aware Value Generation* above:
-a generated ancestor is customised by putting an `XFTY_ContextAwareValueIntf` on
-that ancestor's override template, e.g.
+**How the graph is actually built.** XFTY discovers the object graph
+*child-first*: it iterates a child's Master Template to learn which parents it
+needs, generates those, then reads *their* Master Templates to learn which
+grandparents *they* need, and so on until nothing new is required. (As Brian puts
+it: children siring their own parents and grandparents.) So a value that flows
+*down* the tree (grandparent value used on a parent used on the child) is
+naturally available - the ancestor is generated before the descendant that reads
+from it.
+
+The genuinely twisty case is a value that flows *up* - an ancestor field whose
+value depends on a descendant. That descendant doesn't exist yet when the
+ancestor is first generated, so it needs a deferred pass: generate the whole
+graph structurally, then evaluate "up-flowing" context-aware values once every
+record exists in memory, then wire lookups and insert.
+
+**Sketch.** This collapses into *Context-Aware Value Generation* above:
 
 ```apex
 XFTY_DummyDefaultRelationship.of(new Account())
     .put(Account.Site, new XFTY_CopyFromDescendant(Contact.Department))
 ```
 
-If context-aware generation lands, dynamic ancestor configuration is mostly a
-matter of making the `XFTY_GenerationContext` reachable while *parent* records
-are being completed (they are currently completed before the child exists, so
-this needs the parent-completion pass to run late, or a deferred re-evaluation).
 Treat it as a follow-on to context-aware generation, not a separate effort.
 
 ---
@@ -182,32 +205,55 @@ The code coverage requirement would likely be a significant obstacle against ado
 
 While this is not currently a development priority, the underlying architecture was designed in a way that could easily support this style of usage in the future.
 
-**Sketch.** The `@IsTest`-vs-deployable tension does not have to be resolved
-all-or-nothing:
+### Decision: drop `@IsTest` entirely?
 
-- Split the repo into two package directories - `xfty-core` (the engine:
-  factory, bundle, master template, lookup, value/relationship interfaces and
-  the bundled generators) built **without** `@IsTest`, and `xfty-test-support`
-  (anything only meaningful in a test, e.g. `XFTY_IdMocker`,
-  `XFTY_DefaultUserDataProvider`'s admin-user bootstrapping) that stays
-  `@IsTest`.
-- `xfty-core` then needs real coverage. The existing behavioural suite already
-  provides most of it; it would move to `xfty-core` test classes and lose the
-  `System.runAs`/DML-only bits.
-- Custom Providers and value generators written by *consumers* stay deployable
-  code in their own package - which is normal, since they reference that
-  package's SObjects anyway.
-- A thin `XFTY_Seeder` entry point (list of `XFTY_DummySObjectProvider`
-  configurations -> `insert`) would be the only genuinely new surface.
+The `@IsTest`-vs-deployable question is now close to a real decision, because the
+framework is at **100% line coverage** (measured by temporarily stripping
+`@IsTest`; org-wide coverage came out at 100%). Stripping permanently would:
+
+**enable** running the engine outside a test context - i.e. sandbox seeding, and
+letting consumers run generation from anonymous Apex / batch jobs.
+
+**cost:**
+
+1. **Org Apex character limit.** The framework is small (tens of KB) against the
+   6,000,000-character org limit (higher on higher editions) - well under 1%.
+   Negligible in practice.
+2. **Perception.** A consumer still *sees* "this test framework added N classes
+   to my production code" and may balk regardless of the actual number.
+3. **Coverage.** Non-`@IsTest` framework lines count toward the org's 75% deploy
+   requirement, so XFTY's own suite must hold it near 100% forever (it does now).
+   This *raises the bar* permanently rather than being a one-off.
+4. **Consumer ripple.** Consumers' own Providers and value generators extend the
+   framework, so they would strip `@IsTest` too - re-raising (1)-(3) for them.
+   Mitigation: their generator/Provider code is almost certainly covered by the
+   tests they write anyway.
+
+**Middle path:** split into `xfty-core` (deployable engine - factory, bundle,
+master template, lookup, the value/relationship interfaces + generators) and
+`xfty-test-support` (test-only helpers: `XFTY_IdMocker`,
+`XFTY_DefaultUserDataProvider`'s admin bootstrap, the bundled Default Providers).
+Consumers who only want the test factory install just `xfty-test-support`
+(`@IsTest`, no limits); consumers who want seeding also install `xfty-core`.
+
+A thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs -> `insert`)
+is the only genuinely new surface either way.
 
 The `namespace` / AppExchange work in [packaging.md](../packaging.md) forces the
-same split, so doing it once serves both goals.
+same core/test-support split, so doing it once serves both goals.
 
 ---
 
-## Framework Test Coverage — largely done
+## Framework Test Coverage — done
 
-A behavioural suite now covers every value strategy, the Id mocker, bundles,
+The framework is at **100% line coverage** (verified by temporarily stripping
+`@IsTest` and running `sf apex run test --code-coverage`). Unreachable / dead
+branches were removed rather than left uncovered. Salesforce does not compute
+*branch* coverage and reports nothing for `@IsTest` classes, so this is a
+manual + strip-to-measure exercise; it should be re-checked whenever the engine
+changes.
+
+The behavioural suite covers every value strategy, the Id mocker, bundles,
 master templates, the provider fluent API, the factory (inclusivity x insert
 modes, `relatedField`, quantity), the lookup and lookup keys, multi-variant
 resolution, and the bundled Providers. ~100 tests, run in CI on a scratch org.
