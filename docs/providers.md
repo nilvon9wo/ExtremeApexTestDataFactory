@@ -338,6 +338,15 @@ private static final Map<XFTY_LookupKeyIntf, Type> PROVIDERS = new Map<XFTY_Look
 Resolution:
 
 - `lookup.get(someKey)` - explicit.
+- **Top-level generation** - `new XFTY_DummySObjectProvider(Account.SObjectType, lookup)`
+  picks a variant in two ways:
+  - `.withVariant(MyProjectLookupKeys.PERSON_ACCOUNT)` - explicit; must be called
+    before any `put(...)` customization (it throws otherwise, since the master
+    template is derived from the resolved Provider).
+  - an override template that carries a record type -
+    `.setOverrideTemplate(new Account(RecordTypeId = personRtId))` runs
+    `XFTY_ProviderLookups.resolve` against the first override template and
+    selects the matching Provider automatically.
 - A relationship with an explicit key -
   `new XFTY_DummyDefaultRelationship(MyProjectLookupKeys.PERSON_ACCOUNT, new Account())`.
 - A relationship with only an override template - `XFTY_ProviderLookups.resolve`

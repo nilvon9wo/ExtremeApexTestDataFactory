@@ -52,22 +52,26 @@ workaround. Cycle detection in the engine would make `ALL` safe to use here.
 Harmless (an empty `insert` is a no-op) but unnecessary for `MOCK` / `NEVER` /
 `LATER`.
 
-### `XFTY_DefaultAccountDataProvider.createBundle` carries a Person Account scaffold
+---
+
+## Resolved on the branch
+
+### ~~`XFTY_DefaultAccountDataProvider.createBundle` carries a Person Account scaffold~~
 The commented-out record-type-selection block and its `masterTemplate == null`
-guard are kept as a worked example of per-Provider template selection (the guard
-is a documented defensive line). With `XFTY_RecordTypeLookupKey` this is no
-longer the recommended approach - decide whether to wire it up as a real
-Person/Business example or drop it.
+guard are gone. `XFTY_DefaultAccountDataProvider` is now a plain Business Account
+Provider; the Person Account case is a real record-type variant -
+`test-support/classes/XFTY_PersonAccountDataProvider` plus
+`XFTY_PersonAccountVariantTest`, which run against a Person-Accounts-enabled
+scratch org but are **not** in the published package.
 
-### `IndeterminateSObjectTypeException` guards an unreachable state
-`XFTY_DummySObjectProvider`'s constructor guarantees a non-null `SObjectType` and
-nothing can clear it, so the two guards in the lazy getters cannot fire today.
-Kept (with `IndeterminateSObjectTypeException`, which is public API) for a
-possible future "construct now, set the type later" flow. Decide: keep, or drop
-the guards and keep only the exception type.
+### ~~`IndeterminateSObjectTypeException` guards an unreachable state~~
+Verified unreachable and removed (class + both guards). `sObjectType` is set
+non-null by the constructor and is only ever reassigned to another SObject's
+never-null type; the class is not subclassable. If a "construct now, set the type
+later" flow is ever added, reinstate it then.
 
-### `XFTY_DefaultUserDataProvider` has an unfinished UserRole lookup
-`createUserRoleIdByUserRoleNameMap` / `CEO_USERROLE_ID` are all `private` and
-nothing consumes them - scaffolding for role-based test users that was never
-finished. Kept for now (a `CEO` role in `test-support/` makes it run in CI).
-Decide: finish the feature (expose role-based `TEST_*_USER` accessors) or remove.
+### ~~`XFTY_DefaultUserDataProvider` has an unfinished UserRole lookup~~
+Finished. The `private` CEO scaffolding is replaced by public cached lookups
+`profileIdFor(name)` and `roleIdFor(developerName)`, both returning `null` (not
+throwing) when the org has no such profile/role. A `CEO` role in `test-support/`
+exercises the query path in CI.

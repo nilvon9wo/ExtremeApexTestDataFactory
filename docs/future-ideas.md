@@ -242,19 +242,54 @@ is the only genuinely new surface either way.
 The `namespace` / AppExchange work in [packaging.md](../packaging.md) forces the
 same core/test-support split, so doing it once serves both goals.
 
+### Two-package variant of the same idea
+
+Rather than one package with an optional core, publish **two** similar packages:
+one that keeps `@IsTest` (pure test factory, zero production footprint) and one
+that strips it (seeding-capable), and let the consumer pick. Open question:
+whether the `@IsTest` strip can be done reliably **as part of the publish
+pipeline** (a source transform before `sf package version create`) so the two
+packages build from one set of source files. If so, this is cheaper than
+maintaining a real module split.
+
+### Prior seeder recipe (from an earlier, now-lost implementation)
+
+The last working sandbox seeder was crude but effective:
+
+1. Strip `@IsTest` from every framework + Provider class.
+2. Take the Provider Lookup's registered keys as the list of `SObjectType`s to
+   populate (iterate `keysFor` / the key set).
+3. Build a **chain of queueables**, one per type, each running roughly:
+
+   ```apex
+   new XFTY_DummySObjectProvider(sObjectType, providerLookup)
+       .setQuantityPerTemplate(100)
+       .setInsertMode(XFTY_InsertModeEnum.NOW)
+       .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
+       .supplyList();
+   ```
+
+   with best-effort exception swallowing so one bad type doesn't stop the chain.
+
+A few types reliably failed - recollection is something around federated users
+and/or unique-value collisions (`User.FederationIdentifier`, usernames). A real
+implementation would need per-type opt-out and a way to feed `NOW`-inserted
+ancestors back in rather than regenerating them.
+
 ---
 
 ## Framework Test Coverage — done
 
-The framework is at **100% line coverage** (verified by temporarily stripping
-`@IsTest` and running `sf apex run test --code-coverage --detailed-coverage`),
-**except for three intentionally-unreachable defensive lines** that are kept, not
-deleted:
-
-- `XFTY_DummySObjectProvider` - the two `sObjectType == null` guards in the lazy
-  getters (protect a future "set the type later" flow);
-- `XFTY_DefaultAccountDataProvider.createBundle` - the `masterTemplate == null`
-  guard (matters when a project copies the method and adds template selection).
+The framework is at **100% org-wide line coverage** (verified by temporarily
+stripping `@IsTest` and running
+`sf apex run test --code-coverage --detailed-coverage`), with no
+intentionally-unreachable lines left in the engine - the `sObjectType == null`
+guards and the `XFTY_DefaultAccountDataProvider` `masterTemplate == null` guard
+were reviewed and removed once proven unreachable (see
+[known-issues.md](known-issues.md)). Broadly-useful helper surface (the full
+`XFTY_FieldPredicate` comparator, `XFTY_RecordTypeMatching`'s id fallback) is
+kept and covered by tests rather than deleted - it exists to anticipate consumer
+needs.
 
 `XFTY_InsertModeEnum` / `XFTY_InsertInclusivityEnum` / the base
 `XFTY_DummySObjectFtyProviderException` show 0% but have no coverable lines and
@@ -262,8 +297,8 @@ are excluded from the org-wide figure.
 
 Salesforce computes only *line* coverage and none for `@IsTest` classes, so this
 is a manual strip-to-measure exercise - re-run it whenever the engine changes.
-122 tests, run in CI on a scratch org (which also carries the `test-support/`
-record type + role).
+129 tests, run in CI on a Person-Accounts-enabled scratch org (which also carries
+the `test-support/` Person Account Provider + `CEO` role).
 
 Remaining gaps worth closing: deeper multi-level graphs, circular-relationship
 edge cases beyond `PREVENT_CASCADE`, and the open items in
