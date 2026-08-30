@@ -9,6 +9,7 @@
     -->
     <testClassName>XFTY_DefaultContactDataProviderTest</testClassName>
     <testClassName>XFTY_DefaultDataProviderTest</testClassName>
+    <testClassName>XFTY_DeferredInsertBufferTest</testClassName>
     <testClassName>XFTY_DepthBatchedInserterTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryDmlTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderTests</testClassName>

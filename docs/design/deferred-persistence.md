@@ -4,8 +4,8 @@ Status: **in progress** on branch `deferred-persistence`. Two related ideas that
 both move DML out of the recursion:
 
 1. **Depth-batched persistence** - a performance change to the existing engine.
-   The standalone mechanism (`XFTY_DepthBatchedInserter`) is **built and tested**;
-   engine wiring and the opt-in flag are not done yet.
+   **Built and shipped** on `deferred-persistence` as the opt-in `.depthBatched()`
+   Provider flag (see below).
 2. **A reference-preserving insert mode** - a new, opt-in `XFTY_InsertModeEnum`
    value for tests that call the framework several times and want the whole set
    inserted (and Ids back-filled) at the end. Not started.
@@ -66,17 +66,32 @@ parent between depths. A cycle (including a self-reference) throws
 per level, shared parent inserted once. 100% line coverage (strip-to-measure),
 every branch hand-checked.
 
-### Questions still open
+### How it is wired
 
-- **Opt-in or always-on?** Always-on gives everyone the win but changes insert
-  order and (for a consumer asserting an exact DML count, or relying on a
-  trigger firing mid-generation) is a visible behaviour change. Opt-in
-  (`.depthBatched()` on the Provider) is safe for a first release.
-- **Depth-computation cost** for the *engine* path: building the `Edge` list means
-  walking the bundle tree after the structural build. Load-test it.
-- **Wiring.** `createBundle` needs a "collect, don't insert" structural pass, then
-  one `XFTY_DepthBatchedInserter.insertAll` at the top level instead of the
-  per-recursion `insert`. This is the same plumbing idea 2 needs.
+`.depthBatched()` on `XFTY_DummySObjectProvider` sets a flag. When it is set
+**and** the mode is `NOW`, `supplyBundle()`:
+
+1. runs generation with the context forced to `NEVER` and marked
+   `context.depthBatched` (carried down every derived context);
+2. hands the finished top bundle to `XFTY_DeferredInsertBuffer.insertGraph(...)`.
+
+`XFTY_DeferredInsertBuffer` walks the bundle - which is a tree, since the engine
+generates a distinct parent per child row - registering every record in visit
+order and emitting an `Edge` for each child lookup still null after the structural
+build (related-field lookups are already wired from plain values, so only Id
+lookups are pending). It then calls `XFTY_DepthBatchedInserter.insertAll`.
+
+`XFTY_DummySObjectBundle` gained `primaryTargetField` (set by `createBundle`) and
+`relationshipFields()` so the walk can navigate without the master templates.
+`XFTY_GenerationContext` gained the `depthBatched` flag purely so
+`wireSharedAncestor` can refuse the unsupported combination early.
+
+**Opt-in, settled** (Brian, repeatedly): never always-on. It changes `insert`
+order and the order triggers fire mid-generation, which many tests depend on.
+
+Still open: **depth-computation cost** at volume (the walk is O(records + edges));
+load-test alongside the `XFTY_Load` suite. **Shared ancestors + depth-batching** -
+refused for now; needs the walk to handle a record reachable from two places.
 
 ---
 

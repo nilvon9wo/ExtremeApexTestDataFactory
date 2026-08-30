@@ -9,18 +9,18 @@ For what changed and why, see [migration.md](migration.md).
 
 ## Deferred persistence
 
-Two related, self-contained ideas that move DML out of the recursion - full
-design **[design/deferred-persistence.md](design/deferred-persistence.md)**:
+Two related ideas that move DML out of the recursion - full design
+**[design/deferred-persistence.md](design/deferred-persistence.md)**:
 
-- **Depth-batched persistence** - one mixed-type `insert` per dependency depth
-  instead of one per Provider. Verified today's behaviour is per-Provider (a Task
-  with two typed parents costs 3 inserts, not 2). A perf change to the existing
-  engine; opt-in or always-on TBD.
-- **A reference-preserving insert mode** (`DEFERRED`) - generate like `NEVER`
-  (no Ids), register every record, then `XFTY_DeferredInsert.flush()` inserts the
-  whole set (depth-batched) and back-fills the Ids on the instances already handed
-  out. For tests that call the framework several times and want one insert phase.
-  Plays nice with records inserted by other modes.
+- **Depth-batched persistence** - **done**, as the opt-in `.depthBatched()`
+  Provider flag: one mixed-type `insert` per dependency depth instead of one per
+  Provider. See [Testing Modes](testing-modes.md#depth-batched-persistence-depthbatched).
+- **A reference-preserving insert mode** (`DEFERRED`) - not started. Generate like
+  `NEVER` (no Ids), register every record, then `XFTY_DeferredInsert.flush()`
+  inserts the whole set (reusing the depth-batched machinery) and back-fills the
+  Ids on the instances already handed out. For tests that call the framework
+  several times and want one insert phase. Plays nice with records inserted by
+  other modes.
 
 ## Declared shared ancestors / deep chains
 

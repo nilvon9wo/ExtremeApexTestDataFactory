@@ -99,6 +99,95 @@ private class XFTY_DummySObjectFactoryDmlTest {
         return Limits.getDmlStatements() - before;
     }
 
+    // .depthBatched() - opt-in: one insert per dependency depth, not per Provider ------
+
+    /**
+     * The same two-parent-types graph that costs 3 inserts per Provider (see
+     * `howTheEngineBatchesInsertsToday`) costs 2 with `.depthBatched()`: Account
+     * and Contact batch together at depth 0, the Task alone at depth 1.
+     */
+    @IsTest
+    static void depthBatchedCollapsesParentTypesToOneInsertPerDepth() {
+        Integer twoParentTypes;
+        Integer oneParentType;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            twoParentTypes = depthBatchedInsertsFor(
+                    new CustomLookup()
+                            .register(Task.SObjectType, new TwoParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name))
+                            .register(Contact.SObjectType, new LeafProvider(Contact.Id, Contact.LastName)));
+            oneParentType = depthBatchedInsertsFor(
+                    new CustomLookup()
+                            .register(Task.SObjectType, new OneParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name)));
+            Test.stopTest();
+        }
+
+        Assert.areEqual(2, twoParentTypes, 'two parent types collapse from 3 inserts to 2');
+        Assert.areEqual(2, oneParentType, 'a single-parent graph is unchanged - it was already 2');
+    }
+
+    @IsTest
+    static void depthBatchedInsertsEveryRecordAndWiresTheLookups() {
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(Task.SObjectType,
+                    new CustomLookup()
+                            .register(Task.SObjectType, new TwoParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name))
+                            .register(Contact.SObjectType, new LeafProvider(Contact.Id, Contact.LastName)))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .depthBatched()
+                    .supplyBundle();
+        }
+
+        SObject generatedTask = bundle.getList(Task.Id)[0];
+        SObject parentAccount = bundle.getList(Task.WhatId)[0];
+        SObject parentContact = bundle.getList(Task.WhoId)[0];
+
+        Assert.isNotNull(generatedTask.Id, 'the Task is inserted');
+        Assert.isNotNull(parentAccount.Id, 'the Account parent is inserted');
+        Assert.isNotNull(parentContact.Id, 'the Contact parent is inserted');
+        Assert.areEqual(parentAccount.Id, generatedTask.get(Task.WhatId), 'WhatId points at the fresh Account Id');
+        Assert.areEqual(parentContact.Id, generatedTask.get(Task.WhoId), 'WhoId points at the fresh Contact Id');
+        Assert.areEqual(1, [SELECT COUNT() FROM Task]);
+        Assert.areEqual(
+                generatedTask.Id,
+                [SELECT Id FROM Task WHERE WhatId = :parentAccount.Id AND WhoId = :parentContact.Id].Id
+        );
+    }
+
+    @IsTest
+    static void depthBatchedIsIgnoredWhenNothingIsInserted() {
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Integer before = Limits.getDmlStatements();
+            new XFTY_DummySObjectProvider(Task.SObjectType,
+                    new CustomLookup()
+                            .register(Task.SObjectType, new TwoParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name))
+                            .register(Contact.SObjectType, new LeafProvider(Contact.Id, Contact.LastName)))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .depthBatched()
+                    .supplyList();
+            dml = Limits.getDmlStatements() - before;
+        }
+        Assert.areEqual(0, dml, 'MOCK does no DML - .depthBatched() has nothing to do');
+    }
+
+    private static Integer depthBatchedInsertsFor(XFTY_DummySObjectProviderLookupIntf lookup) {
+        Integer before = Limits.getDmlStatements();
+        new XFTY_DummySObjectProvider(Task.SObjectType, lookup)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .depthBatched()
+                .supplyList();
+        return Limits.getDmlStatements() - before;
+    }
+
     private static XFTY_DummySObjectBundle supplyContact(XFTY_InsertModeEnum insertMode) {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {

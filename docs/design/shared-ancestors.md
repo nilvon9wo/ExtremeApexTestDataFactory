@@ -475,9 +475,11 @@ gets a clear error the moment it touches a level it forgot. This also gives
 decision 1 its trigger: the `require(...)` call (or the first on-demand `get`) is
 where S0-S2 start.
 
-Cross-transaction org-wide singletons (a `Root` a prior test already committed and
-DML can't roll back) are still the consumer's problem - `put('root', existing)`
-after they re-query it, or a context where each test re-creates it.
+There is no cross-test case to handle. Every test method runs in its own
+transaction and all of its DML is rolled back when it finishes; data another test
+(or `@TestSetup`) created does not exist during this one, and cannot be made to.
+So a shared ancestor is always generated fresh within the test that needs it -
+`XFTY_SharedAncestor` only has to keep it consistent *within* that single test.
 
 ---
 

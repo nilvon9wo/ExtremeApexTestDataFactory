@@ -288,6 +288,24 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
+    static void depthBatchedWithASharedAncestorThrows() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        System.runAs(TEST_ADMIN) {
+            try {
+                new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                        .setInsertMode(XFTY_InsertModeEnum.NOW)
+                        .depthBatched()
+                        .supply();
+                Assert.fail('Expected an exception');
+            } catch (XFTY_DummySObjectFtyProviderException ex) {
+                Assert.isTrue(ex.getMessage().contains('not supported together'), ex.getMessage());
+            }
+        }
+    }
+
+    @IsTest
     static void reconfiguringAResolvedSharedAncestorThrows() {
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'First'));
         System.runAs(TEST_ADMIN) {

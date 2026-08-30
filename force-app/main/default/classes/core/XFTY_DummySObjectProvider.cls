@@ -85,6 +85,7 @@ public class XFTY_DummySObjectProvider {
     private XFTY_InsertModeEnum insertMode = XFTY_InsertModeEnum.NEVER;
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
     private Boolean hasCustomMasterTemplate = false;
+    private Boolean depthBatched = false;
 
     // `sObjectType` is set non-null by the constructor and only ever reassigned
     // (in setOverrideTemplateList) to another SObject's type, which is never
@@ -194,6 +195,21 @@ public class XFTY_DummySObjectProvider {
 
     public XFTY_DummySObjectProvider setInclusivity(XFTY_InsertInclusivityEnum inclusivity) {
         this.inclusivity = inclusivity;
+        return this;
+    }
+
+    /**
+     * Opt in to depth-batched persistence for this call: generate the whole graph
+     * structurally, then insert it in one `insert` per dependency depth instead of
+     * one per Provider recursion. A `Task` with an `Account` and a `Contact`
+     * parent then costs 2 inserts, not 3.
+     *
+     * Opt-in on purpose - it changes `insert` order (and the order triggers fire
+     * during generation), which some tests depend on. Only affects `NOW`; the
+     * other modes do no framework DML. Not supported with shared ancestors yet.
+     */
+    public XFTY_DummySObjectProvider depthBatched() {
+        this.depthBatched = true;
         return this;
     }
 
@@ -333,9 +349,16 @@ public class XFTY_DummySObjectProvider {
                 ? this.multiplyByQuantity(templateList)
                 : templateList;
 
+        Boolean batchingThisCall = this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+
         XFTY_GenerationContext context = new XFTY_GenerationContext(
-                this.sObjectProviderLookup, this.insertMode, this.inclusivity
+                this.sObjectProviderLookup,
+                batchingThisCall ? XFTY_InsertModeEnum.NEVER : this.insertMode,
+                this.inclusivity
         ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
+        if (batchingThisCall) {
+            context = context.asDepthBatched();
+        }
 
         // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
         // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own
@@ -343,6 +366,10 @@ public class XFTY_DummySObjectProvider {
         XFTY_DummySObjectBundle bundle = this.hasCustomMasterTemplate
                 ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, multipliedTemplateList)
                 : this.factoryOutlet.createBundle(context, multipliedTemplateList);
+
+        if (batchingThisCall) {
+            XFTY_DeferredInsertBuffer.insertGraph(bundle);
+        }
         return bundle;
     }
 

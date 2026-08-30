@@ -15,6 +15,7 @@ public class XFTY_DummySObjectFactory {
             sobjectList.add(cloneAndCompletePlainValues(masterTemplate, testSpecificTemplate));
         }
 
+        bundle.primaryTargetField = masterTemplate.primaryTargetField;
         bundle.put(masterTemplate.primaryTargetField, sobjectList);
         createRelationships(context, bundle, masterTemplate);
         // Second value pass: context-aware strategies, now that the plain values
@@ -142,6 +143,13 @@ public class XFTY_DummySObjectFactory {
             SObjectField sObjectField,
             XFTY_SharedRelationshipIntf shared
     ) {
+        if (context.depthBatched) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Shared ancestor "' + shared.getSharedName() + '" cannot be generated in a depth-batched run yet - '
+                            + 'depth-batching and shared ancestors are not supported together. Drop .depthBatched() for '
+                            + 'this call, or reference the shared ancestor from a separate non-batched Provider call.'
+            );
+        }
         SObject sharedRecord = shared.resolveSharedRecord(context);
 
         if (XFTY_InsertModeEnum.NOW.equals(context.insertMode) && !shared.isResolvedRecordPersisted()) {

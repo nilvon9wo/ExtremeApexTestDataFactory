@@ -124,4 +124,5 @@ Not required, but available:
 | Context-aware values (`XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, `XFTY_ContextAwareValueIntf`) | [Customization → Context-Aware Values](customization.md#context-aware-values) |
 | Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [Relationships → One-Off Exceptions](relationships.md#one-off-exceptions-includeoptional--excluderelationship) |
 | Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [Relationships → Shared Ancestors](relationships.md#shared-ancestors) |
+| `.depthBatched()` - opt-in, one `insert` per dependency depth instead of one per Provider | [Testing Modes → Depth-Batched Persistence](testing-modes.md#depth-batched-persistence-depthbatched) |
 | `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites | [Packaging → Test suites](packaging.md#test-suites) |

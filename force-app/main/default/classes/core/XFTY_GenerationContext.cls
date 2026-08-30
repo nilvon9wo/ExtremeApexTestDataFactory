@@ -50,12 +50,21 @@ public class XFTY_GenerationContext {
      */
     public final List<List<SObjectField>> forcedRelationshipPaths;
 
+    /**
+     * True when the top-level call opted into depth-batched persistence
+     * (`.depthBatched()`): generation runs structurally (like `NEVER`) and
+     * `XFTY_DeferredInsertBuffer` inserts the whole graph afterwards in one
+     * `insert` per dependency depth. Carried down every derived context so the
+     * engine can refuse combinations it does not support yet (shared ancestors).
+     */
+    public final Boolean depthBatched;
+
     public XFTY_GenerationContext(
             XFTY_DummySObjectProviderLookupIntf providerLookup,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
-        this(providerLookup, insertMode, inclusivity, null, null, -1, new List<List<SObjectField>>());
+        this(providerLookup, insertMode, inclusivity, null, null, -1, new List<List<SObjectField>>(), false);
     }
 
     private XFTY_GenerationContext(
@@ -65,7 +74,8 @@ public class XFTY_GenerationContext {
             SObject recordBeingBuilt,
             XFTY_DummySObjectBundle bundleSoFar,
             Integer rowIndex,
-            List<List<SObjectField>> forcedRelationshipPaths
+            List<List<SObjectField>> forcedRelationshipPaths,
+            Boolean depthBatched
     ) {
         if (providerLookup == null) {
             throw new XFTY_DummySObjectFtyProviderException('A generation context requires a Provider Lookup.');
@@ -79,13 +89,22 @@ public class XFTY_GenerationContext {
         this.forcedRelationshipPaths = (forcedRelationshipPaths == null)
                 ? new List<List<SObjectField>>()
                 : forcedRelationshipPaths;
+        this.depthBatched = (depthBatched == true);
     }
 
     /** A copy carrying the given `includeOptional(...)` paths (top-level entry point). */
     public XFTY_GenerationContext withForcedRelationshipPaths(List<List<SObjectField>> paths) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.depthBatched
+        );
+    }
+
+    /** A copy marked as a depth-batched run (top-level entry point). */
+    public XFTY_GenerationContext asDepthBatched() {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, true
         );
     }
 
@@ -129,7 +148,7 @@ public class XFTY_GenerationContext {
                 XFTY_InsertInclusivityEnum.PREVENT_CASCADE.equals(this.inclusivity)
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
-                null, null, -1, childPaths
+                null, null, -1, childPaths, this.depthBatched
         );
     }
 
@@ -141,7 +160,7 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.depthBatched
         );
     }
 }

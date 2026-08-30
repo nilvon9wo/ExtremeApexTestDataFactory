@@ -175,6 +175,37 @@ When in doubt, prefer the least amount of database interaction necessary.
 
 ---
 
+# Depth-Batched Persistence (`.depthBatched()`)
+
+By default, `NOW` runs one `insert` per Provider in the graph: a `Task` with an
+`Account` parent and a `Contact` parent costs three (`Account`, `Contact`,
+`Task`). For a wide graph that adds up.
+
+`.depthBatched()` on the Provider collapses that to **one `insert` per dependency
+depth**, regardless of how many types sit at each depth - the `Task` example
+drops to two, and a record with five parents of five types drops from six to two:
+
+```apex
+new XFTY_DummySObjectProvider(Task.SObjectType, lookup)
+        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+        .setInsertMode(XFTY_InsertModeEnum.NOW)
+        .depthBatched()
+        .supplyBundle();
+```
+
+The generated records are identical; only the number and **order** of `insert`
+statements changes. It is opt-in for exactly that reason - a test that asserts an
+exact DML count, or depends on the order its triggers fire during generation,
+should leave it off.
+
+- Only affects `NOW`. The other modes do no framework DML, so it is a no-op.
+- Not supported with shared ancestors yet - a depth-batched call that references
+  an `XFTY_SharedAncestor` throws a clear error.
+- A lookup cycle (record A points at B, B points at A) cannot be one `insert`
+  order and throws `XFTY_DepthBatchedInserter.CyclicGraphException`.
+
+---
+
 # Relationship Inclusivity
 
 Relationship Inclusivity determines how much of the object graph should be generated.
