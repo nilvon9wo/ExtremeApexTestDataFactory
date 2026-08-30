@@ -37,7 +37,7 @@ public class XFTY_DummySObjectFactory {
     }
 
     /**
-     * If the context carries `includeOptionalAncestor(...)` paths, return a copy
+     * If the context carries `includeOptional(...)` paths, return a copy
      * of the master template with each path's head relationship forced (an
      * optional one promoted to required). Throws if a path head is not a
      * relationship on this template. Returns the original template untouched when
@@ -63,7 +63,7 @@ public class XFTY_DummySObjectFactory {
                 forced.putRequired(head, optionalRelationship);
             } else if (!masterTemplate.requiredRelationshipBySObjectFieldMap.containsKey(head)) {
                 throw new XFTY_DummySObjectFtyProviderException(
-                        'includeOptionalAncestor: ' + head + ' is not a relationship on the Provider for '
+                        'includeOptional: ' + head + ' is not a relationship on the Provider for '
                                 + masterTemplate.primaryTargetField + '.'
                 );
             }

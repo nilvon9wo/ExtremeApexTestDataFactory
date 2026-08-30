@@ -12,7 +12,7 @@
  * - gives one place to apply the recursion transforms (`RELATED_ONLY` becomes
  *   `NOW` for related records, `PREVENT_CASCADE` becomes `NONE` one level down) -
  *   see {@link #forRelated};
- * - carries the `includeOptionalAncestor(...)` paths down the graph;
+ * - carries the `includeOptional(...)` paths down the graph;
  * - is what a context-aware value strategy reads (see
  *   {@link XFTY_ContextAwareValueIntf}, docs/design/context-aware-values.md).
  *
@@ -43,7 +43,7 @@ public class XFTY_GenerationContext {
     public final Integer rowIndex;
 
     /**
-     * `includeOptionalAncestor(...)` paths still to apply, each `[relationshipField,
+     * `includeOptional(...)` paths still to apply, each `[relationshipField,
      * ...deeper fields]`. A path whose head matches a relationship on the master
      * template being generated forces that relationship; {@link #forRelated} drops
      * the head and carries the tail into the child.
@@ -81,7 +81,7 @@ public class XFTY_GenerationContext {
                 : forcedRelationshipPaths;
     }
 
-    /** A copy carrying the given `includeOptionalAncestor(...)` paths (top-level entry point). */
+    /** A copy carrying the given `includeOptional(...)` paths (top-level entry point). */
     public XFTY_GenerationContext withForcedRelationshipPaths(List<List<SObjectField>> paths) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,

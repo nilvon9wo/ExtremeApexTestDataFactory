@@ -306,7 +306,7 @@ private class XFTY_DummySObjectFactoryTest {
         }
     }
 
-    // includeOptionalAncestor -----------------------------------------------
+    // includeOptional -----------------------------------------------
 
     private static CustomLookup optionalChainLookup() {
         return new CustomLookup()
@@ -316,11 +316,11 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorForcesAOneStepPath() {
+    static void includeOptionalForcesAOneStepPath() {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, optionalChainLookup())
-                    .includeOptionalAncestor(new List<SObjectField>{ Contact.AccountId })
+                    .includeOptional(new List<SObjectField>{ Contact.AccountId })
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supplyBundle();
@@ -332,11 +332,11 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorForcesAMultiStepPath() {
+    static void includeOptionalForcesAMultiStepPath() {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, optionalChainLookup())
-                    .includeOptionalAncestor(new List<SObjectField>{ Contact.AccountId, Account.OwnerId })
+                    .includeOptional(new List<SObjectField>{ Contact.AccountId, Account.OwnerId })
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supplyBundle();
@@ -348,7 +348,7 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void withoutIncludeOptionalAncestorTheChainIsNotGenerated() {
+    static void withoutIncludeOptionalTheChainIsNotGenerated() {
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, optionalChainLookup())
@@ -361,11 +361,11 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorRejectsAStepThatIsNotARelationship() {
+    static void includeOptionalRejectsAStepThatIsNotARelationship() {
         System.runAs(TEST_ADMIN) {
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, optionalChainLookup())
-                        .includeOptionalAncestor(new List<SObjectField>{ Contact.FirstName })
+                        .includeOptional(new List<SObjectField>{ Contact.FirstName })
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.MOCK)
                         .supplyBundle();
@@ -377,10 +377,10 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorRejectsAnEmptyPath() {
+    static void includeOptionalRejectsAnEmptyPath() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
-                    .includeOptionalAncestor(new List<SObjectField>());
+                    .includeOptional(new List<SObjectField>());
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
@@ -388,10 +388,10 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorRejectsANullPath() {
+    static void includeOptionalRejectsANullPath() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
-                    .includeOptionalAncestor(null);
+                    .includeOptional((List<SObjectField>) null);
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
@@ -399,10 +399,10 @@ private class XFTY_DummySObjectFactoryTest {
     }
 
     @IsTest
-    static void includeOptionalAncestorRejectsANullStep() {
+    static void includeOptionalRejectsANullStep() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
-                    .includeOptionalAncestor(new List<SObjectField>{ Contact.AccountId, null });
+                    .includeOptional(new List<SObjectField>{ Contact.AccountId, null });
             Assert.fail('Expected a SanityException');
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
             Assert.isTrue(ex.getMessage().contains('cannot be null'), ex.getMessage());

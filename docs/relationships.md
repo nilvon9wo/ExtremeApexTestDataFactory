@@ -351,31 +351,34 @@ new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
 ```
 
 - **`includeOptional(field)`** promotes one optional relationship to be generated
-  for this call, on top of whatever inclusivity covers. Throws if `field` is not
-  an optional relationship on this Provider.
+  for this call, on top of whatever inclusivity covers. If the field is already a
+  required relationship it is a no-op (it is generated anyway). Throws during
+  generation if `field` is not a relationship on the Provider it resolves to.
 - **`excludeRelationship(field)`** makes one relationship - required or optional -
   non-existent for this call: not generated, not attached, not left as an orphan
   reference. Throws if `field` is not a relationship (use
   `removeFromMasterTemplate(...)` for plain value fields).
 
 Both act only on the instance they are called on, so a different Provider using
-the same Master Template still generates the relationship. Call them before any
-`put(...)` (same ordering rule as `withVariant`).
+the same Master Template still generates the relationship. `includeOptional` is
+applied to a per-call copy of the Master Template, so it is order-independent;
+call `excludeRelationship` before any `put(...)` (same ordering rule as
+`withVariant`).
 
-To reach **deeper into the graph**, `includeOptionalAncestor(path)` takes a path
-of relationship fields and forces every step - for this call only:
+`includeOptional` also takes a **path** of relationship fields, to reach deeper
+into the graph and force every step - for this call only:
 
 ```apex
 new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })
+    .includeOptional(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })
 ```
 
 generates the Opportunity's Pricebook (optional) **and** that Pricebook's Owner
 (optional), leaving everything else at `REQUIRED`. Each step must be a
 relationship on the Provider it resolves to; an unknown step throws during
-generation. A one-element path is `includeOptional(...)` for the top-level
-relationship.
+generation. Whether a step is a plain relationship or a shared ancestor makes no
+difference. `includeOptional(field)` is shorthand for the one-element path.
 
 ---
 

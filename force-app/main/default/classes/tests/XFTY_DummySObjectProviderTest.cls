@@ -266,13 +266,32 @@ private class XFTY_DummySObjectProviderTest {
     }
 
     @IsTest
-    static void includeOptionalRejectsAFieldThatIsNotAnOptionalRelationship() {
+    static void includeOptionalOnAnAlreadyRequiredRelationshipIsANoOp() {
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .includeOptional(Contact.AccountId) // already required - nothing to promote
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+        Test.stopTest();
+
+        Assert.areEqual(1, bundle.getList(Contact.AccountId).size(), 'the required Account is generated, exactly once');
+    }
+
+    @IsTest
+    static void includeOptionalRejectsAFieldThatIsNotARelationship() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .includeOptional(Contact.AccountId); // AccountId is required, not optional
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('no optional relationship'), ex.getMessage());
+                    .includeOptional(Contact.FirstName) // not a relationship
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+            Assert.fail('Expected an exception');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('is not a relationship'), ex.getMessage());
         }
     }
 

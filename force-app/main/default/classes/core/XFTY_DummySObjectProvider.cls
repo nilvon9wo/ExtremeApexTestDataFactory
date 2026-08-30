@@ -263,23 +263,32 @@ public class XFTY_DummySObjectProvider {
     // before customizing with put(...) (same rule as withVariant).
 
     /**
-     * Generate one specific *optional* relationship on this call, on top of
-     * whatever `setInclusivity(...)` covers - i.e. promote it to required for this
-     * instance. Throws if `sObjectField` is not an optional relationship on this
-     * Provider.
+     * Generate one specific relationship on this call, on top of whatever
+     * `setInclusivity(...)` covers - promote it to required for this instance.
+     * Equivalent to `includeOptional(new List<SObjectField>{ sObjectField })`.
      */
     public XFTY_DummySObjectProvider includeOptional(SObjectField sObjectField) {
-        XFTY_DummyDefaultRelationshipIntf relationship =
-                this.masterTemplate.optionalRelationshipBySObjectFieldMap.get(sObjectField);
-        if (relationship == null) {
-            throw new SanityException(
-                    'includeOptional(' + sObjectField + '): ' + this.sObjectType
-                            + ' has no optional relationship on that field.'
-            );
+        return this.includeOptional(new List<SObjectField>{ sObjectField });
+    }
+
+    /**
+     * Reach down the graph: force every relationship along the path for this call.
+     * `includeOptional(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })`
+     * makes the generated Opportunity's Pricebook, and *its* Owner, both required -
+     * for this call only. Each step must be a relationship on the Provider it
+     * resolves to (an unknown step throws during generation); whether that
+     * relationship is a plain one or a shared ancestor makes no difference.
+     */
+    public XFTY_DummySObjectProvider includeOptional(List<SObjectField> relationshipPath) {
+        if (relationshipPath == null || relationshipPath.isEmpty()) {
+            throw new SanityException('includeOptional(...) needs at least one relationship field.');
         }
-        this.masterTemplate.remove(sObjectField);
-        this.masterTemplate.putRequired(sObjectField, relationship);
-        this.hasCustomMasterTemplate = true;
+        for (SObjectField step : relationshipPath) {
+            if (step == null) {
+                throw new SanityException('includeOptional(...) path steps cannot be null.');
+            }
+        }
+        this.forcedRelationshipPaths.add(relationshipPath);
         return this;
     }
 
@@ -302,27 +311,6 @@ public class XFTY_DummySObjectProvider {
         }
         this.masterTemplate.remove(sObjectField);
         this.hasCustomMasterTemplate = true;
-        return this;
-    }
-
-    /**
-     * Reach down the graph: force the whole relationship path for this call.
-     * `includeOptionalAncestor(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId })`
-     * makes the generated Opportunity's Pricebook, and *its* Owner, both required -
-     * for this call only. Each step must be a relationship on the Provider it
-     * resolves to (an unknown step throws during generation). A one-element path
-     * is `includeOptional(...)` for the top-level relationship.
-     */
-    public XFTY_DummySObjectProvider includeOptionalAncestor(List<SObjectField> relationshipPath) {
-        if (relationshipPath == null || relationshipPath.isEmpty()) {
-            throw new SanityException('includeOptionalAncestor(...) needs at least one relationship field.');
-        }
-        for (SObjectField step : relationshipPath) {
-            if (step == null) {
-                throw new SanityException('includeOptionalAncestor(...) path steps cannot be null.');
-            }
-        }
-        this.forcedRelationshipPaths.add(relationshipPath);
         return this;
     }
 

@@ -122,6 +122,6 @@ Not required, but available:
 | `withVariant(key)` / `new XFTY_DummySObjectProvider(key, lookup)` / `new XFTY_DummySObjectProvider(template, lookup)` | [Providers → Record Types and Variants](providers.md#record-types-and-variants), [Getting Started → Shorthand Constructors](getting-started.md#shorthand-constructors) |
 | Record-type / flavour Provider variants (`XFTY_RecordTypeLookupKey`, `XFTY_FlavouredLookupKey`, `XFTY_FieldPredicate`) | [Providers → Record Types and Variants](providers.md#record-types-and-variants) |
 | Context-aware values (`XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, `XFTY_ContextAwareValueIntf`) | [Customization → Context-Aware Values](customization.md#context-aware-values) |
-| Per-call relationship control (`includeOptional`, `excludeRelationship`, `includeOptionalAncestor`) | [Relationships → One-Off Exceptions](relationships.md#one-off-exceptions-includeoptional--excluderelationship) |
+| Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [Relationships → One-Off Exceptions](relationships.md#one-off-exceptions-includeoptional--excluderelationship) |
 | Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [Relationships → Shared Ancestors](relationships.md#shared-ancestors) |
 | `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites | [Packaging → Test suites](packaging.md#test-suites) |
