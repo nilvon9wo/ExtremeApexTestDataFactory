@@ -38,10 +38,12 @@ public class XFTY_DeferredInsertBuffer {
     }
 
     private List<Integer> collect(XFTY_DummySObjectBundle bundle) {
-        if (bundle == null || bundle.primaryRecords() == null) {
+        Boolean nothingToCollect = (bundle == null) || (bundle.primaryRecords() == null);
+        if (nothingToCollect) {
             return new List<Integer>();
         }
-        List<Integer> childIndices = this.append(bundle.primaryRecords());
+        List<SObject> primaries = bundle.primaryRecords();
+        List<Integer> childIndices = this.append(primaries);
         this.linkToParents(bundle, childIndices);
         return childIndices;
     }
@@ -61,7 +63,9 @@ public class XFTY_DeferredInsertBuffer {
         if (parentBundle == null) {
             return;
         }
-        this.linkUnsetLookups(bundle.primaryRecords(), childIndices, this.collect(parentBundle), parentField);
+        List<SObject> children = bundle.primaryRecords();
+        List<Integer> parentIndices = this.collect(parentBundle);
+        this.linkUnsetLookups(children, childIndices, parentIndices, parentField);
     }
 
     private void linkUnsetLookups(
@@ -70,23 +74,46 @@ public class XFTY_DeferredInsertBuffer {
             List<Integer> parentIndices,
             SObjectField field
     ) {
-        for (Integer row = 0; row < childIndices.size() && row < parentIndices.size(); row++) {
-            if (children[row].get(field) == null) {
-                this.recordLink(childIndices[row], parentIndices[row], field);
-            }
+        Integer rows = rowCount(childIndices, parentIndices);
+        for (Integer row = 0; row < rows; row++) {
+            this.linkRow(children, childIndices, parentIndices, field, row);
         }
+    }
+
+    private void linkRow(
+            List<SObject> children,
+            List<Integer> childIndices,
+            List<Integer> parentIndices,
+            SObjectField field,
+            Integer row
+    ) {
+        SObject child = children[row];
+        Boolean alreadySet = child.get(field) != null;
+        if (alreadySet) {
+            return;
+        }
+        Integer childIndex = childIndices[row];
+        Integer parentIndex = parentIndices[row];
+        this.recordLink(childIndex, parentIndex, field);
     }
 
     private List<Integer> append(List<SObject> records) {
         List<Integer> indices = new List<Integer>();
         for (SObject record : records) {
             this.pendingRecords.add(record);
-            indices.add(this.pendingRecords.size() - 1);
+            Integer index = this.pendingRecords.size() - 1;
+            indices.add(index);
         }
         return indices;
     }
 
     private void recordLink(Integer childIndex, Integer parentIndex, SObjectField field) {
-        this.pendingLinks.add(new XFTY_DepthBatchedInserter.ParentLink(childIndex, parentIndex, field));
+        XFTY_DepthBatchedInserter.ParentLink link =
+                new XFTY_DepthBatchedInserter.ParentLink(childIndex, parentIndex, field);
+        this.pendingLinks.add(link);
+    }
+
+    private static Integer rowCount(List<Integer> childIndices, List<Integer> parentIndices) {
+        return Math.min(childIndices.size(), parentIndices.size());
     }
 }

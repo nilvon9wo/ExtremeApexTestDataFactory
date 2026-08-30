@@ -30,9 +30,17 @@ public class XFTY_DummySObjectBundle {
         return this.sObjectListBySObjectFieldMap.get(sObjectField);
     }
 
+    /** Record the primary records and the field they belong to. */
+    public void putPrimaries(SObjectField primaryTargetField, List<SObject> records) {
+        this.primaryTargetField = primaryTargetField;
+        this.put(primaryTargetField, records);
+    }
+
     /** The records this bundle is about; null when `primaryTargetField` is not set. */
     public List<SObject> primaryRecords() {
-        return (this.primaryTargetField == null) ? null : this.getList(this.primaryTargetField);
+        return (this.primaryTargetField == null)
+                ? null
+                : this.getList(this.primaryTargetField);
     }
 
     /** The relationship fields that carry a generated sub-bundle (the parents). */

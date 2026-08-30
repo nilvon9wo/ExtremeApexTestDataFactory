@@ -333,14 +333,14 @@ public class XFTY_DummySObjectProvider {
 
     public XFTY_DummySObjectBundle supplyBundle() {
         this.warnIfMixingCustomTemplateWithOverrides();
-        XFTY_DummySObjectBundle bundle = this.generate(this.buildContext(), this.templatesToFill());
+        XFTY_GenerationContext context = this.buildContext();
+        List<SObject> templates = this.templatesToFill();
+        XFTY_DummySObjectBundle bundle = this.generate(context, templates);
         this.persist(bundle);
         return bundle;
     }
 
     private XFTY_DummySObjectBundle generate(XFTY_GenerationContext context, List<SObject> templates) {
-        // A customized master template generates from that copy; otherwise the
-        // Provider itself may pick a template (e.g. by record type).
         return this.hasCustomMasterTemplate
                 ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, templates)
                 : this.factoryOutlet.createBundle(context, templates);
@@ -355,21 +355,30 @@ public class XFTY_DummySObjectProvider {
     }
 
     private XFTY_GenerationContext buildContext() {
-        Boolean batched = this.buildsStructurallyForBatchedInsert();
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                this.sObjectProviderLookup,
-                batched ? XFTY_InsertModeEnum.NEVER : this.insertMode,
-                this.inclusivity
-        ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
-        return batched ? context.forBatchedInsert() : context;
+        XFTY_InsertModeEnum mode = this.contextInsertMode();
+        XFTY_GenerationContext base = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity);
+        XFTY_GenerationContext withPaths = base.withForcedRelationshipPaths(this.forcedRelationshipPaths);
+        return this.buildsStructurallyForBatchedInsert()
+                ? withPaths.forBatchedInsert()
+                : withPaths;
+    }
+
+    private XFTY_InsertModeEnum contextInsertMode() {
+        return this.buildsStructurallyForBatchedInsert()
+                ? XFTY_InsertModeEnum.NEVER
+                : this.insertMode;
     }
 
     private Boolean buildsStructurallyForBatchedInsert() {
-        return this.flushesGraphWhenThisCallEnds() || this.deferredToRegistry();
+        Boolean flushesHere = this.flushesGraphWhenThisCallEnds();
+        Boolean deferred = this.deferredToRegistry();
+        return flushesHere || deferred;
     }
 
     private Boolean flushesGraphWhenThisCallEnds() {
-        return this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+        Boolean optedIn = this.depthBatched;
+        Boolean nowMode = XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+        return optedIn && nowMode;
     }
 
     private Boolean deferredToRegistry() {
@@ -377,18 +386,31 @@ public class XFTY_DummySObjectProvider {
     }
 
     private List<SObject> templatesToFill() {
-        List<SObject> templates = this.hasOverrideTemplates()
-                ? this.overrideTemplateList
-                : new List<SObject>{ this.sObjectType.newSObject() };
-        return (this.quantityPerListedTemplate > 1) ? this.multiplyByQuantity(templates) : templates;
+        List<SObject> templates = this.suppliedOrBlankTemplates();
+        Boolean multiply = this.quantityPerListedTemplate > 1;
+        return multiply
+                ? this.multiplyByQuantity(templates)
+                : templates;
+    }
+
+    private List<SObject> suppliedOrBlankTemplates() {
+        if (this.hasOverrideTemplates()) {
+            return this.overrideTemplateList;
+        }
+        SObject blank = this.sObjectType.newSObject();
+        return new List<SObject>{ blank };
     }
 
     private Boolean hasOverrideTemplates() {
-        return this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty();
+        if (this.overrideTemplateList == null) {
+            return false;
+        }
+        return !this.overrideTemplateList.isEmpty();
     }
 
     private void warnIfMixingCustomTemplateWithOverrides() {
-        if (this.hasCustomMasterTemplate && this.hasOverrideTemplates()) {
+        Boolean mixing = this.hasCustomMasterTemplate && this.hasOverrideTemplates();
+        if (mixing) {
             System.debug(LoggingLevel.WARN, '!!!  Custom master template + overrides: overrides win all conflicts!  !!!');
         }
     }
