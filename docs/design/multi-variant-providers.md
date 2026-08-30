@@ -19,7 +19,7 @@ Earlier deviations from the original proposal:
 
 - **No inheritance.** `@IsTest` classes cannot be abstract or virtual, so
   `XFTY_AbstractSObjectProviderLookup` became a concrete, *composed*
-  `XFTY_SObjectProviderLookup` (configure it, don't extend it), and
+  `XFTY_DefaultSObjectProviderLookup` (configure it, don't extend it), and
   `XFTY_RecordTypeLookupKey` / `XFTY_FlavorLookupKey` wrap an `XFTY_LookupKey`
   instead of subclassing it.
 - **Keys are flyweights.** Obtain them with `XFTY_LookupKey.get(...)` etc.;
@@ -30,7 +30,7 @@ Earlier deviations from the original proposal:
   requiredness moved to the Master Template slot
   (`putRequired` / `putOptional`; untyped `put` ⇒ required).
 - **`XFTY_FlavorLookupKey`** shipped alongside `XFTY_RecordTypeLookupKey`.
-- `XFTY_SObjectProviderLookup.register` has a `(key, providerInstance)` overload
+- `XFTY_DefaultSObjectProviderLookup.register` has a `(key, providerInstance)` overload
   for Providers that need constructor arguments (and for tests).
 - `XFTY_DefaultAccountDataProvider` was **not** rewritten as a Person/Business
   example (scratch orgs lack Person Accounts); `XFTY_MultiVariantProviderTest`

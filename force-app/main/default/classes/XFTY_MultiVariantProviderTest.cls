@@ -9,8 +9,8 @@ private class XFTY_MultiVariantProviderTest {
     private static final XFTY_LookupKeyIntf ENTERPRISE = new XFTY_FlavouredLookupKey(Account.SObjectType, 'enterprise');
     private static final XFTY_LookupKeyIntf SMB = new XFTY_FlavouredLookupKey(Account.SObjectType, 'smb');
 
-    private static XFTY_SObjectProviderLookup newLookup() {
-        return new XFTY_SObjectProviderLookup()
+    private static XFTY_DefaultSObjectProviderLookup newLookup() {
+        return new XFTY_DefaultSObjectProviderLookup()
                 .register(XFTY_LookupKey.get(Account.SObjectType), new SmbAccountProvider())
                 .register(ENTERPRISE, new EnterpriseAccountProvider())
                 .register(SMB, new SmbAccountProvider())
@@ -19,7 +19,7 @@ private class XFTY_MultiVariantProviderTest {
 
     @IsTest
     static void getByExplicitKeyReturnsTheMatchingProvider() {
-        XFTY_SObjectProviderLookup lookup = newLookup();
+        XFTY_DefaultSObjectProviderLookup lookup = newLookup();
 
         Assert.isInstanceOfType(lookup.get(ENTERPRISE), EnterpriseAccountProvider.class);
         Assert.isInstanceOfType(lookup.get(SMB), SmbAccountProvider.class);

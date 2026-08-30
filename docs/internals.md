@@ -59,7 +59,7 @@ Each component has a single responsibility.
 |-----------|----------------|
 | `XFTY_DummySObjectProvider` | Public fluent API used by tests. |
 | `XFTY_DummySObjectProviderLookupIntf` | Resolves which Provider should generate a particular `SObject`. |
-| `XFTY_SObjectProviderLookup` | Configurable implementation of that interface. |
+| `XFTY_DefaultSObjectProviderLookup` | Configurable implementation of that interface. |
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavor). |
 | `XFTY_DummySobjectProviderIntf` | Describes how one `SObject` type should be generated. |
 | `XFTY_DummySObjectMasterTemplate` | Declarative description of default values and relationships. |
@@ -362,7 +362,7 @@ tie is an error.
 
 `@IsTest` classes cannot be abstract or virtual, which ruled out an abstract
 lookup base and a subclassable key hierarchy - hence the composition-based design
-(`XFTY_SObjectProviderLookup` is configured, not extended; refined keys wrap an
+(`XFTY_DefaultSObjectProviderLookup` is configured, not extended; refined keys wrap an
 `XFTY_LookupKey` rather than subclass it). See
 [docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
 

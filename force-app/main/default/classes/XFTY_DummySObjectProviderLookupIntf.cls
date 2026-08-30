@@ -1,8 +1,9 @@
 /**
  * Resolves which Provider should generate a given record.
  *
- * Most implementations should compose an {@link XFTY_SObjectProviderLookup},
- * which implements all three methods on top of a `register(key, provider)` call.
+ * {@link XFTY_DefaultSObjectProviderLookup} is the ready-made implementation -
+ * `new` it and `register(...)` your Providers. Implement this interface directly
+ * only for something it cannot express.
  */
 public interface XFTY_DummySObjectProviderLookupIntf {
     /** Convenience for the common case; equivalent to `get(XFTY_LookupKey.get(sObjectType))`. */

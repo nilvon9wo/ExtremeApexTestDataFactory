@@ -238,33 +238,33 @@ This distinction has a significant impact on test performance.
 
 # Provider Lookups
 
-Providers are discovered through an `XFTY_DummySObjectProviderLookupIntf`. The
-easiest way to build one is to configure an `XFTY_SObjectProviderLookup`:
+Providers are discovered through an `XFTY_DummySObjectProviderLookupIntf`.
+`XFTY_DefaultSObjectProviderLookup` is the implementation - it registers XFTY's
+own Account / Contact / User Providers in its constructor, and you `register(...)`
+your own on top:
 
 ```apex
-XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_SObjectProviderLookup()
-        .register(XFTY_LookupKey.get(Account.SObjectType), AccountDataProvider.class)
-        .register(XFTY_LookupKey.get(Contact.SObjectType), ContactDataProvider.class)
-        .register(XFTY_LookupKey.get(Opportunity.SObjectType), OpportunityDataProvider.class);
+XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_DefaultSObjectProviderLookup()
+        .register(XFTY_LookupKey.get(Opportunity.SObjectType), OpportunityDataProvider.class)
+        .register(XFTY_LookupKey.get(Contact.SObjectType), MyContactDataProvider.class); // replaces the built-in
 ```
 
 Each registered Provider needs a public no-arg constructor (it is instantiated
 lazily via `Type.newInstance()`); use the `register(key, providerInstance)`
-overload for Providers that need constructor arguments.
+overload for Providers that need constructor arguments. Registering a key that is
+already present replaces it, so the built-ins can be overridden.
 
-Wrap one in a named class if you prefer `new MyProjectLookup()` at call sites -
-see `XFTY_DefaultSObjectProviderLookup`. (`@IsTest` classes cannot be abstract,
-so there is no base class to extend - compose an `XFTY_SObjectProviderLookup`
-instead.)
-
-Separating lookup from generation lets different projects provide different
-implementations without modifying XFTY itself.
+Wrap `new XFTY_DefaultSObjectProviderLookup()...` in a shared method or a small
+named class if you use the same set of Providers across many tests. `@IsTest`
+classes cannot be abstract or virtual, so `XFTY_DefaultSObjectProviderLookup` is
+*the* implementation to read or copy - there is no base class, and implementing
+`XFTY_DummySObjectProviderLookupIntf` from scratch is only for something the
+built-in cannot express.
 
 The interface has three methods: `get(SObjectType)`, `get(XFTY_LookupKeyIntf)`,
 and `keysFor(SObject)` (every registered key that matches a record - a record can
-match more than one). `XFTY_SObjectProviderLookup` implements all three;
-`XFTY_LookupKeys.resolve(lookup, sObj)` turns the match set into the single
-most-specific key.
+match more than one). `XFTY_LookupKeys.resolve(lookup, sObj)` turns the match set
+into the single most-specific key.
 
 ---
 
@@ -299,7 +299,7 @@ The key is one of:
 it with `new` and register it.
 
 ```apex
-XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_SObjectProviderLookup()
+XFTY_DummySObjectProviderLookupIntf lookup = new XFTY_DefaultSObjectProviderLookup()
         .register(XFTY_LookupKey.get(Account.SObjectType), BusinessAccountProvider.class)
         .register(XFTY_RecordTypeLookupKey.get(Account.SObjectType, 'PersonAccount'), PersonAccountProvider.class)
         .register(

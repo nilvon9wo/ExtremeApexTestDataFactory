@@ -1,6 +1,7 @@
 /**
- * Coverage for `XFTY_DefaultSObjectProviderLookup` and the resolution /
- * registration behaviour it delegates to `XFTY_SObjectProviderLookup`.
+ * Coverage for `XFTY_DefaultSObjectProviderLookup` - the built-in Providers,
+ * registration, and `get(...)` resolution. Key derivation (`keysFor` /
+ * `XFTY_LookupKeys.resolve`) is covered in `XFTY_LookupKeyTest`.
  */
 @IsTest
 private class XFTY_DefaultSObjectProviderLookupTest {
@@ -56,7 +57,7 @@ private class XFTY_DefaultSObjectProviderLookupTest {
         try {
             lookup.get(Case.SObjectType);
             Assert.fail('Expected a LookupException');
-        } catch (XFTY_SObjectProviderLookup.LookupException ex) {
+        } catch (XFTY_DefaultSObjectProviderLookup.LookupException ex) {
             Assert.isTrue(ex.getMessage().contains('No data provider registered'), ex.getMessage());
         }
     }
