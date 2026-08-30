@@ -56,6 +56,44 @@ private class XFTY_GenerationContextTest {
     }
 
     @IsTest
+    static void baseContextHasNoPerRecordState() {
+        XFTY_GenerationContext context = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
+        );
+
+        Assert.isNull(context.recordBeingBuilt);
+        Assert.isNull(context.ancestorBundle);
+        Assert.areEqual(-1, context.rowIndex);
+    }
+
+    @IsTest
+    static void forRecordScopesToOneRecordAndKeepsTheRun() {
+        Account record = new Account(Name = 'ctx');
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+
+        XFTY_GenerationContext scoped = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.REQUIRED
+        ).forRecord(record, bundle, 2);
+
+        Assert.areEqual(record, scoped.recordBeingBuilt);
+        Assert.areEqual(bundle, scoped.ancestorBundle);
+        Assert.areEqual(2, scoped.rowIndex);
+        Assert.areEqual(XFTY_InsertModeEnum.NOW, scoped.insertMode, 'the run settings are unchanged');
+        Assert.areEqual(XFTY_InsertInclusivityEnum.REQUIRED, scoped.inclusivity);
+        Assert.areEqual(LOOKUP, scoped.providerLookup);
+    }
+
+    @IsTest
+    static void forRelatedClearsAnyPerRecordState() {
+        XFTY_GenerationContext related = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.ALL
+        ).forRecord(new Account(), new XFTY_DummySObjectBundle(), 0).forRelated();
+
+        Assert.isNull(related.recordBeingBuilt, 'descending into ancestors drops the current record');
+        Assert.areEqual(-1, related.rowIndex);
+    }
+
+    @IsTest
     static void forRelatedCarriesEveryOtherModeAndInclusivityThrough() {
         XFTY_GenerationContext related = new XFTY_GenerationContext(
                 LOOKUP, XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.ALL

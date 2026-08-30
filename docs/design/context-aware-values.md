@@ -14,12 +14,21 @@ more:
 - **sibling read** - a field derived from another field on the *same* record
   (`isOver18 = age >= 18`; `AccountName` copied to a text field a validation rule
   compares);
-- **ancestor read** - a field copied down from a generated parent / grandparent
-  (`Contact.Department` = its `Account`'s `Site`);
-- **generated-sibling-record read** - a value taken from another record generated
-  in the same run.
+- **ancestor read** *(down-flowing)* - a field copied down from a generated
+  parent / grandparent (`Contact.Department` = its `Account`'s `Site`);
+- **descendant read** *(up-flowing)* - a field on a parent copied *up* from a
+  child (`Account.Site` set to match its generated `Contact`'s `Department`;
+  a parent field a validation rule compares against a child's). This keeps
+  matching values defined once, on whichever record the test naturally sets them.
 
-All three are the same shape: *the strategy needs the generation context*.
+All are the same shape - *the strategy needs the generation context* - but they
+differ in **timing**:
+
+| | When the other record exists |
+|-|------------------------------|
+| sibling | same record, ordering within one value pass (decision 3) |
+| ancestor | already built - the factory builds relationships *before* the record's own values, so a parent is complete when its child's context-aware pass runs |
+| descendant | **not yet built** when the parent's value pass runs - needs a deferred pass (decision 4) |
 
 ---
 
@@ -85,10 +94,38 @@ Ancestor reads are unaffected by ordering - the ancestor bundle is fully built
 before any of this record's values are filled (factory phase order), so pass 2
 always sees complete ancestors.
 
-**Up-flowing** values (an ancestor field that depends on a *descendant*) are out
-of scope here - they need the deferred pass described in
-[future-ideas.md - Dynamic Ancestor Configuration](../future-ideas.md#dynamic-ancestor-configuration).
-This proposal is down-flowing and sideways only.
+---
+
+## Decision 4 - descendant (up-flowing) reads
+
+A parent field that copies *up* from a generated child can't be evaluated when
+the parent is built, because the child does not exist yet. It needs a **deferred
+pass over the whole graph**:
+
+1. build the entire structure (every record, every relationship) with plain +
+   sibling + ancestor values, no insert;
+2. **up-flow pass** - walk the graph and evaluate descendant-reading strategies,
+   now that every record exists in memory. Bottom-up isn't required; a single
+   pass works because every record is present;
+3. wire lookups, assign / insert Ids.
+
+Mechanically this is the same deferred pass
+[future-ideas.md - Dynamic Ancestor Configuration](../future-ideas.md#dynamic-ancestor-configuration)
+needs, and shares the phase-2/3 split. `XFTY_GenerationContext` would carry a
+`descendantBundle` (the records generated *from* this record's relationships,
+i.e. the sub-bundle) for the up-flow pass to read.
+
+A lighter partial answer that needs no deferred pass: when the factory builds a
+parent *because* a child requires it, it already holds the child's
+template + overrides - it could expose those (not the fully-generated child, just
+the seed) as `context.requestingChildTemplate`. That covers "matching value the
+test explicitly sets on the child" without restructuring the engine. Worth doing
+first if the full deferred pass proves expensive.
+
+**Increment plan:** ship sibling + ancestor now (no engine restructure). Add
+descendant reads as the second increment - either the light `requestingChildTemplate`
+or the full deferred pass, decided when the depth-batched-insert / dynamic-ancestor
+work lands, since they share the machinery.
 
 ---
 
@@ -109,23 +146,37 @@ mini-expression-language.
 
 ## Rough implementation plan
 
-1. `XFTY_ContextAwareValueIntf`; `XFTY_GenerationContext.forRecord(sObj, ancestorBundle)`
-   + the two nullable fields. No dispatch yet.
-2. `XFTY_DummySObjectFactory`: split `cloneAndCompleteNonRelationshipValues` into
-   the two passes; dispatch context-aware strategies in pass 2 with
-   `context.forRecord(...)`.
-3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` + tests.
-4. Docs: customization.md (a "context-aware values" section), internals.md (the
-   two-pass detail), a worked `isOver18` example in `test-support/` if it needs a
-   custom field.
+### Increment 1 - sibling + ancestor (done)
+
+1. `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`;
+   `XFTY_GenerationContext.forRecord(record, ancestorBundle, rowIndex)` + the
+   nullable fields.
+2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, skips
+   context-aware) + `completeContextAwareValues` (pass 2, after wiring).
+3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` (single hop) + tests.
+4. Docs: customization.md section, internals.md two-pass detail.
+
+### Increment 2 - descendant reads (decision 4)
+
+Either `context.requestingChildTemplate` (light) or the full deferred up-flow
+pass. Decide alongside the depth-batched-insert work.
+
+### Later
+
+Multi-hop `XFTY_CopyFromAncestor` path; topological / lazy sibling resolution if
+the insertion-order limitation bites.
 
 ---
 
-## Open questions for review
+## Resolved decisions
 
-1. **Decision 1** - go with **A** (extending interface, `instanceof` dispatch)?
-2. **Decision 3** - ship the simple **two-pass** (A) and document the
-   context-aware-reads-context-aware limitation, or invest in topological /
-   lazy resolution now?
-3. `XFTY_CopyFromAncestor` - is single-hop (`relationshipField, sourceField`)
-   enough for v1, or is multi-hop path support needed from the start?
+- **1** - **A**: `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`,
+  `instanceof` dispatch. Existing strategies untouched.
+- **3** - two-pass, insertion order. Documented limitation: a context-aware value
+  reading another only sees it if that one was `put(...)` first.
+- `XFTY_CopyFromAncestor` ships single-hop; multi-hop is a later increment.
+
+## Open
+
+- **Decision 4** - `requestingChildTemplate` vs. full deferred pass for descendant
+  reads.

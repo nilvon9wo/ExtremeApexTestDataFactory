@@ -230,6 +230,52 @@ Additional strategies can easily be created by implementing
 
 ---
 
+# Context-Aware Values
+
+Most value strategies generate a field in isolation. Some need to see the rest of
+the record - a field copied from a sibling, or from a generated parent.
+
+Two are bundled:
+
+```apex
+// copy a sibling field on the same record
+.put(Account.ShippingCity, 'Berlin')
+.put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
+
+// copy a field from the generated parent on a relationship
+.putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
+.put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Site))
+```
+
+For anything with logic, implement `XFTY_ContextAwareValueIntf` (it extends
+`XFTY_DummyDefaultValueIntf`, so it drops into `put(...)` like any strategy):
+
+```apex
+public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
+    public Object get(XFTY_GenerationContext context) {
+        Date birthdate = (Date) context.recordBeingBuilt.get(Contact.Birthdate);
+        return birthdate != null && birthdate.addYears(18) <= Date.today();
+    }
+    public Object get() { throw new IllegalArgumentException('needs a context'); }
+}
+```
+
+`context` exposes `recordBeingBuilt` (plain values already set, lookups already
+wired) and `ancestorBundle` (`getList(relationshipField)` for the generated
+parents).
+
+**How it runs.** Values are filled in two passes: plain strategies first, then
+context-aware strategies in the order they were `put(...)`. So a context-aware
+value can read any plain field, any wired lookup, and any *earlier* context-aware
+value. Reading a *later* context-aware value, or a field on a generated child
+(the child does not exist yet), is not supported - see
+[design/context-aware-values.md](design/context-aware-values.md).
+
+An override-template value still wins over a context-aware strategy, exactly as
+with a plain one.
+
+---
+
 # Relationship Providers
 
 Relationships are configured with `putRequired(...)` /

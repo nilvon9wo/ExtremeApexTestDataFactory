@@ -49,6 +49,39 @@ private class XFTY_DummySObjectMasterTemplateTest {
 
         Assert.isFalse(template.defaultBySObjectFieldMap.containsKey(Contact.LastName));
         Assert.isFalse(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId));
+        Assert.isFalse(new Set<SObjectField>(template.orderedDefaultFields()).contains(Contact.LastName));
+    }
+
+    @IsTest
+    static void orderedDefaultFieldsFollowsPutOrderAcrossPutRemoveAndCopy() {
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_DummyDefaultValueExact('n'))
+                .put(Account.Industry, new XFTY_DummyDefaultValueExact('i'))
+                .put(Account.Type, new XFTY_DummyDefaultValueExact('t'));
+
+        Assert.areEqual(
+                new List<SObjectField>{ Account.Name, Account.Industry, Account.Type },
+                template.orderedDefaultFields()
+        );
+
+        template.remove(Account.Industry);
+        template.put(Account.Name, new XFTY_DummyDefaultValueExact('n2')); // re-put keeps its place
+        Assert.areEqual(
+                new List<SObjectField>{ Account.Name, Account.Type },
+                template.orderedDefaultFields()
+        );
+
+        XFTY_DummySObjectMasterTemplate copy = template.copy();
+        copy.put(Account.Rating, new XFTY_DummyDefaultValueExact('r'));
+        Assert.areEqual(
+                new List<SObjectField>{ Account.Name, Account.Type },
+                template.orderedDefaultFields(),
+                'the original is unchanged by the copy'
+        );
+        Assert.areEqual(
+                new List<SObjectField>{ Account.Name, Account.Type, Account.Rating },
+                copy.orderedDefaultFields()
+        );
     }
 
     @IsTest

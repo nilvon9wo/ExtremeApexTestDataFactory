@@ -233,6 +233,24 @@ Once related records possess Ids, lookup fields can be populated.
 
 This separation greatly simplifies recursion while ensuring every lookup points at a valid record.
 
+## Value passes
+
+Field values are filled in **two passes**, so a strategy can be aware of the rest
+of the record:
+
+1. **Plain values** - every strategy that is a plain `XFTY_DummyDefaultValueIntf`,
+   in the order the fields were `put` on the Master Template (the template keeps
+   an explicit order list - Apex `Map` iteration order is not guaranteed).
+2. **Context-aware values** - strategies implementing `XFTY_ContextAwareValueIntf`,
+   after the ancestor records exist and lookups are wired. Each is handed a
+   `XFTY_GenerationContext` scoped to its record (`recordBeingBuilt`,
+   `ancestorBundle`, `rowIndex`).
+
+A context-aware value therefore sees all plain values, all wired lookups, and any
+context-aware value `put` before it. It cannot see a later context-aware value or
+a field on a generated *child* (which does not exist yet - that would need a
+deferred pass; see [design/context-aware-values.md](design/context-aware-values.md)).
+
 ---
 
 # The Generation Context

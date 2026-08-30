@@ -10,11 +10,14 @@ public class XFTY_DummySObjectFactory {
 
         List<SObject> sobjectList = new List<SObject>();
         for (SObject testSpecificTemplate : testSpecificTemplateList) {
-            sobjectList.add(cloneAndCompleteNonRelationshipValues(masterTemplate, testSpecificTemplate));
+            sobjectList.add(cloneAndCompletePlainValues(masterTemplate, testSpecificTemplate));
         }
 
         bundle.put(masterTemplate.primaryTargetField, sobjectList);
         createRelationships(context, bundle, masterTemplate);
+        // Second value pass: context-aware strategies, now that the plain values
+        // are set, the ancestor records exist, and the lookups are wired.
+        completeContextAwareValues(context, masterTemplate, bundle, sobjectList);
 
         List<SObject> insertSObjectList = new List<SObject>();
         switch on context.insertMode {
@@ -95,17 +98,49 @@ public class XFTY_DummySObjectFactory {
 
     // Setting Values --------------------------------------------------------------------------------
 
-    public static SObject cloneAndCompleteNonRelationshipValues(
+    /**
+     * Pass 1: clone the test's template and fill every field whose strategy is a
+     * plain {@link XFTY_DummyDefaultValueIntf}. Context-aware strategies are
+     * skipped here - they run in {@link #completeContextAwareValues} once there is
+     * something to be aware of.
+     */
+    public static SObject cloneAndCompletePlainValues(
             XFTY_DummySObjectMasterTemplate masterTemplate,
             SObject testSpecificTemplate
     ) {
         SObject filledTemplate = perfectClone(testSpecificTemplate);
-        for (SObjectField sObjectField : masterTemplate.defaultBySObjectFieldMap.keySet()) {
-            if (filledTemplate.get(sObjectField) == null) {
-                filledTemplate.put(sObjectField, masterTemplate.defaultBySObjectFieldMap.get(sObjectField).get());
+        for (SObjectField sObjectField : masterTemplate.orderedDefaultFields()) {
+            XFTY_DummyDefaultValueIntf strategy = masterTemplate.defaultBySObjectFieldMap.get(sObjectField);
+            if (filledTemplate.get(sObjectField) == null && !(strategy instanceof XFTY_ContextAwareValueIntf)) {
+                filledTemplate.put(sObjectField, strategy.get());
             }
         }
         return filledTemplate;
+    }
+
+    /**
+     * Pass 2: evaluate the context-aware strategies. Each is handed a context
+     * scoped to its record - `recordBeingBuilt` with the plain values set and the
+     * lookups wired, plus the `ancestorBundle` for reading generated parents.
+     * Template-insertion order; a context-aware value that reads another only sees
+     * it if that one was `put(...)` first.
+     */
+    private static void completeContextAwareValues(
+            XFTY_GenerationContext context,
+            XFTY_DummySObjectMasterTemplate masterTemplate,
+            XFTY_DummySObjectBundle bundle,
+            List<SObject> sobjectList
+    ) {
+        for (Integer i = 0; i < sobjectList.size(); i++) {
+            SObject record = sobjectList[i];
+            XFTY_GenerationContext recordContext = context.forRecord(record, bundle, i);
+            for (SObjectField sObjectField : masterTemplate.orderedDefaultFields()) {
+                XFTY_DummyDefaultValueIntf strategy = masterTemplate.defaultBySObjectFieldMap.get(sObjectField);
+                if (strategy instanceof XFTY_ContextAwareValueIntf && record.get(sObjectField) == null) {
+                    record.put(sObjectField, ((XFTY_ContextAwareValueIntf) strategy).get(recordContext));
+                }
+            }
+        }
     }
 
     private static XFTY_DummySObjectBundle createRelationships(
