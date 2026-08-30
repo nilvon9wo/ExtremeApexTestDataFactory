@@ -415,11 +415,11 @@ throws a clear error asking the author to set one. Inline resolution during a
 `context(...)`.
 
 This is the narrow, shared-ancestor slice of the larger **"bring a generation
-context into the build"** question (see
-[future-ideas.md - Context-Aware Value Generation](../future-ideas.md#context-aware-value-generation)).
-A real `XFTY_GenerationContext` - carrying at least the insert mode, and later the
-record being built and its ancestors - is the more robust and flexible answer,
-and shared ancestors are a good forcing function for it.
+context into the build"** question. `XFTY_GenerationContext`
+([internals.md](../internals.md#the-generation-context)) already carries the
+insert mode, the Provider Lookup, and - during the value pass - the record being
+built and its ancestor bundle; the shared-ancestor `context(mode)` declaration
+plugs into it.
 
 A test that declares nothing and uses only on-demand ancestors pays only for what
 it references. A test working deep in a hierarchy declares the spine it needs and

@@ -114,18 +114,21 @@ The framework then constructs those object graphs automatically, allowing test c
 
 # Roadmap
 
-Ideas currently being considered for future versions include:
+Recently landed (see [migration.md](docs/migration.md) for the breaking changes):
 
-- Multiple Provider variants (`SObjectType + RecordType + Flavor`)
-- Shared parent generation
-- More granular relationship generation
-- Automatic wrapping of literal values in `XFTY_DummyDefaultValueExact`
-- Context-aware value generation across related records
-- Dynamic ancestor customization
-- Optional sandbox data seeding support
-- Expanded framework test coverage
+- Provider variants by `SObjectType` + record type + flavour
+- Implicit literal wrapping in `put(...)`
+- Context-aware value generation (sibling + ancestor reads)
+- 100% framework line coverage; split unit / integration / load test suites
 
-These are long-term ideas rather than committed features, but the architecture has been intentionally designed to make this kind of evolution possible.
+Still ahead (see [Future Ideas](docs/future-ideas.md)):
+
+- Shared ancestors / deep record-type hierarchies
+- More granular per-call relationship control
+- Descendant (up-flowing) value reads
+- Optional sandbox data seeding
+
+The architecture is intentionally designed to make this kind of evolution possible.
 
 ---
 

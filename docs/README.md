@@ -27,6 +27,7 @@ Task-focused, assume you know the basics.
 
 | Document | Contents |
 |----------|----------|
+| [Migration](migration.md) | Every breaking change in this release and exactly what to change. |
 | [Salesforce Considerations](salesforce-considerations.md) | Platform behaviours that constrain XFTY (`@TestSetup`, mixed DML, governor limits) and recommended practice. |
 | [Known Issues](known-issues.md) | Defects found and fixed, and the current triage list. |
 

@@ -109,9 +109,9 @@ pass over the whole graph**:
    pass works because every record is present;
 3. wire lookups, assign / insert Ids.
 
-Mechanically this is the same deferred pass
-[future-ideas.md - Dynamic Ancestor Configuration](../future-ideas.md#dynamic-ancestor-configuration)
-needs, and shares the phase-2/3 split. `XFTY_GenerationContext` would carry a
+Mechanically this is the same deferred whole-graph pass that
+[shared ancestors](shared-ancestors.md) needs (build in memory, evaluate, then
+wire + insert per depth). `XFTY_GenerationContext` would carry a
 `descendantBundle` (the records generated *from* this record's relationships,
 i.e. the sub-bundle) for the up-flow pass to read.
 
