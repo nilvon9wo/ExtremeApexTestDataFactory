@@ -7,10 +7,8 @@ public class XFTY_DummySObjectBundle {
             = new Map<SObjectField, List<SObject>>();
 
     /**
-     * The field this bundle's primary records are keyed under - the primary
-     * target field of the Provider that produced it. Set by
-     * `XFTY_DummySObjectFactory.createBundle`; used by `XFTY_DeferredInsertBuffer`
-     * to walk the graph. Null on a bundle built by hand in a test.
+     * The field this bundle's primary records are keyed under. Set by
+     * `XFTY_DummySObjectFactory.createBundle`; null on a bundle built by hand.
      */
     public SObjectField primaryTargetField;
 
@@ -30,6 +28,11 @@ public class XFTY_DummySObjectBundle {
 
     public List<SObject> getList(SObjectField sObjectField) {
         return this.sObjectListBySObjectFieldMap.get(sObjectField);
+    }
+
+    /** The records this bundle is about; null when `primaryTargetField` is not set. */
+    public List<SObject> primaryRecords() {
+        return (this.primaryTargetField == null) ? null : this.getList(this.primaryTargetField);
     }
 
     /** The relationship fields that carry a generated sub-bundle (the parents). */

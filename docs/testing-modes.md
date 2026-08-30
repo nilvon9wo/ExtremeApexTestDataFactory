@@ -194,6 +194,24 @@ Use it when a test - or a chain of setup helpers - builds its data in several
 - Not supported with `@TestSetup` (it resets statics) or shared ancestors
   (refused during generation).
 
+**`DEFERRED` does not give you a parent's Id mid-generation.** If a later
+`supplyBundle()` call needs the real Id of a record an earlier call produced -
+to pass in a template, or to drive record-type selection - `flush()` the earlier
+call first, then generate the later one:
+
+```apex
+XFTY_DummySObjectBundle parents = parentProvider.setInsertMode(DEFERRED).supplyBundle();
+XFTY_DeferredInsert.flush();                                    // parents now have Ids
+
+Id parentId = parents.getList(Account.Id)[0].Id;
+childProvider.setOverrideTemplate(new Contact(AccountId = parentId))
+        .setInsertMode(DEFERRED).supplyBundle();
+XFTY_DeferredInsert.flush();
+```
+
+Within a single `flush()` group, XFTY only wires lookups it generated itself -
+it does not reorder your intent.
+
 ---
 
 # Choosing an Insert Mode

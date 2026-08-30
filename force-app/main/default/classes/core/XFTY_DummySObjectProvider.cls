@@ -199,14 +199,13 @@ public class XFTY_DummySObjectProvider {
     }
 
     /**
-     * Opt in to depth-batched persistence for this call: generate the whole graph
-     * structurally, then insert it in one `insert` per dependency depth instead of
-     * one per Provider recursion. A `Task` with an `Account` and a `Contact`
-     * parent then costs 2 inserts, not 3.
+     * Opt in to one `insert` per dependency depth for this `NOW` call, instead of
+     * one per Provider: a `Task` with an `Account` and a `Contact` parent costs 2
+     * inserts, not 3.
      *
-     * Opt-in on purpose - it changes `insert` order (and the order triggers fire
-     * during generation), which some tests depend on. Only affects `NOW`; the
-     * other modes do no framework DML. Not supported with shared ancestors yet.
+     * Opt-in because it changes `insert` order - and the order triggers fire
+     * during generation - which some tests rely on. No effect on the modes that
+     * do no DML. Not supported with shared ancestors.
      */
     public XFTY_DummySObjectProvider depthBatched() {
         this.depthBatched = true;
@@ -333,52 +332,65 @@ public class XFTY_DummySObjectProvider {
     // Supply methods ----------------------------------------------------------------------------------------------------------
 
     public XFTY_DummySObjectBundle supplyBundle() {
-        if (this.hasCustomMasterTemplate && this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty()) {
-            System.debug(LoggingLevel.WARN, '!!!  When using both customer master and overrides, overrides will win all conflicts! !!!');
-        }
+        this.warnIfMixingCustomTemplateWithOverrides();
+        XFTY_DummySObjectBundle bundle = this.generate(this.buildContext(), this.templatesToFill());
+        this.persist(bundle);
+        return bundle;
+    }
 
-        // Factory requires at least one instance of SObject to merge values from master template.
-        List<SObject> templateList = (this.overrideTemplateList == null || this.overrideTemplateList.isEmpty())
-                ? new List<SObject>{
-                        this.sObjectType.newSObject()
-                }
-                : this.overrideTemplateList;
+    private XFTY_DummySObjectBundle generate(XFTY_GenerationContext context, List<SObject> templates) {
+        // A customized master template generates from that copy; otherwise the
+        // Provider itself may pick a template (e.g. by record type).
+        return this.hasCustomMasterTemplate
+                ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, templates)
+                : this.factoryOutlet.createBundle(context, templates);
+    }
 
-        //
-        List<SObject> multipliedTemplateList = (this.quantityPerListedTemplate > 1)
-                ? this.multiplyByQuantity(templateList)
-                : templateList;
-
-        // Two ways to defer DML into one depth-batched pass: the .depthBatched()
-        // flag (flushed here, at the end of this call) and the DEFERRED insert
-        // mode (flushed later by XFTY_DeferredInsert.flush()). Both build
-        // structurally, like NEVER.
-        Boolean flushHere = this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
-        Boolean deferToRegistry = XFTY_InsertModeEnum.DEFERRED.equals(this.insertMode);
-        Boolean batchedInsert = flushHere || deferToRegistry;
-
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                this.sObjectProviderLookup,
-                batchedInsert ? XFTY_InsertModeEnum.NEVER : this.insertMode,
-                this.inclusivity
-        ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
-        if (batchedInsert) {
-            context = context.forBatchedInsert();
-        }
-
-        // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
-        // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own
-        // generation logic (e.g. selecting a template by record type).
-        XFTY_DummySObjectBundle bundle = this.hasCustomMasterTemplate
-                ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, multipliedTemplateList)
-                : this.factoryOutlet.createBundle(context, multipliedTemplateList);
-
-        if (flushHere) {
+    private void persist(XFTY_DummySObjectBundle bundle) {
+        if (this.flushesGraphWhenThisCallEnds()) {
             XFTY_DeferredInsertBuffer.insertGraph(bundle);
-        } else if (deferToRegistry) {
+        } else if (this.deferredToRegistry()) {
             XFTY_DeferredInsert.register(bundle);
         }
-        return bundle;
+    }
+
+    private XFTY_GenerationContext buildContext() {
+        Boolean batched = this.buildsStructurallyForBatchedInsert();
+        XFTY_GenerationContext context = new XFTY_GenerationContext(
+                this.sObjectProviderLookup,
+                batched ? XFTY_InsertModeEnum.NEVER : this.insertMode,
+                this.inclusivity
+        ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
+        return batched ? context.forBatchedInsert() : context;
+    }
+
+    private Boolean buildsStructurallyForBatchedInsert() {
+        return this.flushesGraphWhenThisCallEnds() || this.deferredToRegistry();
+    }
+
+    private Boolean flushesGraphWhenThisCallEnds() {
+        return this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+    }
+
+    private Boolean deferredToRegistry() {
+        return XFTY_InsertModeEnum.DEFERRED.equals(this.insertMode);
+    }
+
+    private List<SObject> templatesToFill() {
+        List<SObject> templates = this.hasOverrideTemplates()
+                ? this.overrideTemplateList
+                : new List<SObject>{ this.sObjectType.newSObject() };
+        return (this.quantityPerListedTemplate > 1) ? this.multiplyByQuantity(templates) : templates;
+    }
+
+    private Boolean hasOverrideTemplates() {
+        return this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty();
+    }
+
+    private void warnIfMixingCustomTemplateWithOverrides() {
+        if (this.hasCustomMasterTemplate && this.hasOverrideTemplates()) {
+            System.debug(LoggingLevel.WARN, '!!!  Custom master template + overrides: overrides win all conflicts!  !!!');
+        }
     }
 
     private List<SObject> multiplyByQuantity(List<SObject> templateList) {

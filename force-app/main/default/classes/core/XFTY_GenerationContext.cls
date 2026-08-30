@@ -51,12 +51,9 @@ public class XFTY_GenerationContext {
     public final List<List<SObjectField>> forcedRelationshipPaths;
 
     /**
-     * True when generation is a structural build whose records will be inserted
-     * later, batched by dependency depth - either the `.depthBatched()` Provider
-     * flag (inserted at the end of the same `supplyBundle()`) or the `DEFERRED`
-     * insert mode (inserted by `XFTY_DeferredInsert.flush()`). Runs like `NEVER`;
-     * carried down every derived context so the engine can refuse combinations it
-     * does not support yet (shared ancestors).
+     * True on a structural (`NEVER`-like) build whose records get inserted later,
+     * depth-batched - by `.depthBatched()` or the `DEFERRED` mode. Carried down
+     * every derived context so `wireSharedAncestor` can reject it.
      */
     public final Boolean batchedInsertPending;
 
