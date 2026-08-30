@@ -38,39 +38,65 @@ private class XFTY_DummySObjectFactoryDmlTest {
     }
 
     /**
-     * How many `insert` statements does a graph with two different SObjectTypes at
-     * the same depth cost? A Task under a leaf Account (`WhatId`) *and* a leaf
-     * Contact (`WhoId`), `NOW`. Records: Account (depth 1), Contact (depth 1),
-     * Task (depth 0).
+     * How the engine batches `insert` statements today, measured three ways.
      *
-     * Depth-batched persistence would be 2 (one `insert` for {Account, Contact},
-     * one for {Task}). This asserts the actual number so a future depth-batching
-     * change shows up as an intended drop.
+     * Each `factoryOutlet.createBundle(...)` recursion ends in its own
+     * `insert insertSObjectList`, so:
+     *
+     * - records generated in ONE `createBundle` call (siblings, or N copies from
+     *   `setQuantityPerTemplate`) share one `insert` - batched;
+     * - a parent of a *different* SObjectType is a separate `createBundle`
+     *   recursion, so it gets a separate `insert` - NOT batched across the depth.
+     *
+     * So "Task with an Account parent and a Contact parent" is 3 inserts
+     * (Account, Contact, Task), and adding quantity to a single-parent graph does
+     * not add inserts. A future depth-batched persistence pass would collapse the
+     * cross-type case; this test pins the current numbers so that shows as an
+     * intended change.
      */
     @IsTest
-    static void insertStatementsForTwoParentTypesAtOneDepth() {
-        CustomLookup lookup = new CustomLookup()
-                .register(Task.SObjectType, new TwoParentTaskProvider())
-                .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name))
-                .register(Contact.SObjectType, new LeafProvider(Contact.Id, Contact.LastName));
-
-        Integer inserts;
+    static void howTheEngineBatchesInsertsToday() {
+        Integer oneParentType;
+        Integer twoParentTypes;
+        Integer oneParentTypeQuantityFive;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            Integer before = Limits.getDmlStatements();
-            new XFTY_DummySObjectProvider(Task.SObjectType, lookup)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .supply();
-            inserts = Limits.getDmlStatements() - before;
+
+            oneParentType = insertsFor(
+                    new CustomLookup()
+                            .register(Task.SObjectType, new OneParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name)),
+                    1);
+
+            twoParentTypes = insertsFor(
+                    new CustomLookup()
+                            .register(Task.SObjectType, new TwoParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name))
+                            .register(Contact.SObjectType, new LeafProvider(Contact.Id, Contact.LastName)),
+                    1);
+
+            oneParentTypeQuantityFive = insertsFor(
+                    new CustomLookup()
+                            .register(Task.SObjectType, new OneParentTaskProvider())
+                            .register(Account.SObjectType, new LeafProvider(Account.Id, Account.Name)),
+                    5);
+
             Test.stopTest();
         }
 
-        Assert.areEqual(1, [SELECT COUNT() FROM Task]);
-        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
-        Assert.areEqual(1, [SELECT COUNT() FROM Contact]);
-        Assert.areEqual(3, inserts,
-                'one insert per Provider today - Account, Contact, Task separately');
+        Assert.areEqual(2, oneParentType, 'Account insert + Task insert');
+        Assert.areEqual(3, twoParentTypes, 'a second parent SObjectType adds one insert - the recursion is per Provider');
+        Assert.areEqual(2, oneParentTypeQuantityFive, 'quantity does not add inserts - the copies share one createBundle');
+    }
+
+    private static Integer insertsFor(XFTY_DummySObjectProviderLookupIntf lookup, Integer quantity) {
+        Integer before = Limits.getDmlStatements();
+        new XFTY_DummySObjectProvider(Task.SObjectType, lookup)
+                .setQuantityPerTemplate(quantity)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supplyList();
+        return Limits.getDmlStatements() - before;
     }
 
     private static XFTY_DummySObjectBundle supplyContact(XFTY_InsertModeEnum insertMode) {
@@ -113,6 +139,21 @@ private class XFTY_DummySObjectFactoryDmlTest {
         }
         public SObjectField getPrimaryTargetField() {
             return this.template.primaryTargetField;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateList) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateList);
+        }
+    }
+
+    private class OneParentTaskProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Task.Id)
+                .put(Task.Subject, new XFTY_DummyDefaultValueIncrementingString('One Parent Task'))
+                .putRequired(Task.WhatId, new XFTY_DummyDefaultRelationship(new Account()));
+        public SObjectField getPrimaryTargetField() {
+            return Task.Id;
         }
         public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
             return this.template;
