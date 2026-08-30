@@ -62,7 +62,7 @@ private class XFTY_GenerationContextTest {
         );
 
         Assert.isNull(context.recordBeingBuilt);
-        Assert.isNull(context.ancestorBundle);
+        Assert.isNull(context.bundleSoFar);
         Assert.areEqual(-1, context.rowIndex);
     }
 
@@ -76,7 +76,7 @@ private class XFTY_GenerationContextTest {
         ).forRecord(record, bundle, 2);
 
         Assert.areEqual(record, scoped.recordBeingBuilt);
-        Assert.areEqual(bundle, scoped.ancestorBundle);
+        Assert.areEqual(bundle, scoped.bundleSoFar);
         Assert.areEqual(2, scoped.rowIndex);
         Assert.areEqual(XFTY_InsertModeEnum.NOW, scoped.insertMode, 'the run settings are unchanged');
         Assert.areEqual(XFTY_InsertInclusivityEnum.REQUIRED, scoped.inclusivity);

@@ -193,4 +193,36 @@ private class XFTY_ContextAwareValueTest {
             throw new XFTY_DummySObjectFtyProviderException('context-aware');
         }
     }
+
+    // --- bundleSoFar sees the sibling primary records --------------------
+
+    @IsTest
+    static void aContextAwareValueSeesTheSiblingPrimaryRecordsInBundleSoFar() {
+        List<SObject> accounts = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .put(Account.Description, new SiblingCountLabel())
+                .setQuantityPerTemplate(3)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supplyList();
+
+        Assert.areEqual(3, accounts.size());
+        Set<Object> labels = new Set<Object>();
+        for (SObject generated : accounts) {
+            labels.add(generated.get(Account.Description));
+        }
+        Assert.areEqual(
+                new Set<Object>{ '1 of 3', '2 of 3', '3 of 3' }, labels,
+                'each row sees all three sibling primaries (the pass runs after every one is built) and its own rowIndex'
+        );
+    }
+
+    /** Reads the whole batch of sibling primary records out of `bundleSoFar`. */
+    private class SiblingCountLabel implements XFTY_ContextAwareValueIntf {
+        public Object get(XFTY_GenerationContext context) {
+            Integer siblingCount = context.bundleSoFar.getList(Account.Id).size();
+            return (context.rowIndex + 1) + ' of ' + siblingCount;
+        }
+        public Object get() {
+            throw new XFTY_DummySObjectFtyProviderException('context-aware');
+        }
+    }
 }

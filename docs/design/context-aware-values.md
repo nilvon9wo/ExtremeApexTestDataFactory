@@ -60,7 +60,7 @@ value pass, `null` for the top-level context):
 
 - `SObject recordBeingBuilt` - the in-progress record, with every field filled so
   far;
-- `XFTY_DummySObjectBundle ancestorBundle` - the bundle produced by the current
+- `XFTY_DummySObjectBundle bundleSoFar` - the bundle produced by the current
   `createBundle` call so far. It holds this record's generated relationships
   (`getList(Contact.AccountId)[0].Site`) **and** the sibling primary records
   (`getList(<primaryTargetField>)`) - the whole graph this call has built up to
@@ -78,15 +78,13 @@ Insert mode / Provider Lookup / inclusivity ride along unchanged.
 
 ### Later: the graph *across* calls, with a position pointer
 
-`ancestorBundle` is scoped to one `createBundle` call. A value being generated for
+`bundleSoFar` is scoped to one `createBundle` call. A value being generated for
 a nested relationship (say the `Account` built for a `Contact`) does not see the
 `Contact` in progress or anything above it. Threading a **root bundle** (or a
 "graph so far" reference) plus a **path pointer** down through `forRelated()`
 would give a strategy the full picture - every record generated or in progress in
 this whole `supply*()` call, and where the current record sits in it. That is the
 same plumbing the deferred whole-graph pass (decision 4) needs; do it there.
-(`ancestorBundle` may be renamed `bundleSoFar` when this lands, since it already
-carries more than ancestors.)
 
 ---
 
@@ -150,7 +148,7 @@ work lands, since they share the machinery.
 - `XFTY_CopyFromSibling(SObjectField field)` - `get(ctx)` returns
   `ctx.recordBeingBuilt.get(field)`.
 - `XFTY_CopyFromAncestor(SObjectField relationshipField, SObjectField sourceField)`
-  - returns `ctx.ancestorBundle.getList(relationshipField)[rowIndex].get(sourceField)`.
+  - returns `ctx.bundleSoFar.getList(relationshipField)[rowIndex].get(sourceField)`.
   A deeper path (`Opportunity -> Account -> Owner.Name`) is a v2 concern - it needs
   the row index threaded and the sub-bundle walked.
 
@@ -165,7 +163,7 @@ mini-expression-language.
 ### Increment 1 - sibling + ancestor (done)
 
 1. `XFTY_ContextAwareValueIntf extends XFTY_DummyDefaultValueIntf`;
-   `XFTY_GenerationContext.forRecord(record, ancestorBundle, rowIndex)` + the
+   `XFTY_GenerationContext.forRecord(record, bundleSoFar, rowIndex)` + the
    nullable fields.
 2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, skips
    context-aware) + `completeContextAwareValues` (pass 2, after wiring).

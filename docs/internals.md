@@ -244,7 +244,7 @@ of the record:
 2. **Context-aware values** - strategies implementing `XFTY_ContextAwareValueIntf`,
    after the ancestor records exist and lookups are wired. Each is handed a
    `XFTY_GenerationContext` scoped to its record (`recordBeingBuilt`,
-   `ancestorBundle`, `rowIndex`).
+   `bundleSoFar`, `rowIndex`).
 
 A context-aware value therefore sees all plain values, all wired lookups, and any
 context-aware value `put` before it. It cannot see a later context-aware value or

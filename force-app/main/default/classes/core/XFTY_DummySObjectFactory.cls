@@ -147,7 +147,7 @@ public class XFTY_DummySObjectFactory {
     /**
      * Pass 2: evaluate the context-aware strategies. Each is handed a context
      * scoped to its record - `recordBeingBuilt` with the plain values set and the
-     * lookups wired, plus the `ancestorBundle` for reading generated parents.
+     * lookups wired, plus the `bundleSoFar` for reading generated parents.
      * Template-insertion order; a context-aware value that reads another only sees
      * it if that one was `put(...)` first.
      */

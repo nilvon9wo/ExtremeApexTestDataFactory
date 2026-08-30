@@ -260,9 +260,13 @@ public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
 }
 ```
 
-`context` exposes `recordBeingBuilt` (plain values already set, lookups already
-wired) and `ancestorBundle` (`getList(relationshipField)` for the generated
-parents).
+`context` exposes:
+
+- `recordBeingBuilt` - this record, plain values already set and lookups wired;
+- `bundleSoFar` - everything this generation call has built: the generated parents
+  (`getList(relationshipField)`) **and** the sibling primary records
+  (`getList(<primaryField>)`, e.g. `getList(Account.Id)`);
+- `rowIndex` - which row of a multi-record generation this is.
 
 **How it runs.** Values are filled in two passes: plain strategies first, then
 context-aware strategies in the order they were `put(...)`. So a context-aware
