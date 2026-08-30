@@ -6,17 +6,15 @@
 @IsTest
 public with sharing class XFTY_RecordTypeDataProvider {
     private static final Map<String, RecordType> RECORD_TYPE_BY_KEYS = new Map<String, RecordType>();
+    private static final Set<String> LOADED_SOBJECT_NAMES = new Set<String>();
 
     //noinspection ApexUnusedDeclaration
     public static RecordType getFor(SObjectType sObjectType, String developerName) {
         String sObjectName = getName(sObjectType);
-        String key = createKey(sObjectName, developerName);
-        RecordType recordType = RECORD_TYPE_BY_KEYS.get(key);
-        if (recordType == null) {
+        if (!LOADED_SOBJECT_NAMES.contains(sObjectName)) {
             putRecordTypesFor(sObjectName);
-            recordType = RECORD_TYPE_BY_KEYS.get(key);
         }
-        return recordType;
+        return RECORD_TYPE_BY_KEYS.get(createKey(sObjectName, developerName));
     }
 
     private static void putRecordTypesFor(String sObjectName) {
@@ -29,6 +27,7 @@ public with sharing class XFTY_RecordTypeDataProvider {
             String key = createKey(recordType.SobjectType, recordType.DeveloperName);
             RECORD_TYPE_BY_KEYS.put(key, recordType);
         }
+        LOADED_SOBJECT_NAMES.add(sObjectName);
     }
 
     private static String createKey(String sObjectName, String developerName) {

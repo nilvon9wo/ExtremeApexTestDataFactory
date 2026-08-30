@@ -80,6 +80,49 @@ private class XFTY_DummySObjectFactoryTest {
         );
     }
 
+    @IsTest
+    static void aRelationshipCanCopyANonIdFieldFromTheGeneratedParent() {
+        CustomLookup lookup = new CustomLookup()
+                .register(Contact.SObjectType, new RelatedFieldContactProvider())
+                .register(Account.SObjectType, new LeafAccountProvider());
+
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.NEVER)
+                    .supplyBundle();
+        }
+
+        Contact generated = (Contact) bundle.getList(Contact.Id)[0];
+        Assert.areEqual('Wired From Parent', generated.Description,
+                'Contact.Description should be copied from the parent Account.Name');
+    }
+
+    @IsTest
+    static void quantityGeneratesADistinctParentPerRecord() {
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+                    .setQuantityPerTemplate(3)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+        }
+
+        List<SObject> contacts = bundle.getList(Contact.Id);
+        List<SObject> accounts = bundle.getList(Contact.AccountId);
+        Assert.areEqual(3, contacts.size());
+        Assert.areEqual(3, accounts.size());
+
+        Set<Id> accountIds = new Set<Id>();
+        for (Integer i = 0; i < 3; i++) {
+            accountIds.add(accounts[i].Id);
+            Assert.areEqual(accounts[i].Id, ((Contact) contacts[i]).AccountId, 'row ' + i + ' wired to its own parent');
+        }
+        Assert.areEqual(3, accountIds.size(), 'Each Contact should get a distinct Account');
+    }
+
     // ---------------------------------------------------------------------------
     //  Insert modes
     // ---------------------------------------------------------------------------
@@ -257,6 +300,17 @@ private class XFTY_DummySObjectFactoryTest {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
                     .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Deep Contact'))
                     .putRequiredRelationship(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
+        }
+    }
+
+    private class RelatedFieldContactProvider extends BaseProvider {
+        private RelatedFieldContactProvider() {
+            this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Related Field Contact'))
+                    .putRequiredRelationship(
+                            Contact.Description,
+                            new XFTY_DummyDefaultRelationship(new Account(Name = 'Wired From Parent'), Account.Name)
+                    );
         }
     }
 }

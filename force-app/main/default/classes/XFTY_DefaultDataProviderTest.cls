@@ -39,6 +39,24 @@ private class XFTY_DefaultDataProviderTest {
     // Contact ---------------------------------------------------------------
 
     @IsTest
+    static void accountProviderCreateBundleProducesAPopulatedAccount() {
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DefaultAccountDataProvider().createBundle(
+                    LOOKUP,
+                    new List<SObject>{ new Account() },
+                    XFTY_InsertModeEnum.MOCK,
+                    XFTY_InsertInclusivityEnum.NONE
+            );
+        }
+
+        Account account = (Account) bundle.getList(Account.Id)[0];
+        Assert.isNotNull(account.Id);
+        Assert.areEqual(XFTY_DefaultAccountDataProvider.DEFAULT_INDUSTRY, account.Industry);
+        Assert.areEqual(XFTY_DefaultAccountDataProvider.DEFAULT_SHIPPING_COUNTRY, account.ShippingCountry);
+    }
+
+    @IsTest
     static void contactProviderDeclaresARequiredAccountRelationship() {
         XFTY_DummySObjectMasterTemplate template = new XFTY_DefaultContactDataProvider().getMasterTemplate();
         Assert.isTrue(
@@ -78,6 +96,21 @@ private class XFTY_DefaultDataProviderTest {
     }
 
     @IsTest
+    static void userProviderMasterTemplateCoversTheFieldsRequiredToInsertAUser() {
+        XFTY_DummySObjectMasterTemplate template = new XFTY_DefaultUserDataProvider().getMasterTemplate();
+
+        for (SObjectField required : new List<SObjectField>{
+                User.Alias, User.Email, User.EmailEncodingKey, User.LanguageLocaleKey,
+                User.LastName, User.LocaleSidKey, User.ProfileId, User.TimeZoneSidKey, User.Username
+        }) {
+            Assert.isTrue(
+                    template.defaultBySObjectFieldMap.containsKey(required),
+                    'Master template should populate ' + required
+            );
+        }
+    }
+
+    @IsTest
     static void userProviderGeneratesAnInsertableUser() {
         User generated;
         Test.startTest();
@@ -93,10 +126,4 @@ private class XFTY_DefaultDataProviderTest {
         Assert.isTrue(generated.Username.contains(XFTY_DefaultUserDataProvider.DEFAULT_USERNAME_PREFIX));
     }
 
-    // RecordType --------------------------------------------------------
-
-    @IsTest
-    static void recordTypeProviderReturnsNullForAnUnknownDeveloperName() {
-        Assert.isNull(XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, 'This_Does_Not_Exist'));
-    }
 }

@@ -18,6 +18,11 @@ the Provider's default template and ignored `put(...)` /
 `removeFromMasterTemplate(...)` - both documented features. Fixed the branch and
 `removeFromMasterTemplate()`'s missing flag assignment.
 
+### `XFTY_RecordTypeDataProvider` re-queried on every miss
+The cache was keyed by individual record type, so a lookup for a developer name
+with no matching record type ran the SOQL again every call. Now tracks which
+SObjects have been loaded and queries each at most once.
+
 ### Master template was shallow-cloned
 Fixing the above exposed that `XFTY_DummySObjectMasterTemplate` was copied with
 the implicit `clone()`, leaving the three field maps aliased to the Provider's
