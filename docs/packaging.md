@@ -40,6 +40,32 @@ create`, deployed to scratch/dev orgs). The CI scratch org enables
 
 ---
 
+## Test suites
+
+XFTY defines three `ApexTestSuite`s so you can run only what you need:
+
+| Suite | Location | What's in it | When to run |
+|-------|----------|--------------|-------------|
+| `XFTY_Unit` | `force-app` | Every class that generates with `MOCK` / `NEVER` / `LATER` only - no framework DML, no dependency on org data. Includes the whole generation engine. | Constantly, while developing. Fastest. |
+| `XFTY_Integration` | `force-app` | The classes that do real DML - `NOW` / `RELATED_ONLY` insert modes and the bundled Providers persisting records. Sensitive to org config. | Before a commit; in CI. |
+| `XFTY_Load` | `test-support` | `XFTY_LoadTest` - volume and governor-budget ceilings (CPU, heap, DML-per-level). Its assertions assume a quiet org, so it is **not** shipped in the package. Where the shared-ancestor DML measurements will live (see [design/shared-ancestors.md](design/shared-ancestors.md)). | On demand, and when changing the engine. Slowest. |
+
+```bash
+sf apex run test --suite-names XFTY_Unit --result-format human            # fast loop
+sf apex run test --suite-names XFTY_Unit --suite-names XFTY_Integration   # pre-commit
+sf apex run test --suite-names XFTY_Load                                  # engine changes (needs test-support deployed)
+```
+
+A test class that mixes DML-free and DML-backed methods is split (e.g.
+`XFTY_DummySObjectFactoryTest` keeps the matrix that needs no DML;
+`XFTY_DummySObjectFactoryDmlTest` has the `NOW` / `RELATED_ONLY` cases). Suites
+group by class, so keep new test classes single-purpose. The other `test-support/`
+tests (`XFTY_PersonAccountVariantTest`, `XFTY_RecordTypeRealRtTest`) are not in a
+suite - CI's `RunLocalTests` runs them, along with `XFTY_LoadTest`, on the scratch
+org.
+
+---
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` creates a scratch org, deploys, runs every local test,

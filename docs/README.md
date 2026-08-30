@@ -21,7 +21,7 @@ Task-focused, assume you know the basics.
 |-------|--------|
 | [Providers](providers.md) | Write a Provider for a new `SObject`; write a Provider Lookup; record-type and flavour variants (`withVariant`, lookup-key constructor); the bundled Providers and their test-user helpers. |
 | [Testing Modes](testing-modes.md) | Every insert mode and inclusivity setting, and when to use each. |
-| [Packaging & Development](packaging.md) | Local setup, scratch orgs, CI, unlocked-package builds, the namespace / AppExchange roadmap. |
+| [Packaging & Development](packaging.md) | Local setup, scratch orgs, CI, the `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites, unlocked-package builds, the namespace / AppExchange roadmap. |
 
 ## Reference — look things up
 

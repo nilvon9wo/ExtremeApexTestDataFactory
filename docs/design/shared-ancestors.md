@@ -1,7 +1,9 @@
 # Design: Shared Ancestors
 
-Status: **proposal** (v2 - rewritten after feedback). Builds on the merged
+Status: **proposal** (v3 - decisions folded in). Builds on the merged
 relationship model from [multi-variant-providers.md](multi-variant-providers.md).
+Most open decisions now have a direction (see "Open decisions"); the remaining
+work is the batched-DML mechanics and the declared/on-demand implementation.
 
 ---
 
@@ -142,20 +144,20 @@ sub-graph once.
 
 ## Open decisions
 
-### 1. What kicks off resolution (S0-S2)? — *direction given*
+### 1. What kicks off resolution (S0-S2)? — *superseded by decision 9*
 
-Ideal: fully implicit and lazy. `XFTY_SharedAncestor.get('acme-hq')` called
-*anywhere* starts the whole chain resolving, and the consumer never has to call a
-"begin" method. Apex may not make that clean (a `get` that triggers DML and
-Provider execution as a side effect is surprising and hard to bound).
+Now largely answered by the declared-vs-on-demand split (decision 9):
 
-Fallback, and probably the design: hook the **first call into
-`XFTY_DummySObjectProviderLookupIntf` to fetch a Provider**. That is the last
-moment where "nothing has been generated yet" is still true, and any shared
-ancestor necessarily relates to a Provider reachable from that lookup, so the
-lookup is the natural coordination point. Concretely: `supplyBundle()` (or the
-factory) runs S0-S2 once, lazily, the first time it needs a Provider from the
-lookup, then proceeds.
+- **Declared** ancestors resolve when the test's `XFTY_SharedAncestor.require(...)`
+  call runs (top of the test) - or, at the latest, when the first generation call
+  needs one.
+- **On-demand** ancestors resolve lazily the first time a `get` or a relationship
+  reaches them.
+
+Either way the entry point is a `XFTY_SharedAncestor` call, not a hook buried in
+the Provider Lookup. `supplyBundle()` / the factory still drives phases S1-S2 (the
+batched build) the first time generation needs any registered-but-unresolved
+ancestor.
 
 Still open: whether to support **multiple `XFTY_DummySObjectProviderLookupIntf`
 instances in play at once** in the same test. Leaning towards "not a supported
@@ -254,9 +256,12 @@ mapping itself - the simplest thing that works: a
 validation rule enforcing the `Root` singleton). Nothing more elaborate is needed
 for a test.
 
-**What XFTY must do.** A test asks for one deep-level record:
+**What XFTY must do.** A test declares the spine it needs, then asks for one
+deep-level record:
 
 ```apex
+XFTY_SharedAncestor.require('root', 'level1');   // the shared part of the chain
+
 MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
         XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9_Branch'),
         lookup
@@ -267,45 +272,93 @@ MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
 ```
 
 and XFTY generates the whole chain `Level9 -> Level8 -> ... -> Level1 -> Root`,
-each record carrying the correct record type, **all converging on the one shared
-`Root` record** - so two `supply()` calls for different leaves produce two chains
-that share the same `Root` Id.
+each record carrying the correct record type (its own per-level Provider +
+`XFTY_RecordTypeLookupKey`, decision 7), **converging on the one shared `Root`** -
+so two `supply()` calls for different leaves produce two chains that share the
+same `Root` Id. Here only `root` (and maybe `level1`) need to be *shared*; the
+`Level2..Level9` records above them are ordinary per-chain ancestors.
 
 **Why this needs shared ancestors specifically.** Without them, each generated
 parent gets its own generated grandparent, and every chain would try to insert
 its own `Root` - the second `supply()` (or the second leaf in one call) blows up
-on the singleton constraint. `XFTY_SharedAncestor.get('Root')` is the mechanism
-that makes `Root` resolve once and be reused everywhere:
+on the singleton constraint. A **declared** shared ancestor makes `Root` resolve
+once and be reused everywhere:
 
 ```apex
-// test-support, one place
-XFTY_SharedAncestor.get('Root').of(new MyHierarchyObj__c())
+// test-support, one place - registered as a declared ancestor
+XFTY_SharedAncestor.declared('root')
+        .of(new MyHierarchyObj__c())
         .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 
 // the Level1 Provider's Master Template
-.putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('Root'))
+.putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.ref('root'))
 ```
 
-**What it forces onto this design (new open decisions):**
+A test that references `root` (directly or through the chain) without
+`require('root')` gets an explicit error, not a second `Root` insert.
 
-7. **Record-type-aware parent selection.** Each level's Provider must, for its
-   required self-parent relationship, resolve the parent Provider *by the parent
-   record type* - i.e. the relationship's lookup key is a function of the current
-   record's key, not a constant. Options: a distinct Provider + `XFTY_LookupKey`
-   per level (10 tiny Providers, explicit, no new mechanism - probably the
-   answer for a *test*), or a single Provider whose Master Template computes the
-   parent key from `PARENT_RT_BY_CHILD_RT` (needs relationships to accept a
-   key-producing callback, which is a real framework change).
-8. **Chain depth vs. `PREVENT_CASCADE` / inclusivity.** Generating `Level9` pulls
-   in eight ancestors + `Root`. `REQUIRED` inclusivity must recurse the whole way
-   (it already does); confirm the shared-ancestor S0 collection walk also
-   recurses parent-of-parent when the parent is itself shared-or-required.
-9. **Singleton ancestors in general.** `Root` is the degenerate case of "there
-   must be exactly one" - the shared-ancestor registry already gives that for
-   free *within a transaction*; document that a consumer whose singleton is
-   enforced across transactions (a real org-wide constraint) needs
-   `reusing(existingRoot)` (decision 6) after the first test inserts it, or must
-   run in a context where each test re-creates it.
+**What it forces onto this design:**
+
+### 7. Record-type-aware parent selection — *one key + Provider per record type*
+
+**Decided.** A distinct `XFTY_RecordTypeLookupKey` and a small Provider per level
+(ten of them for the acceptance scenario). Each level's Provider pins its parent
+with an explicit key constant - `Level5`'s Master Template does
+`.putRequired(Parent__c, XFTY_SharedAncestor.get('level4'))` (or a plain
+key-pinned relationship), never a computed one.
+
+No key-producing callback in relationships or Master Templates. Removing
+"hacky/leaky Master Template computations" is the whole point of lookup keys -
+adding a compute-the-key callback would put the leak right back.
+
+### 8. Chain depth — *as deep as it needs, with guard rails*
+
+The chain recurses the full distance (`Level9 -> ... -> Root`); anything shorter
+means an invalid record or a data-integrity gap, so depth itself is not
+negotiable. But:
+
+- **Warn on excessive depth** - a `System.debug(WARN)` past some threshold, so a
+  runaway or accidental deep chain is visible.
+- **Detect cycles.** Shared ancestors that reference each other
+  (`a` needs `b`, `b` needs `a`) must be caught, not recursed forever. The
+  `put(name, record)` map (decision 6) is the main mitigation: pre-registering
+  one side of a would-be cycle breaks it, because that side resolves immediately
+  instead of being generated. Without a pre-registration, detect the cycle in the
+  S0 walk and throw.
+
+### 9. Every test creates its own ancestors — *declared vs. on-demand*
+
+**Tests can never share data** - Salesforce makes it impossible, by design.
+Every test method is responsible for creating every ancestor it uses, whether it
+wants to or not. `put(name, record)` doesn't change that; it just lets a test
+supply a record it made itself *this method*.
+
+The real problem is **overhead**: a test that only touches `Level9` shouldn't pay
+to build a ten-deep chain it doesn't care about, and a test that needs nothing
+shared shouldn't pay at all. Rejected: a blanket opt-out (gets ugly fast).
+Preferred design - **two kinds of shared ancestor**:
+
+| Kind | Generated | Constraints |
+|------|-----------|-------------|
+| **Declared** | Only if the test **declares** it needs it, up front (`XFTY_SharedAncestor.require('root', 'level1', ...)` at the top of the test). | May have ancestors of its own; may be heavy. |
+| **On-demand** | Lazily, the first time it's referenced during generation. | Must be **lightweight and have no ancestors of its own**. |
+
+A declared ancestor that a test **did not declare** is never generated, and any
+attempt to reach it - `XFTY_SharedAncestor.get('level4')`, or a relationship that
+resolves to it during generation - throws an **explicit error** naming the
+ancestor and telling the author to add it to the `require(...)` call. No silent
+fallback, no lazy generation for the declared kind. (On-demand ancestors are the
+opposite: reaching one that hasn't been built yet just builds it.)
+
+A test that declares nothing and uses only on-demand ancestors pays only for what
+it references. A test working deep in a hierarchy declares the spine it needs and
+gets a clear error the moment it touches a level it forgot. This also gives
+decision 1 its trigger: the `require(...)` call (or the first on-demand `get`) is
+where S0-S2 start.
+
+Cross-transaction org-wide singletons (a `Root` a prior test already committed and
+DML can't roll back) are still the consumer's problem - `put('root', existing)`
+after they re-query it, or a context where each test re-creates it.
 
 ---
 
@@ -315,12 +368,13 @@ XFTY_SharedAncestor.get('Root').of(new MyHierarchyObj__c())
    the relationship interface; `XFTY_DummyDefaultRelationship.parentCountFor`
    returns `childCount`. No factory behaviour change yet (a shared ancestor
    throws "not wired" if used).
-2. Phase S3 wiring in the factory + a manual
-   `XFTY_SharedAncestorRegistry.resolveAll(lookup, insertMode)` a test can call.
-3. Phases S0-S2 automatic, triggered lazily from the first
-   `XFTY_DummySObjectProviderLookupIntf` fetch (decision 1).
-4. Nested ancestors; depth batching; cycle detection; load tests + documented
-   limits + off-switches (decision 3).
+2. `require(...)` / on-demand kinds (decision 9): declared ancestors, the
+   "undeclared -> throw" error, on-demand lazy build. Phase S3 wiring in the
+   factory + a manual `XFTY_SharedAncestorRegistry.resolveAll(lookup, insertMode)`.
+3. Phases S0-S2 automatic, triggered from `require(...)` or the first on-demand
+   `get` (decision 1).
+4. Nested ancestors; depth batching; depth-warning + cycle detection (decision 8);
+   load tests in `XFTY_Load` + documented limits + off-switches (decision 3).
 5. `put(name, record)` (decision 6), docs, worked example (the deep-hierarchy scenario).
 
 ---

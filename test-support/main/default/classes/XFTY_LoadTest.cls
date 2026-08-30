@@ -4,14 +4,20 @@
  * heap, DML statements, rows - for the code actually under test and the rest of a
  * test's setup.
  *
- * Kept in its own suite (`XFTY_Load`) because it is the slowest and the most
- * likely to need tuning as the engine changes (e.g. when shared-ancestor
- * generation lands - see docs/design/shared-ancestors.md, which calls for exactly
- * this kind of measurement). Run with:
+ * Lives in `test-support/` (not the published package): the assertions are
+ * budget ceilings that depend on the org being otherwise quiet (no consumer
+ * triggers / flows on the generated types), so shipping them would risk failing
+ * in a consumer's org - the one thing XFTY must never do. It runs in CI on the
+ * clean scratch org.
+ *
+ * Its own suite (`XFTY_Load`, also in test-support) because it is the slowest and
+ * the most likely to need tuning as the engine changes - notably when
+ * shared-ancestor generation lands (see docs/design/shared-ancestors.md, which
+ * calls for exactly this kind of measurement). Run with:
  *   sf apex run test --suite-names XFTY_Load
  *
  * The numbers below are ceilings, not targets - they should sit well under the
- * platform limits so a regression is caught before it bites a consumer.
+ * platform limits so a regression is caught before it bites anyone.
  */
 @IsTest
 private class XFTY_LoadTest {
