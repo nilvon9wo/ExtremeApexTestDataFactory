@@ -2,23 +2,25 @@
 @IsTest
 public class XFTY_LookupWiring {
 
+    private final XFTY_DummySObjectBundle bundle;
     private final XFTY_GenerationContext context;
     private final Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> relationships;
-    private XFTY_DummySObjectBundle bundle;
 
     public XFTY_LookupWiring(
+            XFTY_DummySObjectBundle bundle,
             XFTY_GenerationContext context,
             XFTY_DummySObjectMasterTemplate template
     ) {
+        this.bundle = bundle;
         this.context = context;
         this.relationships = mergeRelationships(template);
     }
 
-    public void wire(XFTY_DummySObjectBundle bundle, List<SObject> records) {
+    public void wire() {
         if (XFTY_InsertInclusivityEnum.NONE.equals(this.context.inclusivity)) {
             return;
         }
-        this.bundle = bundle;
+        List<SObject> records = this.bundle.primaryRecords();
         for (Integer row = 0; row < records.size(); row++) {
             SObject record = records[row];
             this.wireRecord(record, row);

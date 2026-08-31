@@ -31,10 +31,10 @@ public class XFTY_DummySObjectFactory {
                 .generate();
         List<SObject> records = XFTY_PlainValues.cloneAndCompletePlainValues(this.template, testTemplates);
         bundle.putPrimaries(this.template.primaryTargetField, records);
-        new XFTY_LookupWiring(this.context, this.template)
-                .wire(bundle, records);
-        new XFTY_ContextAwareValuePass(this.context, this.template)
-                .complete(bundle, records);
+        new XFTY_LookupWiring(bundle, this.context, this.template)
+                .wire();
+        new XFTY_ContextAwareValuePass(bundle, this.context, this.template)
+                .complete();
         XFTY_RecordPersistence.apply(this.context.insertMode, records);
         return bundle;
     }

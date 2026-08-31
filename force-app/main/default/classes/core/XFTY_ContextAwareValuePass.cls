@@ -5,29 +5,33 @@
 @IsTest
 public class XFTY_ContextAwareValuePass {
 
+    private final XFTY_DummySObjectBundle bundle;
     private final XFTY_GenerationContext context;
     private final XFTY_DummySObjectMasterTemplate template;
 
     public XFTY_ContextAwareValuePass(
+            XFTY_DummySObjectBundle bundle,
             XFTY_GenerationContext context,
             XFTY_DummySObjectMasterTemplate template
     ) {
+        this.bundle = bundle;
         this.context = context;
         this.template = template;
     }
 
-    public void complete(XFTY_DummySObjectBundle bundle, List<SObject> records) {
+    public void complete() {
         if (this.template.contextAwareBySObjectFieldMap.isEmpty()) {
             return;
         }
+        List<SObject> records = this.bundle.primaryRecords();
         for (Integer row = 0; row < records.size(); row++) {
             SObject record = records[row];
-            this.completeRow(bundle, record, row);
+            this.completeRow(record, row);
         }
     }
 
-    private void completeRow(XFTY_DummySObjectBundle bundle, SObject record, Integer row) {
-        XFTY_GenerationContext scoped = this.context.forRecord(record, bundle, row);
+    private void completeRow(SObject record, Integer row) {
+        XFTY_GenerationContext scoped = this.context.forRecord(record, this.bundle, row);
         for (SObjectField field : this.template.orderedValueFields()) {
             this.completeField(record, scoped, field);
         }
