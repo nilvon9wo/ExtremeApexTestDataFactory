@@ -17,8 +17,6 @@ public class XFTY_DummySObjectProvider {
     private SObjectType sObjectType;
     private final XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup;
 
-    private static final Boolean NO_CONFLICT = true;
-
     public XFTY_DummySObjectProvider(SObjectType sObjectType, XFTY_DummySObjectProviderLookupIntf sObjectProviderLookup) {
         if (sObjectType == null) {
             throw new SanityException('It is required to specify an SObjectType to request data!');
@@ -85,12 +83,13 @@ public class XFTY_DummySObjectProvider {
     private XFTY_InsertModeEnum insertMode = XFTY_InsertModeEnum.NEVER;
     private XFTY_InsertInclusivityEnum inclusivity = XFTY_InsertInclusivityEnum.NONE;
     private Boolean hasCustomMasterTemplate = false;
+    private Boolean depthBatched = false;
+    private Boolean ancestorCyclesAllowed = false;
 
-    // `sObjectType` is set non-null by the constructor and only ever reassigned
-    // (in setOverrideTemplateList) to another SObject's type, which is never
-    // null; the class is not subclassable. So these getters never see a null
-    // type - no guard is needed. If a "construct now, set the type later" flow
-    // is ever added, reinstate a guard + a dedicated exception here.
+    // `sObjectType` is set non-null by every constructor and never reassigned; the
+    // class is not subclassable. So the code below never sees a null type - no
+    // guard is needed. If a "construct now, set the type later" flow is ever
+    // added, reinstate a guard + a dedicated exception here.
 
     private final XFTY_DummySobjectProviderIntf factoryOutlet {
         get {
@@ -142,13 +141,15 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    /**
+     * The `SObjectType` set by the constructor always wins - a list of a
+     * different type throws {@link ConflictException} rather than silently
+     * retargeting the Provider. (The `(List<SObject>, lookup)` constructor derives
+     * the type from the list first, so a homogeneous list is fine.)
+     */
     public XFTY_DummySObjectProvider setOverrideTemplateList(List<SObject> overrideTemplateList) {
-        if (overrideTemplateList != null && !overrideTemplateList.isEmpty()) {
-            this.sObjectType = overrideTemplateList[0].getSObjectType();
-        }
-
         this.overrideTemplateList = overrideTemplateList;
-        this.checkForSObjectTypeConflict(overrideTemplateList);
+        this.assertNoSObjectTypeConflict(overrideTemplateList);
         return this;
     }
 
@@ -194,6 +195,32 @@ public class XFTY_DummySObjectProvider {
 
     public XFTY_DummySObjectProvider setInclusivity(XFTY_InsertInclusivityEnum inclusivity) {
         this.inclusivity = inclusivity;
+        return this;
+    }
+
+    /**
+     * Opt in to one `insert` per dependency depth for this `NOW` call, instead of
+     * one per Provider: a `Task` with an `Account` and a `Contact` parent costs 2
+     * inserts, not 3.
+     *
+     * Opt-in because it changes `insert` order - and the order triggers fire
+     * during generation - which some tests rely on. No effect on the modes that
+     * do no DML. Not supported with shared ancestors.
+     */
+    public XFTY_DummySObjectProvider depthBatched() {
+        this.depthBatched = true;
+        return this;
+    }
+
+    /**
+     * Suppress the ancestor-cycle guard for this call. Relationship generation
+     * normally throws when it would generate a second record of a type already
+     * being generated up the graph (an infinite `A -> A -> A ...`). Use this only
+     * when the chain genuinely terminates on its own - or when the guard is a
+     * false positive - and you accept responsibility for that.
+     */
+    public XFTY_DummySObjectProvider allowAncestorCycles() {
+        this.ancestorCyclesAllowed = true;
         return this;
     }
 
@@ -317,33 +344,84 @@ public class XFTY_DummySObjectProvider {
     // Supply methods ----------------------------------------------------------------------------------------------------------
 
     public XFTY_DummySObjectBundle supplyBundle() {
-        if (this.hasCustomMasterTemplate && this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty()) {
-            System.debug(LoggingLevel.WARN, '!!!  When using both customer master and overrides, overrides will win all conflicts! !!!');
-        }
-
-        // Factory requires at least one instance of SObject to merge values from master template.
-        List<SObject> templateList = (this.overrideTemplateList == null || this.overrideTemplateList.isEmpty())
-                ? new List<SObject>{
-                        this.sObjectType.newSObject()
-                }
-                : this.overrideTemplateList;
-
-        //
-        List<SObject> multipliedTemplateList = (this.quantityPerListedTemplate > 1)
-                ? this.multiplyByQuantity(templateList)
-                : templateList;
-
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                this.sObjectProviderLookup, this.insertMode, this.inclusivity
-        ).withForcedRelationshipPaths(this.forcedRelationshipPaths);
-
-        // When the caller has customized the master template via put(...) / removeFromMasterTemplate(...),
-        // generate from that customized copy. Otherwise delegate to the Provider, which may apply its own
-        // generation logic (e.g. selecting a template by record type).
-        XFTY_DummySObjectBundle bundle = this.hasCustomMasterTemplate
-                ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, multipliedTemplateList)
-                : this.factoryOutlet.createBundle(context, multipliedTemplateList);
+        this.warnIfMixingCustomTemplateWithOverrides();
+        XFTY_GenerationContext context = this.buildContext();
+        List<SObject> templates = this.templatesToFill();
+        XFTY_DummySObjectBundle bundle = this.generate(context, templates);
+        this.persist(bundle);
         return bundle;
+    }
+
+    private XFTY_DummySObjectBundle generate(XFTY_GenerationContext context, List<SObject> templates) {
+        return this.hasCustomMasterTemplate
+                ? XFTY_DummySObjectFactory.createBundle(context, this.masterTemplate, templates)
+                : this.factoryOutlet.createBundle(context, templates);
+    }
+
+    private void persist(XFTY_DummySObjectBundle bundle) {
+        if (this.flushesGraphWhenThisCallEnds()) {
+            XFTY_DeferredInsertBuffer.insertGraph(bundle);
+        } else if (this.deferredToRegistry()) {
+            XFTY_DeferredInserter.register(bundle);
+        }
+    }
+
+    private XFTY_GenerationContext buildContext() {
+        XFTY_InsertModeEnum mode = this.contextInsertMode();
+        XFTY_GenerationContext context = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity)
+                .withForcedRelationshipPaths(this.forcedRelationshipPaths)
+                .withAncestorCycleGuard(this.ancestorCyclesAllowed);
+        return this.buildsStructurallyForBatchedInsert()
+                ? context.forBatchedInsert()
+                : context;
+    }
+
+    private XFTY_InsertModeEnum contextInsertMode() {
+        return this.buildsStructurallyForBatchedInsert()
+                ? XFTY_InsertModeEnum.NEVER
+                : this.insertMode;
+    }
+
+    private Boolean buildsStructurallyForBatchedInsert() {
+        return this.flushesGraphWhenThisCallEnds()
+                || this.deferredToRegistry();
+    }
+
+    private Boolean flushesGraphWhenThisCallEnds() {
+        return this.depthBatched
+                && XFTY_InsertModeEnum.NOW == this.insertMode;
+    }
+
+    private Boolean deferredToRegistry() {
+        return XFTY_InsertModeEnum.DEFERRED == this.insertMode;
+    }
+
+    private List<SObject> templatesToFill() {
+        List<SObject> templates = this.suppliedOrBlankTemplates();
+        return (this.quantityPerListedTemplate > 1)
+                ? this.multiplyByQuantity(templates)
+                : templates;
+    }
+
+    private List<SObject> suppliedOrBlankTemplates() {
+        if (this.hasOverrideTemplates()) {
+            return this.overrideTemplateList;
+        }
+        SObject blank = this.sObjectType.newSObject();
+        return new List<SObject>{ blank };
+    }
+
+    private Boolean hasOverrideTemplates() {
+        if (this.overrideTemplateList == null) {
+            return false;
+        }
+        return !this.overrideTemplateList.isEmpty();
+    }
+
+    private void warnIfMixingCustomTemplateWithOverrides() {
+        if (this.hasCustomMasterTemplate && this.hasOverrideTemplates()) {
+            System.debug(LoggingLevel.WARN, '!!!  Custom master template + overrides: overrides win all conflicts!  !!!');
+        }
     }
 
     private List<SObject> multiplyByQuantity(List<SObject> templateList) {
@@ -365,18 +443,18 @@ public class XFTY_DummySObjectProvider {
 
     // Consistency checks ----------------------------------------------------------------
 
-    private Boolean checkForSObjectTypeConflict(List<SObject> overrideTemplateList) {
-        if (
-                this.overrideTemplateList != null
-                        && !this.overrideTemplateList.isEmpty()
-        ) {
-            for (SObject overrideTemplate : overrideTemplateList) {
-                if (overrideTemplate.getSObjectType() != sObjectType) {
-                    throw new ConflictException('SObjectType ' + sObjectType + ' is not matched by template: ' + overrideTemplate);
-                }
+    private void assertNoSObjectTypeConflict(List<SObject> overrideTemplateList) {
+        if (overrideTemplateList == null || overrideTemplateList.isEmpty()) {
+            return;
+        }
+        for (SObject overrideTemplate : overrideTemplateList) {
+            if (overrideTemplate.getSObjectType() != this.sObjectType) {
+                throw new ConflictException(
+                        'This Provider requests ' + this.sObjectType + ' but was given a '
+                                + overrideTemplate.getSObjectType() + ' override template.'
+                );
             }
         }
-        return NO_CONFLICT;
     }
 
     // Exceptions checks ----------------------------------------------------------------

@@ -84,17 +84,15 @@ System.assertEquals(account.Id, contact.AccountId);
 
 # Documentation
 
-Full documentation is in the [`docs`](docs/README.md) directory, grouped by
-purpose — **tutorials** (learn by doing), **how-to guides** (extend and operate),
-**reference** (look things up), and **explanation** (understand the design).
+Full documentation is in [`docs/`](docs/README.md), organised by audience:
 
-| Start with | Then |
-|------------|------|
-| [Getting Started](docs/getting-started.md) — generate and customize records | [Customization](docs/customization.md) · [Relationships](docs/relationships.md) |
-| [Providers](docs/providers.md) — add `SObject` types, variants, Provider Lookups | [Testing Modes](docs/testing-modes.md) · [Packaging & Development](docs/packaging.md) |
-| [Salesforce Considerations](docs/salesforce-considerations.md) — platform constraints | [Internals](docs/internals.md) · [Future Ideas](docs/future-ideas.md) · [Known Issues](docs/known-issues.md) |
-
-See [docs/README.md](docs/README.md) for the full index, including design proposals.
+| I want to… | Go to |
+|------------|-------|
+| **Use XFTY to write tests** | [docs/use/](docs/use/) — start with [getting-started](docs/use/getting-started.md) |
+| **Teach XFTY about my org's SObjects** | [docs/extend/](docs/extend/) |
+| **Work on XFTY itself** | [docs/contribute/](docs/contribute/) — [architecture](docs/contribute/architecture.md) |
+| **Look something up** | [docs/reference/](docs/reference/) — [migration](docs/reference/migration.md), [known-issues](docs/reference/known-issues.md) |
+| **See what's built / planned** | [docs/roadmap/](docs/roadmap/README.md) |
 
 ---
 
@@ -114,21 +112,17 @@ The framework then constructs those object graphs automatically, allowing test c
 
 # Roadmap
 
-Recently landed (see [migration.md](docs/migration.md) for the breaking changes):
+Recently landed (see [migration](docs/reference/migration.md) for the breaking changes):
 
 - Provider variants by `SObjectType` + record type + flavour
 - Implicit literal wrapping in `put(...)`
-- Context-aware value generation (sibling + ancestor reads)
+- Context-aware value generation (sibling + ancestor reads), with a loud guard for mis-ordered reads
+- Per-call relationship control (`includeOptional`, `excludeRelationship`)
+- Shared ancestors (on-demand)
 - 100% framework line coverage; split unit / integration / load test suites
 
-Still ahead (see [Future Ideas](docs/future-ideas.md)):
-
-- Shared ancestors / deep record-type hierarchies
-- More granular per-call relationship control
-- Descendant (up-flowing) value reads
-- Optional sandbox data seeding
-
-The architecture is intentionally designed to make this kind of evolution possible.
+The full status table — done, in progress, and proposed, with the open question
+on each — is [docs/roadmap/README.md](docs/roadmap/README.md).
 
 ---
 

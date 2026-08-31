@@ -4,5 +4,6 @@ public enum XFTY_InsertModeEnum {
     NEVER,
     RELATED_ONLY,
     NOW,
-    LATER
+    LATER,
+    DEFERRED
 }

@@ -14,14 +14,14 @@
  *   see {@link #forRelated};
  * - carries the `includeOptional(...)` paths down the graph;
  * - is what a context-aware value strategy reads (see
- *   {@link XFTY_ContextAwareValueIntf}, docs/design/context-aware-values.md).
+ *   {@link XFTY_ContextAwareValueIntf}, docs/roadmap/context-aware-values.md).
  *
  * `recordBeingBuilt` / `bundleSoFar` / `rowIndex` are populated only for the
  * per-record value pass (via {@link #forRecord}); everywhere else they are
  * null / -1.
  *
- * Immutable. Derive a new one with {@link #forRelated} / {@link #forRecord}
- * rather than mutating.
+ * Immutable. Derive a new one with {@link #forRelated} / {@link #forRecord} /
+ * {@link #forValueField} rather than mutating.
  */
 @IsTest
 public class XFTY_GenerationContext {
@@ -43,6 +43,15 @@ public class XFTY_GenerationContext {
     public final Integer rowIndex;
 
     /**
+     * The single value field whose context-aware strategy is running, and which
+     * sibling context-aware values are still ungenerated - see
+     * {@link XFTY_ValueFieldPass} and {@link #siblingValue}. Set only during the
+     * context-aware value pass, one field at a time (via {@link #forValueField});
+     * `null` everywhere else.
+     */
+    public final XFTY_ValueFieldPass valueFieldPass;
+
+    /**
      * `includeOptional(...)` paths still to apply, each `[relationshipField,
      * ...deeper fields]`. A path whose head matches a relationship on the master
      * template being generated forces that relationship; {@link #forRelated} drops
@@ -50,12 +59,31 @@ public class XFTY_GenerationContext {
      */
     public final List<List<SObjectField>> forcedRelationshipPaths;
 
+    /**
+     * True on a structural (`NEVER`-like) build whose records get inserted later,
+     * depth-batched - by `.depthBatched()` or the `DEFERRED` mode. Carried down
+     * every derived context so `wireSharedAncestor` can reject it.
+     */
+    public final Boolean batchedInsertPending;
+
+    /**
+     * The Provider keys currently being generated up the ancestor chain, so
+     * `XFTY_AncestorGenerator` can refuse to recurse into one already in progress
+     * - see {@link XFTY_AncestorCycleGuard}. Configured by
+     * {@link #withAncestorCycleGuard} and grown one level at a time by
+     * {@link #enteringProviderFor}.
+     */
+    public final XFTY_AncestorCycleGuard cycleGuard;
+
     public XFTY_GenerationContext(
             XFTY_DummySObjectProviderLookupIntf providerLookup,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
-        this(providerLookup, insertMode, inclusivity, null, null, -1, new List<List<SObjectField>>());
+        this(
+                providerLookup, insertMode, inclusivity, null, null, -1,
+                new List<List<SObjectField>>(), false, null, new XFTY_AncestorCycleGuard(false)
+        );
     }
 
     private XFTY_GenerationContext(
@@ -65,7 +93,10 @@ public class XFTY_GenerationContext {
             SObject recordBeingBuilt,
             XFTY_DummySObjectBundle bundleSoFar,
             Integer rowIndex,
-            List<List<SObjectField>> forcedRelationshipPaths
+            List<List<SObjectField>> forcedRelationshipPaths,
+            Boolean batchedInsertPending,
+            XFTY_ValueFieldPass valueFieldPass,
+            XFTY_AncestorCycleGuard cycleGuard
     ) {
         if (providerLookup == null) {
             throw new XFTY_DummySObjectFtyProviderException('A generation context requires a Provider Lookup.');
@@ -79,13 +110,50 @@ public class XFTY_GenerationContext {
         this.forcedRelationshipPaths = (forcedRelationshipPaths == null)
                 ? new List<List<SObjectField>>()
                 : forcedRelationshipPaths;
+        this.batchedInsertPending = (batchedInsertPending == true);
+        this.valueFieldPass = valueFieldPass;
+        this.cycleGuard = cycleGuard;
     }
 
     /** A copy carrying the given `includeOptional(...)` paths (top-level entry point). */
     public XFTY_GenerationContext withForcedRelationshipPaths(List<List<SObjectField>> paths) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.batchedInsertPending,
+                this.valueFieldPass, this.cycleGuard
+        );
+    }
+
+    /**
+     * A copy whose cycle guard permits repeated Provider keys only if
+     * `cyclesAllowed` - `.allowAncestorCycles()` on the Provider. The chain of
+     * in-progress keys starts empty, so one level of self-reference (a record
+     * with a parent of its own type, which terminates on its own) is always fine;
+     * the guard fires on the *second* repeat. Top-level entry point.
+     */
+    public XFTY_GenerationContext withAncestorCycleGuard(Boolean cyclesAllowed) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
+                this.batchedInsertPending, this.valueFieldPass, new XFTY_AncestorCycleGuard(cyclesAllowed)
+        );
+    }
+
+    /** A copy whose cycle guard has descended one level into `providerKeyHash`. */
+    public XFTY_GenerationContext enteringProviderFor(String providerKeyHash) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
+                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard.descendingInto(providerKeyHash)
+        );
+    }
+
+    /** A copy marked as a structural build whose records get inserted later, depth-batched. */
+    public XFTY_GenerationContext forBatchedInsert() {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, true,
+                this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -123,13 +191,13 @@ public class XFTY_GenerationContext {
         }
         return new XFTY_GenerationContext(
                 this.providerLookup,
-                XFTY_InsertModeEnum.RELATED_ONLY.equals(this.insertMode)
+                XFTY_InsertModeEnum.RELATED_ONLY == this.insertMode
                         ? XFTY_InsertModeEnum.NOW
                         : this.insertMode,
-                XFTY_InsertInclusivityEnum.PREVENT_CASCADE.equals(this.inclusivity)
+                XFTY_InsertInclusivityEnum.PREVENT_CASCADE == this.inclusivity
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
-                null, null, -1, childPaths
+                null, null, -1, childPaths, this.batchedInsertPending, null, this.cycleGuard
         );
     }
 
@@ -141,7 +209,50 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.batchedInsertPending, null,
+                this.cycleGuard
         );
+    }
+
+    /**
+     * As {@link #forRecord}, narrowed to the one context-aware value field being
+     * generated now. `pendingContextAwareValues` is the set of context-aware
+     * fields on this record whose strategies have not run yet.
+     */
+    public XFTY_GenerationContext forValueField(SObjectField fieldBeingBuilt, Set<SObjectField> pendingContextAwareValues) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex,
+                this.forcedRelationshipPaths, this.batchedInsertPending,
+                new XFTY_ValueFieldPass(fieldBeingBuilt, pendingContextAwareValues), this.cycleGuard
+        );
+    }
+
+    /**
+     * The final value of a sibling field on {@link #recordBeingBuilt}, for a
+     * context-aware strategy (see {@link XFTY_CopyFromSibling}). A returned `null`
+     * means the sibling was genuinely generated to `null`.
+     *
+     * Throws when `siblingField` is itself a context-aware value that has not been
+     * generated yet - the one case where `put(...)` order matters - so the mistake
+     * surfaces loudly instead of as a silent wrong `null`.
+     */
+    public Object siblingValue(SObjectField siblingField) {
+        if (this.valueFieldPass == null) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'siblingValue(' + siblingField + ') can only be read while a context-aware value is being generated.'
+            );
+        }
+        if (this.valueFieldPass.pendingContextAwareValues.contains(siblingField)) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'The context-aware value for ' + this.valueFieldPass.fieldBeingBuilt
+                            + ' reads sibling field ' + siblingField
+                            + ', which is itself a context-aware value that has not been generated yet.'
+                            + ' Context-aware values are generated in the order they are put, so'
+                            + ' .put(' + siblingField + ', ...) must come before .put('
+                            + this.valueFieldPass.fieldBeingBuilt + ', ...).'
+            );
+        }
+        return this.recordBeingBuilt.get(siblingField);
     }
 }

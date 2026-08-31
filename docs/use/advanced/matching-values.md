@@ -1,0 +1,46 @@
+# Keeping a Field Pair in Sync
+
+A common validation-rule shape: two fields — on the same record, or on a parent
+and child — must match. XFTY has two tools for defining the matching value
+**once**.
+
+---
+
+## Same record — a context-aware sibling
+
+```apex
+.put(Account.ShippingCountry, 'Germany')
+.put(Account.BillingCountry, new XFTY_CopyFromSibling(Account.ShippingCountry))
+```
+
+Set `ShippingCountry` in one place (Provider default or override template);
+`BillingCountry` follows. See [context-aware-values](../context-aware-values.md)
+— and note the `put`-ordering rule if `ShippingCountry` is itself context-aware.
+
+---
+
+## Parent and child — a shared ancestor plus a copied field
+
+When many children must all carry a value that lives on their **one** shared
+parent:
+
+```apex
+XFTY_SharedAncestor.get('hq')
+    .of(new Account(Name = 'HQ', OwnerId = someUserId))
+    .copyingRelatedField(Account.OwnerId);   // children get the Account's OwnerId, not its Id
+
+new XFTY_DummySObjectMasterTemplate(Case.Id)
+    .putRequired(Case.AccountId, XFTY_SharedAncestor.get('hq'));
+```
+
+Every `Case` now carries the shared Account's `OwnerId`. See
+[shared-ancestors](../shared-ancestors.md).
+
+---
+
+## Child value up onto a parent
+
+Reading *up* — a parent field derived from a generated child — is not supported
+yet. See [roadmap/descendant-value-reads.md](../../roadmap/descendant-value-reads.md).
+
+▶ Runnable: `XFTY_Ex_Adv_MatchingValuesTest` _(pending — Pass B)_

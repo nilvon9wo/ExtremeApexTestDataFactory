@@ -25,7 +25,7 @@
  * This is the **on-demand** kind (design doc decision 9): lightweight, resolved
  * inline the first time it is referenced. Deep / declared ancestors and
  * DML-batched resolution are a later increment - see
- * docs/design/shared-ancestors.md.
+ * docs/roadmap/shared-ancestors.md.
  */
 @IsTest
 public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
@@ -150,14 +150,35 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
                     new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
             );
             this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
-            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW.equals(ancestorContext.insertMode);
+            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW == ancestorContext.insertMode;
         }
         return this.resolvedRecord;
     }
 
-    /** The bundle produced when the shared record was generated (null if it was `put(...)` in). */
+    /**
+     * A bundle exposing the shared record as a single-record sub-graph. It is the
+     * bundle produced when the record was generated; for a record supplied with
+     * `put(name, record)` there is no such bundle, so one wrapping just that
+     * record is built on first request, keyed by its `Id` field. Never null once
+     * the shared ancestor is resolved - `bundle.getBundle(field)` and
+     * `bundle.getList(field)` stay consistent.
+     */
     public XFTY_DummySObjectBundle getResolvedBundle() {
+        if (this.resolvedBundle == null && this.resolvedRecord != null) {
+            this.resolvedBundle = wrap(this.resolvedRecord);
+        }
         return this.resolvedBundle;
+    }
+
+    private static XFTY_DummySObjectBundle wrap(SObject record) {
+        SObjectField idField = record.getSObjectType()
+                .getDescribe()
+                .fields
+                .getMap()
+                .get('Id');
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(idField, new List<SObject>{ record });
+        return bundle;
     }
 
     /**
