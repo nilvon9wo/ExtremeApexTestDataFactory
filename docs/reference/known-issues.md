@@ -6,32 +6,22 @@ undecided design — for plan status and open questions see
 
 ---
 
-## Bugs to fix
+## Open — for triage
 
-### A mismatched override-template list silently retargets the Provider
-
-`setOverrideTemplateList([new Account()])` on a
-`new XFTY_DummySObjectProvider(Contact.SObjectType, ...)` runs
-`this.sObjectType = list[0].getSObjectType()` before any conflict check, so it
-silently switches to `Account`. Only a **mixed-type list**
-(`[new Contact(), new Account()]`) currently throws.
-
-**Decided fix:** an explicit `SObjectType` (or lookup-key) constructor argument
-always wins, **and** a list whose entries are a different type throws
-`ConflictException`. The two are not alternatives — do both. The shorthand
-`new XFTY_DummySObjectProvider(List<SObject>, lookup)` constructor still derives
-its type from the list (there was no explicit type to defend).
-
-### `ALL` inclusivity + a self-referential relationship recurses until the stack blows
-
-e.g. an optional `Account.ParentId → Account` under `ALL`. `PREVENT_CASCADE` is
-the current workaround. The fix (ancestor cycle detection that throws, with an
-off-switch) is a decided
-[roadmap item](../roadmap/README.md#remaining-work-decided-needs-building).
+_None currently._
 
 ---
 
 ## Fixed (kept for context)
+
+- A mismatched override-template list silently retargeted the Provider
+  (`setOverrideTemplateList([new Account()])` on a `Contact` Provider quietly
+  became an `Account` Provider). The constructor's type now wins and a
+  different-typed list throws `ConflictException`.
+- `ALL` inclusivity + a self-referential relationship recursed until the stack
+  blew. `XFTY_AncestorCycleGuard` now throws a clear error on the second repeat
+  of a Provider key up the ancestor chain; `.allowAncestorCycles()` suppresses
+  it for a chain that terminates for another reason.
 
 - Shipped tests required the Person Accounts feature — real-record-type
   assertions moved to `test-support/`.

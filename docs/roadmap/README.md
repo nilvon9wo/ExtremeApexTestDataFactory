@@ -25,28 +25,18 @@ Legend: ✅ done &nbsp;·&nbsp; 🔧 built but not merged &nbsp;·&nbsp; 📋 de
 
 ## Remaining work (decided, needs building)
 
-Ordered roughly by dependency.
+Ordered roughly by dependency. (The two known-issue fixes at the top of the
+list are **done** — `142c6d9`, and the commit after it.)
 
-1. **Constructor retarget fix**
-   ([../reference/known-issues.md](../reference/known-issues.md)): an explicit
-   `SObjectType` / lookup-key constructor argument wins **and** an
-   override-template list of a different type throws `ConflictException` — the
-   two are not alternatives.
-2. **Ancestor cycle detection.** Thread the chain of resolved Provider lookup
-   keys down `XFTY_GenerationContext.forRelated`; when `XFTY_AncestorGenerator`
-   would recurse into a key already on the chain, **throw** a clear error naming
-   the field and the repeated type, telling the author to use distinct per-level
-   Providers or `PREVENT_CASCADE`. Detection exists to handle the cycle — a
-   silent skip defeats the purpose, and a warning just delays an infinite
-   recursion nobody wants. Cost is small — one `Set` on the context, one add per
-   level, one membership check per relationship; depth is tiny in practice.
-   Because the check is by *resolved lookup key*, one level of self-reference (a
-   record with a parent of the same type) still works, and a deliberate
-   multi-level hierarchy built with distinct per-level Providers recurses freely.
-   Ship an off-switch (`.allowAncestorCycles()` or a context flag) for a
-   deliberate cycle and as a safety valve if detection accuracy is ever in
-   doubt. `PREVENT_CASCADE` stays as the explicit "exactly one level" tool and
-   for legacy.
+1. ~~Constructor retarget fix~~ — **done.** An explicit `SObjectType` /
+   lookup-key constructor argument wins, and an override-template list of a
+   different type throws `ConflictException`.
+2. ~~Ancestor cycle detection~~ — **done.** `XFTY_AncestorCycleGuard` threads the
+   chain of in-progress Provider lookup-key hashes; `XFTY_AncestorGenerator`
+   throws when it would recurse into one already in progress. One level of
+   self-reference still works (the guard fires on the second repeat); distinct
+   per-level Providers recurse freely; `.allowAncestorCycles()` on the Provider
+   suppresses the guard. `PREVENT_CASCADE` unchanged.
 3. **Merge deferred persistence** to `xfty-4.0-beta` — after: shared-ancestor
    support under `.depthBatched()` / `DEFERRED` (refused today), and a
    `XFTY_Load` measurement of the bundle-walk cost at volume.

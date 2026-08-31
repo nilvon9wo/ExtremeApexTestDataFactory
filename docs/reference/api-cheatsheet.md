@@ -27,6 +27,7 @@ One line per public entry point. Follow the links for detail.
 | `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
 | `.excludeRelationship(SObjectField)` | skip one relationship, this call only |
 | `.depthBatched()` | one `insert` per depth instead of per Provider (`NOW` only) |
+| `.allowAncestorCycles()` | suppress the guard that throws on a self-referential relationship chain |
 
 | Terminal | Returns |
 |----------|---------|

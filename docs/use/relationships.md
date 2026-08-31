@@ -85,10 +85,19 @@ Account
 
 Reducing graph size is a side effect; **stopping recursion is the point.**
 
-> `ALL` + a self-referential *optional* relationship (e.g. optional
-> `Account.ParentId → Account`) currently recurses until the stack blows.
-> `PREVENT_CASCADE` is the workaround —
-> [known-issues](../reference/known-issues.md).
+### Self-referential relationships
+
+`ALL` + a self-referential relationship (e.g. `Account.ParentId → Account`) would
+recurse forever. XFTY generates **one level** and then throws a clear "cycle"
+error if the same Provider would be generated again further up the graph. Options
+for a genuine chain:
+
+- **`PREVENT_CASCADE`** — exactly one level, no recursion.
+- **distinct per-level Providers** (different [lookup keys](provider-variants.md))
+  — each level is a different Provider, so it is not a cycle and recurses freely.
+- **`.allowAncestorCycles()`** on the Provider — suppresses the guard when the
+  chain terminates for another reason (or the guard is a false positive). You
+  own the "does it terminate?" question.
 
 ---
 
