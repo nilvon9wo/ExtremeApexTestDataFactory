@@ -81,8 +81,10 @@ one branch does not need.
 
 ### Comments
 
-- No section-marker comments. The only comments-as-headers allowed are
-  `// Arrange` / `// Act` / `// Assert` in tests.
+- No section-marker comments in production code — extract the section instead.
+- In **tests**, the expected structural markers are `// Arrange`, `// Act`,
+  `// Assert`, and `// Sanity Check` (a pre-Act assertion that the arranged
+  state is what the test assumes). Use them.
 - If a comment restates what a name could say, fix the name instead.
 - Doc comments (`/** ... */`) explaining *why* are welcome.
 
