@@ -57,8 +57,9 @@ Bundle
 Use `getList(field)` for the related records themselves; `getBundle(field)` for
 the entire subgraph beneath them.
 
-> `getBundle(field)` returns null for a [shared-ancestor](shared-ancestors.md)
-> field today — use `getList(field)`.
+> For a [shared ancestor](shared-ancestors.md), `getBundle(field)` is filled when
+> the ancestor is *generated*, but not after `XFTY_SharedAncestor.put(name,
+> record)` — a bug being fixed ([known-issues](../reference/known-issues.md)).
 
 ▶ Runnable: `XFTY_Ex_BundlesTest` _(pending — Pass B)_
 

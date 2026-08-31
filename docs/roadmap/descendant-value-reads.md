@@ -1,45 +1,53 @@
 # Roadmap: Descendant (Up-Flowing) Value Reads
 
-Status: **📋 proposed**. This is decision 4 of
-[context-aware-values.md](context-aware-values.md), spun out here because it is
-the one context-aware direction still unbuilt.
+Status: **📋 designed, not built.** Approach decided — see below. This is
+decision 4 of [context-aware-values.md](context-aware-values.md).
 
 ---
 
 ## The need
 
-[Context-aware values](../use/context-aware-values.md) currently read *down* the
-tree (a field copied from a generated ancestor — `XFTY_CopyFromAncestor`) and
-*sideways* (a sibling field on the same record — `XFTY_CopyFromSibling`). Reading
+[Context-aware values](../use/context-aware-values.md) read *down* the tree (from
+a generated ancestor) and *sideways* (a sibling on the same record). Reading
 *up* — a **parent** field derived from a generated **child** — cannot ride the
-same pass, because the child does not exist yet when the parent is built.
+same pass, because the child does not exist when the parent is built.
 
 Example: `Account.Site` set to match its generated primary `Contact.Department`,
 so a validation rule comparing the two passes.
 
 ---
 
-## Two options
+## Decision: build option B, skip option A
 
-### A. Light — `context.requestingChildTemplate`
+**Option B** — a value pass inside `DEFERRED` `flush()`.
+[Deferred persistence](deferred-persistence.md) already accumulates the entire
+forest in `XFTY_DeferredInsertBuffer` before it inserts. A pass over those
+buffered records at the start of `flush()`, before the depth-batched insert, sees
+every record — so an up-flowing strategy can read any descendant.
 
-When the factory builds a parent *because* a child required it, it already holds
-the child's seed template + overrides. Expose that (not the fully generated
-child, just the seed) as `context.requestingChildTemplate`. Covers "a matching
-value the test set explicitly on the child" with no engine restructure.
+**Option A** — a light `context.requestingChildTemplate` (the child's seed
+template, available when the factory builds a parent because a child asked for
+it). Covers only "a matching value the test set explicitly on the child", and
+only for that one requesting child.
 
-### B. Full — a value pass inside `DEFERRED` `flush()`
+| | Option A | Option B |
+|--|----------|----------|
+| Works in | any insert mode | `DEFERRED` only |
+| Covers | one requesting child's seed value | any descendant, fully generated |
+| New machinery | small | a pass + a descendant-scoped context |
+| Perf | free | one extra in-memory pass at `flush()`, `O(records × strategies)` — negligible beside the DML it precedes; skip it entirely when no up-flow strategy is registered |
 
-[Deferred persistence](deferred-persistence.md) already holds the whole graph in
-memory between `supply*()` and `flush()`. A value pass that runs in `flush()`,
-before the insert, sees every record — so an up-flowing strategy can read any
-descendant. This is the same machinery
-[declared shared ancestors](shared-ancestors.md) want.
+They are **not mutually exclusive** — A would serve non-`DEFERRED` tests while B
+serves `DEFERRED` — but maintaining both doubles the surface for a feature B
+already covers. So: **B only.**
 
----
+### The constraint this imposes
 
-## Open question
+Up-flowing reads require `DEFERRED` mode. A test that needs one and is not using
+`DEFERRED` gets a clear error, not a silent `null`. Likewise a `DEFERRED` test
+that registers an up-flow strategy but never calls `flush()` — the value stays
+unresolved, and reading it must fail loudly (same "not-computed vs computed-null"
+distinction as the [sibling guard](../use/context-aware-values.md)).
 
-Ship **A** first (cheap, covers the common case) and add **B** when the
-`DEFERRED` work merges, or wait and do **B** only? Decide alongside the
-`deferred-persistence` merge.
+No toggle is needed: B's cost is negligible and it self-skips when nothing
+registers an up-flow strategy.

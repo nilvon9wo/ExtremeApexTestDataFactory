@@ -76,9 +76,10 @@ walk needs no master templates. `XFTY_GenerationContext` gained
 **Opt-in, settled** (Brian, repeatedly): never always-on. It changes `insert`
 order and the order triggers fire mid-generation, which many tests depend on.
 
-Still open: **walk cost** at volume (O(records + links)); load-test alongside
-`XFTY_Load`. **Shared ancestors** - refused; the walk would have to handle a
-record reachable from two places.
+Before merge (not decisions — work): a `XFTY_Load` measurement of the
+bundle-walk cost at volume (`O(records + links)`), and shared-ancestor support
+(refused today — the walk would have to handle a record reachable from two
+places).
 
 ---
 

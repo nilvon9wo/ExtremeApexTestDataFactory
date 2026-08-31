@@ -1,54 +1,63 @@
 # Known Issues
 
-Open defects and rough edges. For plan status (built / in progress / proposed)
-see [../roadmap/README.md](../roadmap/README.md).
+Defects and rough edges. This page is for **things that are wrong**, not for
+undecided design — for plan status and open questions see
+[../roadmap/README.md](../roadmap/README.md).
 
 ---
 
-## Open — for triage
+## Bugs to fix
 
-### A single mismatched override template silently retargets the Provider
+### A mismatched override-template list silently retargets the Provider
 
 `setOverrideTemplateList([new Account()])` on a
 `new XFTY_DummySObjectProvider(Contact.SObjectType, ...)` runs
-`this.sObjectType = list[0].getSObjectType()` **before** the conflict check, so it
+`this.sObjectType = list[0].getSObjectType()` before any conflict check, so it
 silently switches to `Account`. Only a **mixed-type list**
-(`[new Contact(), new Account()]`) currently throws `ConflictException`.
-Question: should an explicit constructor type always win, or should any
-type change from a list be a `ConflictException`?
+(`[new Contact(), new Account()]`) currently throws.
 
-### `ALL` inclusivity + a self-referential optional relationship recurses until the stack blows
+**Decided fix:** an explicit `SObjectType` (or lookup-key) constructor argument
+always wins, **and** a list whose entries are a different type throws
+`ConflictException`. The two are not alternatives — do both. The shorthand
+`new XFTY_DummySObjectProvider(List<SObject>, lookup)` constructor still derives
+its type from the list (there was no explicit type to defend).
 
-e.g. an optional `Account.ParentId → Account`. `PREVENT_CASCADE` is the current
-workaround. Cycle detection in the engine would make `ALL` safe here.
+### `bundle.getBundle(field)` is null after `XFTY_SharedAncestor.put(name, record)`
 
-### Shared ancestors — two invariants not yet kept
+When a shared ancestor is **generated**, both `getList(field)` and
+`getBundle(field)` are populated (`XFTY_SharedAncestorTest.theSharedRecordAppearsInBothTheListAndTheSubBundle`).
+When the test supplies the record itself with `XFTY_SharedAncestor.put(name,
+record)`, no sub-bundle is built, so `getBundle(field)` returns null while
+`getList(field)` works — an inconsistency a consumer would not expect.
 
-Tracked with the on-demand implementation
-([../roadmap/shared-ancestors.md](../roadmap/shared-ancestors.md)):
+**Fix:** `XFTY_SharedRelationshipWiring` should place a single-record sub-bundle
+for the field in the `put(...)` case too, so `getBundle(field)` is never null for
+a wired shared ancestor. Longer term, `getList` / `getBundle` should share a
+source so they cannot diverge for any relationship.
 
-- **Mixed insert modes drift the Id.** First resolved in `MOCK`, then referenced
-  from a `NOW` call → children wired to a mock Id, `insert` fails.
-- **`bundle.getBundle(field)` returns null** for a shared-ancestor field (only
-  `getList(field)` works).
+### `ALL` inclusivity + a self-referential relationship recurses until the stack blows
+
+e.g. an optional `Account.ParentId → Account` under `ALL`. `PREVENT_CASCADE` is
+the current workaround. This needs cycle detection in the engine — see
+[../roadmap/README.md](../roadmap/README.md#open-questions) for the one open
+question about how it should behave when it fires.
 
 ---
 
 ## Fixed (kept for context)
 
-- Shipped tests required the Person Accounts feature — the real-record-type
+- Shipped tests required the Person Accounts feature — real-record-type
   assertions moved to `test-support/`.
 - `profileIdFor` / `roleIdFor` returned `null` on a miss — now **throw**
   `XFTY_DefaultUserDataProvider.UnknownReferenceException`.
 - `XFTY_DefaultSObjectProviderLookup.get()` swallowed the "unknown type" error —
   now throws.
-- Provider-level `put(...)` / `removeFromMasterTemplate(...)` were no-ops (a
-  branch on `hasCustomMasterTemplate == null`, never true) — fixed.
-- `XFTY_RecordTypeDataProvider` re-queried on every miss — now queries each
-  SObject at most once.
-- `XFTY_DummySObjectMasterTemplate` was shallow-cloned, aliasing the Provider's
-  static maps — added an explicit `copy()`.
-- `XFTY_InsertMocker` (a byte-for-byte duplicate of `XFTY_IdMocker`) and
-  `IndeterminateSObjectTypeException` (guarded an unreachable state) — deleted.
+- Provider-level `put(...)` / `removeFromMasterTemplate(...)` were no-ops — fixed.
+- `XFTY_RecordTypeDataProvider` re-queried on every miss — now once per SObject.
+- `XFTY_DummySObjectMasterTemplate` was shallow-cloned — added explicit `copy()`.
+- `XFTY_InsertMocker` and `IndeterminateSObjectTypeException` — deleted (dead).
 - A mis-ordered context-aware sibling read returned a silent `null` — now throws
-  a clear error via `context.siblingValue(field)`.
+  via `context.siblingValue(field)`.
+- A shared ancestor resolved in `MOCK` then referenced from a `NOW` call used to
+  drift a mock Id into real DML — now throws a clear "consistent insert mode"
+  error (`XFTY_SharedAncestorTest.referencingAMockResolvedSharedAncestorFromANowCallThrows`).

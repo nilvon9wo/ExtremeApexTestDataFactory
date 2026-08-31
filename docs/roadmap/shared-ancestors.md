@@ -1,8 +1,9 @@
 # Design: Shared Ancestors
 
 Status: **on-demand path implemented** (v3). The *declared* path (up-front
-`require(...)`, the S0-S2 batched pre-phase, deep chains) is still proposal - see
-"Open decisions" and the phase descriptions below.
+`require(...)`, the S0-S2 batched pre-phase, deep chains) is **fully designed and
+not built** — every decision in "Design decisions" below is settled; what remains
+is implementation (see [README.md](README.md#remaining-work-decided-needs-building)).
 
 Implemented (`XFTY_SharedAncestor`, usage in
 [use/shared-ancestors.md](../use/shared-ancestors.md)):
@@ -165,7 +166,11 @@ sub-graph once.
 
 ---
 
-## Open decisions
+## Design decisions (all settled)
+
+Each is decided; nothing here blocks implementation. Kept for the rationale.
+The one item that still wants *data* rather than a decision is decision 3 (load
+test the depth-batch cost before committing the numbers).
 
 ### 1. What kicks off resolution (S0-S2)? — *superseded by decision 9*
 

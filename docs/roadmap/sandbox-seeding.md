@@ -1,7 +1,15 @@
 # Roadmap: Sandbox Data Seeding
 
-Status: **📋 proposed, feasibility unknown**. Needs an experiment before it can
-be planned properly.
+Status: **📋 blocked on a project decision** —
+[roadmap open question 1](README.md#1-does-xfty-commit-to-a-deployable-non-istest-distribution).
+Seeding needs deployable (non-`@IsTest`) code. That is the same decision the
+[namespace / AppExchange work](namespace-appexchange.md) faces, and it is
+almost certainly **not** something a consumer can defer and switch later — you
+cannot swap a file from another package after install. So XFTY has to commit,
+once, to shipping `@IsTest`-only or shipping deployable.
+
+This page is what seeding would look like *if* that decision goes toward
+deployable.
 
 ---
 
@@ -29,16 +37,19 @@ base plus a thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs �
 
 ---
 
-## Why feasibility is unknown
+## Why the split is hard
 
 Salesforce likely will not let a consumer install the base without the layer
 cleanly — you cannot replace a file from another package, so you may have to
 delete the layer's files and everything depending on them. For a ~half-dozen-file
-difference that may not be worth it. **The experiment:** build both, install into
-a scratch org both ways, see what breaks.
+difference that may not be worth it.
 
-The [namespace / AppExchange work](namespace-appexchange.md) pushes toward the
-same split (step 4 there).
+If it genuinely cannot be done cleanly (the working assumption), there is no
+per-consumer switch: the package either carries `@IsTest` or it does not. That is
+[roadmap open question 1](README.md#open-questions).
+
+The [namespace / AppExchange work](namespace-appexchange.md) forces the same
+decision (step 4 there).
 
 ---
 

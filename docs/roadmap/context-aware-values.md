@@ -181,12 +181,13 @@ mini-expression-language.
 2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, plain map)
    + `completeContextAwareValues` (pass 2, context-aware map, after wiring).
 3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` (single + multi-hop) + tests.
-4. Docs: customization.md section, internals.md value-passes detail.
+4. Docs: [use/context-aware-values.md](../use/context-aware-values.md),
+   [contribute/architecture.md](../contribute/architecture.md) value-passes detail.
 
 ### Increment 2 - descendant reads (decision 4)
 
-Either `context.requestingChildTemplate` (light) or the `DEFERRED` insert mode
-([deferred-persistence.md](deferred-persistence.md)). Decide alongside that work.
+Decided: build a value pass inside `DEFERRED` `flush()`; skip the light
+`requestingChildTemplate`. See [descendant-value-reads.md](descendant-value-reads.md).
 
 ### Later
 
@@ -208,5 +209,6 @@ Topological / lazy sibling resolution if the insertion-order limitation bites
 
 ## Open
 
-- **Decision 4** - `requestingChildTemplate` vs. `DEFERRED` mode for descendant
-  reads.
+Nothing. Decision 4 resolved — [descendant-value-reads.md](descendant-value-reads.md).
+Full lazy sibling resolution (option C above) is a *later, optional* refinement,
+not an open question.

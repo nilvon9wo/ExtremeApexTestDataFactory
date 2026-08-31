@@ -75,12 +75,15 @@ record).
 - Each shared ancestor is generated with its own `createBundle` call, so
   resolving *N* shared ancestors in `NOW` mode still costs *N* inserts (better
   than one per child, not yet one total).
-- **Mixed insert modes drift.** If a shared ancestor is first resolved in a
-  `MOCK` call it gets a mock Id; a later `NOW` call referencing it then wires
-  children to that mock Id and the `insert` fails. Keep one insert mode per
-  shared ancestor within a test.
-- `bundle.getBundle(field)` returns null for a shared-ancestor field today (use
-  `bundle.getList(field)`).
+- **Use one insert mode per shared ancestor within a test.** If it is first
+  resolved in a `MOCK` call and then referenced from a `NOW` call, XFTY throws a
+  clear "consistent insert mode" error rather than drift a mock Id into real DML.
+  To share a real record across a `NOW` test, insert it yourself and register it
+  with `XFTY_SharedAncestor.put(name, record)`.
+- After `XFTY_SharedAncestor.put(name, record)`, `bundle.getBundle(field)`
+  returns null (only `getList(field)` is filled) — a bug being fixed
+  ([known-issues](../reference/known-issues.md)). When the ancestor is
+  *generated*, both work.
 
 Deep shared chains, up-front `require(...)` declaration, and DML-batched
 resolution are [on the roadmap](../roadmap/shared-ancestors.md).

@@ -1,8 +1,12 @@
 # Salesforce Considerations
 
-Like any framework built on top of Salesforce, XFTY is constrained by certain platform behaviours.
+The most significant constraint on XFTY is simply that Salesforce is a heavily
+limited platform, with extra limits on what and how much can run inside an Apex
+test context. That is a Salesforce limitation, not an XFTY one; the exact ceilings
+vary by org and are out of scope here.
 
-Fortunately, there are very few that affect normal usage. The most significant is the interaction between Salesforce's `@TestSetup` mechanism and static variables.
+The most *surprising* constraint — the one worth reading this page for — is the
+interaction between Salesforce's `@TestSetup` mechanism and static variables.
 
 ---
 
