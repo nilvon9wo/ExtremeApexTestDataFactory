@@ -1,5 +1,11 @@
+/**
+ * End-to-end generation scenarios through `XFTY_DummySObjectProvider`: request a
+ * Contact and get a valid Account graph too, in-database persistence, MOCK not
+ * touching the database. Add a test here for a "does the whole flow work" case;
+ * fine-grained API guards go in `XFTY_DummySObjectProviderApiTest`.
+ */
 @IsTest
-public class XFTY_DummySObjectProviderTests {
+private class XFTY_DummySObjectProviderScenarioTest {
     private static final XFTY_DefaultSObjectProviderLookup DEFAULT_SOBJECT_PROVIDER = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final String TEST_CONTACT_FIRST_NAME = 'Fred';

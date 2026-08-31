@@ -19,7 +19,10 @@ sf apex run test --suite-names XFTY_Examples                              # doc 
 Keep test classes single-purpose — suites group by class. A class that mixes
 DML-free and DML-backed methods is split (e.g. `XFTY_DummySObjectFactoryTest`
 keeps the no-DML matrix; `XFTY_DummySObjectFactoryDmlTest` has the `NOW` /
-`RELATED_ONLY` cases).
+`RELATED_ONLY` cases). A class with two clearly different *jobs* is also split:
+`XFTY_DummySObjectProviderApiTest` (one test per fluent-API affordance) vs.
+`XFTY_DummySObjectProviderScenarioTest` (end-to-end "does the whole flow work").
+Each test class lives in the same folder as the class it exercises.
 
 The other `test-support/` tests (`XFTY_PersonAccountVariantTest`,
 `XFTY_RecordTypeRealRtTest`) are not in a suite — CI's `RunLocalTests` runs them

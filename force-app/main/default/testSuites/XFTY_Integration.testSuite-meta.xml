@@ -13,6 +13,6 @@
     <testClassName>XFTY_DeferredInserterTest</testClassName>
     <testClassName>XFTY_DepthBatchedInserterTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryDmlTest</testClassName>
-    <testClassName>XFTY_DummySObjectProviderTests</testClassName>
+    <testClassName>XFTY_DummySObjectProviderScenarioTest</testClassName>
     <testClassName>XFTY_SharedAncestorTest</testClassName>
 </ApexTestSuite>

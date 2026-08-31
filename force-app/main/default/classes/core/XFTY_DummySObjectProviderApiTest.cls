@@ -1,13 +1,15 @@
 /**
- * Coverage for the fluent public entry point, `XFTY_DummySObjectProvider`:
- * constructor guards, the setters, and the customization surface documented in
- * docs/use/value-strategies.md.
+ * Coverage for the fluent public API of `XFTY_DummySObjectProvider` - one test
+ * per affordance: the constructors and their guards, the setters, `withVariant`,
+ * `put(...)` routing, `includeOptional` / `excludeRelationship`, precedence.
+ * Add a test here when a builder method or a guard changes.
  *
- * The end-to-end generation behaviour (insert modes, relationship inclusivity)
- * is exercised in `XFTY_DummySObjectFactoryTest`.
+ * End-to-end generation *scenarios* live in
+ * `XFTY_DummySObjectProviderScenarioTest`; insert-mode / inclusivity behaviour in
+ * `XFTY_DummySObjectFactoryTest`.
  */
 @IsTest
-private class XFTY_DummySObjectProviderTest {
+private class XFTY_DummySObjectProviderApiTest {
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     // Constructor guards --------------------------------------------------------

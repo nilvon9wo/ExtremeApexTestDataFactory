@@ -50,23 +50,13 @@ list are **done** — `142c6d9`, and the commit after it.)
    `XFTY_SharedAncestor.context(mode)`, per that document's implementation plan.
 6. **Namespace steps 1–3** ([namespace-appexchange.md](namespace-appexchange.md))
    — mechanical; gated on the distribution-model decision below only for step 4.
-7. **Test-class cleanup.** Two provider test classes exist for historical
-   reasons, not by design. `XFTY_DummySObjectProviderTests` (trailing `s`) is the
-   legacy end-to-end behavioural suite — `public` not `private`, old
-   `System.assert*`, `testXxx` names, Arrange/Act/Assert markers; it exercises
-   full `supply*()` scenarios ("ask for a Contact, get an Account graph too",
-   persistence, MOCK-doesn't-touch-DB). `XFTY_DummySObjectProviderTest` is the
-   newer suite — one `@IsTest` method per fluent-API affordance (constructors,
-   `withVariant`, `put` routing, `includeOptional` / `excludeRelationship`,
-   precedence).
-
-   - Rename `…Tests` → **`XFTY_DummySObjectProviderScenarioTest`** (add scenario
-     tests here); modernise its asserts to `Assert.*`; make it `private`.
-   - Rename `…Test` → **`XFTY_DummySObjectProviderApiTest`** (add tests for a new
-     builder method or a new guard here).
-   - Drop the one real duplicate (the null-`SObjectType` check —
-     `…Test.constructorRejectsNullSObjectType` is the richer one).
-   - Do **not** merge — both are long and test different levels.
+7. **Test-class cleanup** — mostly **done.** `XFTY_DummySObjectProviderTests` →
+   `XFTY_DummySObjectProviderScenarioTest` (end-to-end scenarios, now `private`);
+   `XFTY_DummySObjectProviderTest` → `XFTY_DummySObjectProviderApiTest` (one test
+   per fluent-API affordance). Both moved next to `XFTY_DummySObjectProvider` in
+   `core/`. Still to do: modernise `ScenarioTest`'s `System.assert*` calls to
+   `Assert.*`, and drop its one real duplicate (the null-`SObjectType` check —
+   `ApiTest.constructorRejectsNullSObjectType` is richer).
 
 ---
 

@@ -10,9 +10,10 @@ Work top to bottom; each item says exactly what to change.
 ## 1. Source format
 
 XFTY is now a Salesforce DX **source-format** project. Classes live under
-`force-app/main/default/classes/<area>/` (`core`, `values`, `relationships`,
-`lookup`, `providers`, `tests`). If you vendored XFTY's `src/classes`, re-vendor
-from `force-app`. Deploy is unchanged (`sf project deploy start`).
+`force-app/main/default/classes/<area>/` (`core`, `engine`, `persistence`,
+`values`, `relationships`, `lookup`, `providers`), each class's test beside it.
+If you vendored XFTY's `src/classes`, re-vendor from `force-app`. Deploy is
+unchanged (`sf project deploy start`).
 
 ## 2. `XFTY_InsertMocker` is gone
 
