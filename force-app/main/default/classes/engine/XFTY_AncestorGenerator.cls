@@ -66,10 +66,30 @@ public class XFTY_AncestorGenerator {
     private void addAncestor(XFTY_DummySObjectBundle bundle, SObjectField field, Boolean isForced) {
         XFTY_DummyDefaultRelationshipIntf relationship = this.relationshipOn(field);
         if (relationship instanceof XFTY_SharedRelationshipIntf) {
+            this.assertNoPathValueInto(field);
             this.wireSharedAncestor(bundle, field, relationship);
             return;
         }
         this.generateAncestor(bundle, field, relationship, isForced);
+    }
+
+    /**
+     * A `put(path, ...)` cannot reach into a shared ancestor's generation - the
+     * shared record is resolved once and shared by every child, so a per-call
+     * value would not have a well-defined meaning. Fail loudly rather than drop it.
+     */
+    private void assertNoPathValueInto(SObjectField field) {
+        for (XFTY_PathValue pathValue : this.context.pathValues) {
+            Boolean reachesIntoTheSharedRecord = pathValue.head() == field
+                    && (!pathValue.isAtTarget() || pathValue.isRelationshipKind());
+            if (reachesIntoTheSharedRecord) {
+                throw new XFTY_DummySObjectFtyProviderException(
+                        'put(...) / putRequired(...) with a path through ' + field
+                                + ' targets a shared ancestor. Configure the shared record with '
+                                + 'XFTY_SharedAncestor.get(name).of(...) instead.'
+                );
+            }
+        }
     }
 
     private void wireSharedAncestor(

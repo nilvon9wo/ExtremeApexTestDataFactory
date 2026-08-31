@@ -145,6 +145,20 @@ private class XFTY_PathValueTest {
     }
 
     @IsTest
+    static void aPathValueIntoASharedAncestorThrowsLoudly() {
+        XFTY_SharedAncestor.get('shared-acct').of(new Account(Name = 'Shared HQ'));
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, new SharedParentLookup())
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
+                    .supplyBundle();
+            System.assert(false, 'expected a loud error, not a dropped value');
+        } catch (Exception e) {
+            System.assert(e.getMessage().containsIgnoreCase('shared ancestor'), e.getMessage());
+        }
+    }
+
+    @IsTest
     static void pathNeedsAtLeastARelationshipAndATarget() {
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
@@ -196,6 +210,38 @@ private class XFTY_PathValueTest {
                 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
                 .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
 
+        public SObjectField getPrimaryTargetField() {
+            return Contact.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateSObjectList) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
+        }
+    }
+
+    private class SharedParentLookup implements XFTY_DummySObjectProviderLookupIntf {
+        private final Map<SObjectType, XFTY_DummySobjectProviderIntf> byType
+                = new Map<SObjectType, XFTY_DummySobjectProviderIntf>{
+                        Account.SObjectType => new XFTY_DefaultAccountDataProvider(),
+                        Contact.SObjectType => new ContactUnderSharedAccountProvider()
+                };
+        public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
+            return this.byType.get(sObjectType);
+        }
+        public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
+            return this.byType.get(lookupKey.getSObjectType());
+        }
+        public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
+            return new Set<XFTY_LookupKeyIntf>{ XFTY_LookupKey.get(sObj.getSObjectType()) };
+        }
+    }
+
+    private class ContactUnderSharedAccountProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Contact'))
+                .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('shared-acct'));
         public SObjectField getPrimaryTargetField() {
             return Contact.Id;
         }

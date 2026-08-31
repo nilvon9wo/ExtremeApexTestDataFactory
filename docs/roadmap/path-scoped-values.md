@@ -67,8 +67,9 @@ forced ancestor's own inclusivity to `REQUIRED` when the call asked for `NONE`.
 - `includeOptional(...)` gained the same "force regardless of inclusivity, fully
   formed" behavior in the same change — one rule for both.
 - Mirror on the read side is already there — `XFTY_CopyFromAncestor(path)`.
-- Shared ancestors: a `put(path, ...)` whose step resolves to an
-  `XFTY_SharedAncestor` currently does not reach into that shared record's
-  generation (configure the shared ancestor with `.of(template)` instead). Not a
-  silent failure of the *path* — the shared ancestor still wires — but the value
-  does not land. Worth a follow-up or an explicit throw.
+- Shared ancestors: a `put(path, ...)` / `putRequired(path, ...)` whose step
+  resolves to an `XFTY_SharedAncestor` **throws** — the shared record is resolved
+  once and shared by every child, so a per-call value has no well-defined
+  meaning. Configure it with `XFTY_SharedAncestor.get(name).of(...)`. (An
+  `includeOptional(...)` path *through* a shared ancestor is still fine — it only
+  forces, it does not set a value.)
