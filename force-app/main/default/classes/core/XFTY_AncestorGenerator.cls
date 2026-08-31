@@ -1,12 +1,12 @@
 /** Generates the ancestor sub-bundle for each relationship the inclusivity covers. */
 @IsTest
-public class XFTY_AncestorRecords {
+public class XFTY_AncestorGenerator {
 
     private final XFTY_GenerationContext context;
     private final Integer quantity;
     private final XFTY_DummySObjectMasterTemplate template;
 
-    public XFTY_AncestorRecords(
+    public XFTY_AncestorGenerator(
             XFTY_GenerationContext context,
             Integer quantity,
             XFTY_DummySObjectMasterTemplate template
@@ -65,7 +65,7 @@ public class XFTY_AncestorRecords {
             XFTY_DummyDefaultRelationshipIntf relationship
     ) {
         XFTY_DummySobjectProviderIntf provider = this.providerFor(relationship);
-        List<SObject> templates = this.clonesFor(relationship);
+        List<SObject> templates = this.clonedTemplatesFor(relationship);
         XFTY_GenerationContext childContext = this.context.forRelated(field);
         XFTY_DummySObjectBundle generated = provider.createBundle(childContext, templates);
         SObjectField primaryField = provider.getPrimaryTargetField();
@@ -74,9 +74,9 @@ public class XFTY_AncestorRecords {
         bundle.put(field, primaries);
     }
 
-    private List<SObject> clonesFor(XFTY_DummyDefaultRelationshipIntf relationship) {
+    private List<SObject> clonedTemplatesFor(XFTY_DummyDefaultRelationshipIntf relationship) {
         SObject overrideTemplate = relationship.getOverrideTemplate();
-        return XFTY_RecordClones.deepClone(overrideTemplate, this.quantity);
+        return XFTY_RecordCloneFactory.deepClones(overrideTemplate, this.quantity);
     }
 
     private XFTY_DummyDefaultRelationshipIntf relationshipOn(SObjectField field) {

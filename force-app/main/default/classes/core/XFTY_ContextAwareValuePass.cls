@@ -39,7 +39,9 @@ public class XFTY_ContextAwareValuePass {
 
     private void completeField(SObject record, XFTY_GenerationContext scoped, SObjectField field) {
         XFTY_ContextAwareValueIntf strategy = this.template.contextAwareBySObjectFieldMap.get(field);
-        if (strategy == null || record.get(field) != null) {
+        Boolean nothingToFill = strategy == null
+                || record.get(field) != null;
+        if (nothingToFill) {
             return;
         }
         Object value = strategy.get(scoped);

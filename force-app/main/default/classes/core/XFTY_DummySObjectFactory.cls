@@ -13,7 +13,7 @@ public class XFTY_DummySObjectFactory {
             XFTY_DummySObjectMasterTemplate masterTemplate
     ) {
         this.context = context;
-        this.template = XFTY_ForcedRelationships.apply(context.forcedRelationshipPaths, masterTemplate);
+        this.template = XFTY_RelationshipForcer.apply(context.forcedRelationshipPaths, masterTemplate);
     }
 
     public static XFTY_DummySObjectBundle createBundle(
@@ -27,15 +27,26 @@ public class XFTY_DummySObjectFactory {
 
     private XFTY_DummySObjectBundle build(List<SObject> testTemplates) {
         Integer quantity = testTemplates.size();
-        XFTY_DummySObjectBundle bundle = new XFTY_AncestorRecords(this.context, quantity, this.template)
+        XFTY_DummySObjectBundle bundle = new XFTY_AncestorGenerator(this.context, quantity, this.template)
                 .generate();
-        List<SObject> records = XFTY_PlainValues.cloneAndCompletePlainValues(this.template, testTemplates);
+        List<SObject> records = XFTY_PlainValueFiller.cloneAndCompletePlainValues(this.template, testTemplates);
         bundle.putPrimaries(this.template.primaryTargetField, records);
         new XFTY_LookupWiring(bundle, this.context, this.template)
                 .wire();
         new XFTY_ContextAwareValuePass(bundle, this.context, this.template)
                 .complete();
-        XFTY_RecordPersistence.apply(this.context.insertMode, records);
+        this.persist(records);
         return bundle;
+    }
+
+    private void persist(List<SObject> records) {
+        switch on this.context.insertMode {
+            when NOW {
+                insert records;
+            }
+            when MOCK {
+                XFTY_IdMocker.addIds(records);
+            }
+        }
     }
 }

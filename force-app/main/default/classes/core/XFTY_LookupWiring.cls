@@ -52,7 +52,9 @@ public class XFTY_LookupWiring {
 
     private SObject parentAt(SObjectField field, Integer row) {
         List<SObject> parents = this.bundle.getList(field);
-        if (parents == null || row >= parents.size()) {
+        Boolean noParentForRow = parents == null
+                || row >= parents.size();
+        if (noParentForRow) {
             return null;
         }
         return parents[row];

@@ -3,7 +3,7 @@
  * optional to required, on a copy of the master template.
  */
 @IsTest
-public class XFTY_ForcedRelationships {
+public class XFTY_RelationshipForcer {
 
     public static XFTY_DummySObjectMasterTemplate apply(
             List<List<SObjectField>> paths,

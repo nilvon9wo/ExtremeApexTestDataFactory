@@ -36,8 +36,9 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     private void assertSavedConsistently() {
-        if (!XFTY_InsertModeEnum.NOW.equals(this.context.insertMode)
-                || this.shared.isResolvedRecordPersisted()) {
+        Boolean safe = !XFTY_InsertModeEnum.NOW.equals(this.context.insertMode)
+                || this.shared.isResolvedRecordPersisted();
+        if (safe) {
             return;
         }
         String message =

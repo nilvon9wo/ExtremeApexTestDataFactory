@@ -370,11 +370,13 @@ public class XFTY_DummySObjectProvider {
     }
 
     private Boolean buildsStructurallyForBatchedInsert() {
-        return this.flushesGraphWhenThisCallEnds() || this.deferredToRegistry();
+        return this.flushesGraphWhenThisCallEnds()
+                || this.deferredToRegistry();
     }
 
     private Boolean flushesGraphWhenThisCallEnds() {
-        return this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+        return this.depthBatched
+                && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
     }
 
     private Boolean deferredToRegistry() {

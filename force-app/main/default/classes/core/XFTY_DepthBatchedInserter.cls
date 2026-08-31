@@ -36,7 +36,9 @@ public class XFTY_DepthBatchedInserter {
     }
 
     public static void insertAll(List<SObject> records, List<ParentLink> links) {
-        if (records == null || records.isEmpty()) {
+        Boolean nothingToInsert = records == null
+                || records.isEmpty();
+        if (nothingToInsert) {
             return;
         }
         new XFTY_DepthBatchedInserter(records, links)
