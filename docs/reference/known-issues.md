@@ -22,25 +22,12 @@ always wins, **and** a list whose entries are a different type throws
 `new XFTY_DummySObjectProvider(List<SObject>, lookup)` constructor still derives
 its type from the list (there was no explicit type to defend).
 
-### `bundle.getBundle(field)` is null after `XFTY_SharedAncestor.put(name, record)`
-
-When a shared ancestor is **generated**, both `getList(field)` and
-`getBundle(field)` are populated (`XFTY_SharedAncestorTest.theSharedRecordAppearsInBothTheListAndTheSubBundle`).
-When the test supplies the record itself with `XFTY_SharedAncestor.put(name,
-record)`, no sub-bundle is built, so `getBundle(field)` returns null while
-`getList(field)` works — an inconsistency a consumer would not expect.
-
-**Fix:** `XFTY_SharedRelationshipWiring` should place a single-record sub-bundle
-for the field in the `put(...)` case too, so `getBundle(field)` is never null for
-a wired shared ancestor. Longer term, `getList` / `getBundle` should share a
-source so they cannot diverge for any relationship.
-
 ### `ALL` inclusivity + a self-referential relationship recurses until the stack blows
 
 e.g. an optional `Account.ParentId → Account` under `ALL`. `PREVENT_CASCADE` is
-the current workaround. This needs cycle detection in the engine — see
-[../roadmap/README.md](../roadmap/README.md#open-questions) for the one open
-question about how it should behave when it fires.
+the current workaround. The fix (ancestor cycle detection that throws, with an
+off-switch) is a decided
+[roadmap item](../roadmap/README.md#remaining-work-decided-needs-building).
 
 ---
 
@@ -61,3 +48,7 @@ question about how it should behave when it fires.
 - A shared ancestor resolved in `MOCK` then referenced from a `NOW` call used to
   drift a mock Id into real DML — now throws a clear "consistent insert mode"
   error (`XFTY_SharedAncestorTest.referencingAMockResolvedSharedAncestorFromANowCallThrows`).
+- `bundle.getBundle(field)` returned null for a shared ancestor supplied via
+  `XFTY_SharedAncestor.put(name, record)` (only `getList(field)` worked) —
+  `getResolvedBundle()` now builds a single-record sub-bundle so the two stay
+  consistent (`142c6d9`).

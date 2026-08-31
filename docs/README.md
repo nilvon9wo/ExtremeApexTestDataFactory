@@ -44,6 +44,7 @@ matrix (every feature → its page → the runnable test that proves its example
 
 ## contribute/ — work on XFTY
 
+- [Coding Standards](contribute/coding-standards.md) — the rules code is held to
 - [Architecture](contribute/architecture.md) — the engine and why it is shaped this way
 - [Local Development](contribute/local-development.md) — scratch orgs, Nimbus, coverage
 - [Test Suites](contribute/test-suites.md) — `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` / `XFTY_Examples`
@@ -59,6 +60,7 @@ matrix (every feature → its page → the runnable test that proves its example
 
 ## roadmap/
 
-[roadmap/README.md](roadmap/README.md) is the single status table — what is
-**done**, **in progress**, and **proposed**, with the open question on each.
-Detail pages (the former `design/` proposals) sit beside it.
+[roadmap/README.md](roadmap/README.md) is the status table plus the decided
+remaining work. [roadmap/open-questions.md](roadmap/open-questions.md) is the
+short list of genuine questions that block progress (currently one). Detail
+pages (the former `design/` proposals) sit beside them.

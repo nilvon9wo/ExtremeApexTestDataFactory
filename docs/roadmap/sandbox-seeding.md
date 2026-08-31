@@ -1,7 +1,7 @@
 # Roadmap: Sandbox Data Seeding
 
 Status: **📋 blocked on a project decision** —
-[roadmap open question 1](README.md#1-does-xfty-commit-to-a-deployable-non-istest-distribution).
+[the open question on distribution](open-questions.md#does-xfty-commit-to-a-deployable-non-istest-distribution).
 Seeding needs deployable (non-`@IsTest`) code. That is the same decision the
 [namespace / AppExchange work](namespace-appexchange.md) faces, and it is
 almost certainly **not** something a consumer can defer and switch later — you
@@ -46,7 +46,7 @@ difference that may not be worth it.
 
 If it genuinely cannot be done cleanly (the working assumption), there is no
 per-consumer switch: the package either carries `@IsTest` or it does not. That is
-[roadmap open question 1](README.md#open-questions).
+[the open question on distribution](open-questions.md#does-xfty-commit-to-a-deployable-non-istest-distribution).
 
 The [namespace / AppExchange work](namespace-appexchange.md) forces the same
 decision (step 4 there).

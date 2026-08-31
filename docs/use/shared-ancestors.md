@@ -80,10 +80,6 @@ record).
   clear "consistent insert mode" error rather than drift a mock Id into real DML.
   To share a real record across a `NOW` test, insert it yourself and register it
   with `XFTY_SharedAncestor.put(name, record)`.
-- After `XFTY_SharedAncestor.put(name, record)`, `bundle.getBundle(field)`
-  returns null (only `getList(field)` is filled) — a bug being fixed
-  ([known-issues](../reference/known-issues.md)). When the ancestor is
-  *generated*, both work.
 
 Deep shared chains, up-front `require(...)` declaration, and DML-batched
 resolution are [on the roadmap](../roadmap/shared-ancestors.md).
