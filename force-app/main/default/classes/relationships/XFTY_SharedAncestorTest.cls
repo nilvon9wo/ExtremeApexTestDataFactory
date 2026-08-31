@@ -352,6 +352,48 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
+    static void aSelfReferentialSharedAncestorThrowsInsteadOfRecursing() {
+        XFTY_SharedAncestor.get('loop').of(new Account(Name = 'Loop'));
+        XFTY_DummySObjectProviderLookupIntf loopy = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => new SelfReferencingAccountProvider(),
+                        XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider()
+                }
+        );
+
+        System.runAs(TEST_ADMIN) {
+            try {
+                new XFTY_DummySObjectProvider(Contact.SObjectType, loopy)
+                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('loop'))
+                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                        .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                        .supply();
+                Assert.fail('Expected a self-reference exception');
+            } catch (XFTY_DummySObjectFtyProviderException ex) {
+                Assert.isTrue(ex.getMessage().contains('references itself'), ex.getMessage());
+            }
+        }
+    }
+
+    private class SelfReferencingAccountProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Loop'))
+                .putRequired(Account.ParentId, XFTY_SharedAncestor.get('loop'));
+
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
+    @IsTest
     static void putOverAResolvedDifferentRecordWarnsButSucceeds() {
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Generated'));
         System.runAs(TEST_ADMIN) {

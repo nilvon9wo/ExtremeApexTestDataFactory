@@ -23,8 +23,10 @@
  * tests). No reset hook is needed or provided.
  *
  * This is the **on-demand** kind (design doc decision 9): lightweight, resolved
- * inline the first time it is referenced. Deep / declared ancestors and
- * DML-batched resolution are a later increment - see
+ * inline the first time it is referenced, and it must have no ancestors of its
+ * own - a shared ancestor that references itself (directly or through its
+ * Provider's relationships) throws rather than recursing. Deep / declared
+ * ancestors and DML-batched resolution are a later increment - see
  * docs/roadmap/shared-ancestors.md.
  */
 @IsTest
@@ -39,6 +41,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     private SObject resolvedRecord;
     private XFTY_DummySObjectBundle resolvedBundle;
     private Boolean resolvedRecordIsPersisted = false;
+    private Boolean resolutionInProgress = false;
 
     private XFTY_SharedAncestor(String name) {
         this.name = name;
@@ -141,18 +144,41 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     public SObject resolveSharedRecord(XFTY_GenerationContext context) {
-        if (this.resolvedRecord == null) {
-            XFTY_GenerationContext ancestorContext = context.forRelated();
-            XFTY_DummySobjectProviderIntf provider =
-                    context.providerLookup.get(this.resolveLookupKey(context.providerLookup));
-            this.resolvedBundle = provider.createBundle(
-                    ancestorContext,
-                    new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
-            );
-            this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
-            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW == ancestorContext.insertMode;
+        if (this.resolvedRecord != null) {
+            return this.resolvedRecord;
+        }
+        this.assertNotAlreadyResolving();
+        this.resolutionInProgress = true;
+        try {
+            this.generateSharedRecord(context);
+        } finally {
+            this.resolutionInProgress = false;
         }
         return this.resolvedRecord;
+    }
+
+    private void assertNotAlreadyResolving() {
+        if (!this.resolutionInProgress) {
+            return;
+        }
+        throw new XFTY_DummySObjectFtyProviderException(
+                'Shared ancestor "' + this.name + '" references itself while resolving - directly or through its '
+                        + 'own relationships - a cycle. An on-demand shared ancestor must be lightweight with no '
+                        + 'ancestors of its own; break the cycle by registering one side with '
+                        + 'XFTY_SharedAncestor.put("' + this.name + '", record).'
+        );
+    }
+
+    private void generateSharedRecord(XFTY_GenerationContext context) {
+        XFTY_GenerationContext ancestorContext = context.forRelated();
+        XFTY_DummySobjectProviderIntf provider =
+                context.providerLookup.get(this.resolveLookupKey(context.providerLookup));
+        this.resolvedBundle = provider.createBundle(
+                ancestorContext,
+                new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
+        );
+        this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
+        this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW == ancestorContext.insertMode;
     }
 
     /**
