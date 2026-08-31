@@ -78,6 +78,11 @@ public class XFTY_PathValue {
         return this.path.size() == 1;
     }
 
+    /** True when the value is itself a relationship (`putRequired`/`putOptional` path form). */
+    public Boolean isRelationshipKind() {
+        return this.kind == Kind.REQUIRED_RELATIONSHIP || this.kind == Kind.OPTIONAL_RELATIONSHIP;
+    }
+
     /** The same value, one relationship deeper (head dropped). Only valid when `!isAtTarget()`. */
     public XFTY_PathValue tail() {
         List<SObjectField> rest = new List<SObjectField>();

@@ -6,6 +6,7 @@
 @IsTest
 private class XFTY_PathValueTest {
     private static final XFTY_DummySObjectProviderLookupIntf LOOKUP = new PathTestLookup();
+    private static final XFTY_DummySObjectProviderLookupIntf DEEP_LOOKUP = new DeepLookup();
 
     @IsTest
     static void literalLandsOnTheGeneratedAncestor() {
@@ -67,6 +68,42 @@ private class XFTY_PathValueTest {
     }
 
     @IsTest
+    static void aRelationshipPathValueDrivesADeepAncestorHierarchy() {
+        // Contact -> Account (path) -> Account.OwnerId := User (path value) -> that User's
+        // own required Manager (a distinct Provider) -> that Manager's required Profile-holder.
+        // Every level must generate, at the DEFAULT (NONE) inclusivity, because each step is
+        // named explicitly.
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, DEEP_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .putRequired(
+                        new List<SObjectField>{ Contact.AccountId, Account.OwnerId },
+                        new XFTY_DummyDefaultRelationship(new User())
+                )
+                .supplyBundle();
+
+        XFTY_DummySObjectBundle accountBundle = bundle.getBundle(Contact.AccountId);
+        System.assertNotEquals(null, accountBundle, 'Account forced by the path');
+        Account generatedAccount = (Account) accountBundle.primaryRecords()[0];
+        System.assertNotEquals(null, generatedAccount.OwnerId, 'Account.OwnerId forced by the relationship path value');
+
+        XFTY_DummySObjectBundle ownerBundle = accountBundle.getBundle(Account.OwnerId);
+        System.assertNotEquals(null, ownerBundle, 'the owner User generated');
+        User owner = (User) ownerBundle.primaryRecords()[0];
+        System.assertNotEquals(null, owner.ManagerId, 'the owner User generated its own required Manager');
+
+        XFTY_DummySObjectBundle managerBundle = ownerBundle.getBundle(User.ManagerId);
+        System.assertNotEquals(null, managerBundle, 'the Manager User (distinct Provider) generated');
+        User manager = (User) managerBundle.primaryRecords()[0];
+        System.assertNotEquals(null, manager.ManagerId, 'the Manager generated its own skip-level Manager - full depth');
+
+        System.assertNotEquals(
+                null,
+                managerBundle.getBundle(User.ManagerId),
+                'and that skip-level User is in the bundle'
+        );
+    }
+
+    @IsTest
     static void deepPathWalksTwoRelationships() {
         // Case -> Contact (Case.ContactId) -> Account (Contact.AccountId), set the Account's Industry.
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Case.SObjectType, LOOKUP)
@@ -83,15 +120,28 @@ private class XFTY_PathValueTest {
     }
 
     @IsTest
-    static void pathValueOnAnUngeneratedAncestorIsANoOp() {
-        // Default inclusivity NONE: no ancestor is generated, so the path value simply does not apply.
+    static void pathValueForcesItsAncestorEvenAtNoneInclusivity() {
+        // Default inclusivity is NONE, but naming Contact.AccountId in a path value
+        // forces that ancestor - the same way includeOptional(...) forces a path.
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
                 .supplyBundle();
 
-        System.assertEquals(null, bundle.getBundle(Contact.AccountId), 'no Account generated at NONE inclusivity');
-        System.assertNotEquals(null, bundle.primaryRecords()[0].Id);
+        Account generatedAccount = (Account) bundle.getBundle(Contact.AccountId).primaryRecords()[0];
+        System.assertEquals('Aerospace', generatedAccount.Industry);
+    }
+
+    @IsTest
+    static void aPathFieldThatIsNotARelationshipThrowsLoudly() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .put(new List<SObjectField>{ Contact.FirstName, Account.Industry }, 'x') // FirstName is not a relationship
+                    .supplyBundle();
+            System.assert(false, 'expected a loud exception, not a silent no-op');
+        } catch (Exception e) {
+            System.assert(e.getMessage().containsIgnoreCase('relationship'), e.getMessage());
+        }
     }
 
     @IsTest
@@ -171,5 +221,75 @@ private class XFTY_PathValueTest {
         public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateSObjectList) {
             return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
         }
+    }
+
+    // A deep chain for the relationship-path-value test:
+    // Contact -> Account -> User(owner) -> User(manager, flavour 'mgr') -> User(skip, flavour 'skip')
+
+    private static final XFTY_LookupKeyIntf MGR_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'mgr');
+    private static final XFTY_LookupKeyIntf SKIP_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'skip');
+
+    private class DeepLookup implements XFTY_DummySObjectProviderLookupIntf {
+        private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> byKey
+                = new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                        XFTY_LookupKey.get(Contact.SObjectType) => new ContactWithOptionalManagerProvider(),
+                        XFTY_LookupKey.get(User.SObjectType) => new ChainedUserProvider(MGR_KEY),
+                        MGR_KEY => new ChainedUserProvider(SKIP_KEY),
+                        SKIP_KEY => new LeafUserProvider()
+                };
+        public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {
+            return this.byKey.get(XFTY_LookupKey.get(sObjectType));
+        }
+        public XFTY_DummySobjectProviderIntf get(XFTY_LookupKeyIntf lookupKey) {
+            return this.byKey.get(lookupKey);
+        }
+        public Set<XFTY_LookupKeyIntf> keysFor(SObject sObj) {
+            return new Set<XFTY_LookupKeyIntf>{ XFTY_LookupKey.get(sObj.getSObjectType()) };
+        }
+    }
+
+    /** A User that requires a Manager generated by `nextKey`. */
+    private class ChainedUserProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template;
+        ChainedUserProvider(XFTY_LookupKeyIntf nextKey) {
+            this.template = leafUserTemplate()
+                    .putRequired(User.ManagerId, new XFTY_DummyDefaultRelationship(nextKey, new User()));
+        }
+        public SObjectField getPrimaryTargetField() {
+            return User.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateSObjectList) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
+        }
+    }
+
+    private class LeafUserProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = leafUserTemplate();
+        public SObjectField getPrimaryTargetField() {
+            return User.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templateSObjectList) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templateSObjectList);
+        }
+    }
+
+    private static XFTY_DummySObjectMasterTemplate leafUserTemplate() {
+        return new XFTY_DummySObjectMasterTemplate(User.Id)
+                .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString('User'))
+                .put(User.Alias, new XFTY_DummyDefaultValueIncrementingString('a'))
+                .put(User.Email, new XFTY_DummyDefaultValueUniqueEmail('test.user'))
+                .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail('test.user.name'))
+                .put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact('ISO-8859-1'))
+                .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact('en_US'))
+                .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact('en_US'))
+                .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact('GMT'))
+                .put(User.ProfileId, new XFTY_DummyDefaultValueExact(XFTY_DefaultUserDataProvider.profileIdFor('System Administrator')));
     }
 }

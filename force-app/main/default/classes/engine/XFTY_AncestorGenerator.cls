@@ -18,35 +18,58 @@ public class XFTY_AncestorGenerator {
 
     public XFTY_DummySObjectBundle generate() {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        Set<SObjectField> forcedHeads = this.explicitlyRequestedRelationshipHeads();
         for (SObjectField field : this.relationshipFields()) {
-            this.addAncestor(bundle, field);
+            this.addAncestor(bundle, field, forcedHeads.contains(field));
         }
         return bundle;
     }
 
     private List<SObjectField> relationshipFields() {
-        if (this.inclusivityIs(XFTY_InsertInclusivityEnum.NONE)) {
-            return new List<SObjectField>();
+        Set<SObjectField> fields = new Set<SObjectField>();
+        if (!this.inclusivityIs(XFTY_InsertInclusivityEnum.NONE)) {
+            fields.addAll(this.template.requiredRelationshipBySObjectFieldMap.keySet());
+            if (this.inclusivityIs(XFTY_InsertInclusivityEnum.ALL)) {
+                fields.addAll(this.template.optionalRelationshipBySObjectFieldMap.keySet());
+            }
         }
-        List<SObjectField> fields = fieldsOf(this.template.requiredRelationshipBySObjectFieldMap);
-        if (this.inclusivityIs(XFTY_InsertInclusivityEnum.ALL)) {
-            this.addOptionalFieldsTo(fields);
-        }
-        return fields;
+        // `includeOptional(...)` / `put(path, ...)` name a relationship for THIS call -
+        // generate it whatever the inclusivity says.
+        fields.addAll(this.explicitlyRequestedRelationshipHeads());
+        return new List<SObjectField>(fields);
     }
 
-    private void addOptionalFieldsTo(List<SObjectField> fields) {
-        List<SObjectField> optional = fieldsOf(this.template.optionalRelationshipBySObjectFieldMap);
-        fields.addAll(optional);
+    private Set<SObjectField> explicitlyRequestedRelationshipHeads() {
+        Set<SObjectField> heads = new Set<SObjectField>();
+        for (List<SObjectField> path : this.context.forcedRelationshipPaths) {
+            if (!path.isEmpty() && this.isRelationshipHere(path[0])) {
+                heads.add(path[0]);
+            }
+        }
+        for (XFTY_PathValue pathValue : this.context.pathValues) {
+            // A relationship on the way here, or a putRequired/putOptional(path, ...) that
+            // targets a relationship on this ancestor - either way, generate it.
+            Boolean namesARelationshipToGenerate = this.isRelationshipHere(pathValue.head())
+                    && (!pathValue.isAtTarget() || pathValue.isRelationshipKind());
+            if (namesARelationshipToGenerate) {
+                heads.add(pathValue.head());
+            }
+        }
+        return heads;
     }
 
-    private void addAncestor(XFTY_DummySObjectBundle bundle, SObjectField field) {
+    private Boolean isRelationshipHere(SObjectField field) {
+        return this.template.requiredRelationshipBySObjectFieldMap.containsKey(field)
+                || this.template.optionalRelationshipBySObjectFieldMap.containsKey(field);
+    }
+
+    private void addAncestor(XFTY_DummySObjectBundle bundle, SObjectField field, Boolean isForced) {
         XFTY_DummyDefaultRelationshipIntf relationship = this.relationshipOn(field);
         if (relationship instanceof XFTY_SharedRelationshipIntf) {
             this.wireSharedAncestor(bundle, field, relationship);
             return;
         }
-        this.generateAncestor(bundle, field, relationship);
+        this.generateAncestor(bundle, field, relationship, isForced);
     }
 
     private void wireSharedAncestor(
@@ -62,12 +85,13 @@ public class XFTY_AncestorGenerator {
     private void generateAncestor(
             XFTY_DummySObjectBundle bundle,
             SObjectField field,
-            XFTY_DummyDefaultRelationshipIntf relationship
+            XFTY_DummyDefaultRelationshipIntf relationship,
+            Boolean isForced
     ) {
         XFTY_LookupKeyIntf childKey = relationship.resolveLookupKey(this.context.providerLookup);
         this.assertNoAncestorCycle(field, childKey);
         XFTY_DummySobjectProviderIntf provider = this.context.providerLookup.get(childKey);
-        XFTY_GenerationContext childContext = this.context.forRelated(field)
+        XFTY_GenerationContext childContext = this.forcedChildContext(this.context.forRelated(field), isForced)
                 .enteringProviderFor(childKey.getHashKey());
         List<SObject> templates = this.clonedTemplatesFor(relationship);
         XFTY_DummySObjectBundle generated = provider.createBundle(childContext, templates);
@@ -75,6 +99,20 @@ public class XFTY_AncestorGenerator {
         List<SObject> primaries = generated.getList(primaryField);
         bundle.put(field, generated);
         bundle.put(field, primaries);
+    }
+
+    /**
+     * An explicitly forced ancestor (`includeOptional` / `put(path, ...)`) is
+     * generated **fully formed** - its own required relationships fill in - even
+     * when the surrounding call asked for `NONE`. Everything not on a forced path
+     * still follows the call's inclusivity.
+     */
+    private XFTY_GenerationContext forcedChildContext(XFTY_GenerationContext childContext, Boolean isForced) {
+        Boolean bumpNeeded = isForced
+                && childContext.inclusivity == XFTY_InsertInclusivityEnum.NONE;
+        return bumpNeeded
+                ? childContext.withInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                : childContext;
     }
 
     private void assertNoAncestorCycle(SObjectField field, XFTY_LookupKeyIntf childKey) {

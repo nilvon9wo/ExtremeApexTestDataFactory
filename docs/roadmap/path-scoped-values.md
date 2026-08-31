@@ -33,30 +33,42 @@ Every kind plain `put` / `putRequired` / `putOptional` accept:
 
 ## Semantics
 
-- **Follows inclusivity**, exactly like `includeOptional`. The ancestor still has
-  to be generated — pair with `setInclusivity(REQUIRED)` / `ALL`, or the field is
-  already required. A `put(path, ...)` on an ancestor that is not generated is a
+- **Forces its whole path, regardless of the call's inclusivity.** Every
+  relationship you name — the walk steps *and* a `putRequired`/`putOptional`
+  target — is generated even at the default `NONE`. `includeOptional(...)` behaves
+  the same way now (see [per-call-relationships](../use/per-call-relationships.md)).
+  A path field that is not a relationship on the Provider throws — **never** a
   silent no-op.
-- The relationship walk **is** forced: each path's prefix (everything but the
-  target) is folded into the forced-relationship paths, so an *optional*
-  relationship on the way is promoted to required (again, under `REQUIRED`
-  inclusivity).
+- **A forced ancestor is generated fully formed.** When the call's inclusivity is
+  `NONE`, a forced ancestor's *own* required relationships still fill in (a
+  `putRequired(path, someUser)` at `NONE` gives you a valid User with its required
+  chain). Everything **not** on a forced path stays at the call's inclusivity —
+  the rest of the graph is unaffected.
 - Threaded through `XFTY_GenerationContext` next to `forcedRelationshipPaths`;
-  `forRelated(field)` drops the head and carries the rest one level down.
+  `forRelated(field)` drops the head and carries the rest one level down. The
+  relationship prefix is also folded into `forcedRelationshipPaths` so an
+  *optional* step on the way is promoted.
 - Applied by `XFTY_PathValueApplier` onto a copy of the master template for the
   level being generated — after `XFTY_RelationshipForcer`. A path `put` on a
   field the ancestor's Provider already sets **wins** (it removes then re-puts).
 
 ## Implementation
 
-`XFTY_PathValue` (core) · `XFTY_PathValueApplier` (engine) · 5 `put` / `putRequired`
-/ `putOptional` overloads on `XFTY_DummySObjectProvider` taking `List<SObjectField>`
-· `XFTY_GenerationContext.pathValues` + `withPathValues` + `forRelated` filter.
-`XFTY_PathValueTest` (8).
+`XFTY_PathValue` (core) · `XFTY_PathValueApplier` (engine, after
+`XFTY_RelationshipForcer`) · 5 `put` / `putRequired` / `putOptional` overloads on
+`XFTY_DummySObjectProvider` taking `List<SObjectField>` · `XFTY_GenerationContext.pathValues`
++ `withPathValues` + `withInclusivity` + `forRelated` filter · `XFTY_AncestorGenerator`
+adds forced heads to the generated set regardless of inclusivity and bumps a
+forced ancestor's own inclusivity to `REQUIRED` when the call asked for `NONE`.
+`XFTY_PathValueTest` (10, incl. a five-level deep chain at `NONE` inclusivity).
 
-## Possible follow-ups
+## Notes
 
-- **Force regardless of inclusivity.** A `put(path, ...)` clearly signals intent
-  to have that ancestor; requiring `setInclusivity(REQUIRED)` too is a small
-  foot-gun. Same argument applies to `includeOptional`. One decision for both.
+- `includeOptional(...)` gained the same "force regardless of inclusivity, fully
+  formed" behavior in the same change — one rule for both.
 - Mirror on the read side is already there — `XFTY_CopyFromAncestor(path)`.
+- Shared ancestors: a `put(path, ...)` whose step resolves to an
+  `XFTY_SharedAncestor` currently does not reach into that shared record's
+  generation (configure the shared ancestor with `.of(template)` instead). Not a
+  silent failure of the *path* — the shared ancestor still wires — but the value
+  does not land. Worth a follow-up or an explicit throw.

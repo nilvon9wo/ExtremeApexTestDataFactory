@@ -16,10 +16,11 @@ new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
     .excludeRelationship(Opportunity.OwnerId);    // do not generate this one
 ```
 
-- **`includeOptional(field)`** promotes one optional relationship to be generated
-  for this call, on top of whatever inclusivity covers. If the field is already a
-  required relationship it is a no-op. Throws during generation if `field` is not
-  a relationship on the Provider it resolves to.
+- **`includeOptional(field)`** generates one named relationship for this call,
+  **whatever the inclusivity** — including the default `NONE` — and generates it
+  *fully formed* (its own required relationships fill in). Everything not named
+  stays at the call's inclusivity. Throws during generation if `field` is not a
+  relationship on the Provider it resolves to.
 - **`excludeRelationship(field)`** makes one relationship — required or
   optional — non-existent for this call: not generated, not attached, not left
   as an orphan reference. Throws if `field` is not a relationship (use
@@ -73,10 +74,12 @@ literal, a value strategy, a context-aware value (evaluated against that
 ancestor), or a relationship (`putRequired(path, ...)` gives the ancestor its own
 generated parent).
 
-Like `includeOptional`, it **follows inclusivity** — the ancestor still has to be
-generated (pair with `REQUIRED` / `ALL`); a `put(path, ...)` on an ancestor that
-is not generated is a no-op. A path `put` on a field the ancestor's Provider
-already sets wins.
+**Forces its whole path, whatever the inclusivity** — every relationship you
+name is generated even at the default `NONE`, and a forced ancestor is generated
+*fully formed* (its own required relationships fill in). Everything **not** on a
+named path stays at the call's inclusivity. A path field that is not a
+relationship on the Provider throws — never a silent no-op. A path `put` on a
+field the ancestor's Provider already sets wins.
 
 Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
 

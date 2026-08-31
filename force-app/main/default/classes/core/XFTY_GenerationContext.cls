@@ -138,6 +138,19 @@ public class XFTY_GenerationContext {
     }
 
     /**
+     * A copy with a different inclusivity - used to generate an explicitly forced
+     * ancestor (`includeOptional` / `put(path, ...)`) fully formed even when the
+     * surrounding call asked for `NONE`.
+     */
+    public XFTY_GenerationContext withInclusivity(XFTY_InsertInclusivityEnum newInclusivity) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, newInclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, this.pathValues,
+                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
+        );
+    }
+
+    /**
      * A copy carrying the given `put(List<SObjectField>, value)` overrides, and
      * their relationship prefixes folded into the forced-relationship paths so the
      * ancestors on the way are generated (top-level entry point).
