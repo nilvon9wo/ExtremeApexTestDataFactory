@@ -482,11 +482,8 @@ public class XFTY_DummySObjectProvider {
     public XFTY_DummySObjectBundle supplyBundle() {
         this.warnIfMixingCustomTemplateWithOverrides();
         XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
-        // Every shared ancestor configured this test method resolves up front,
-        // each in its own depth-batched pass, before anything in this call is
-        // generated - so a deep chain converging on a singleton root is built
-        // once and a .depthBatched() / DEFERRED call has its shared Ids ready.
-        XFTY_SharedAncestor.ensureConfiguredAncestorsResolved(this.sObjectProviderLookup, this.insertMode);
+        // Every configured shared ancestor resolves up front, honouring this call's mode.
+        XFTY_SharedAncestorResolver.resolveAllConfigured(this.sObjectProviderLookup, this.insertMode);
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);
@@ -599,58 +596,13 @@ public class XFTY_DummySObjectProvider {
         return this.supplyList()[0];
     }
 
-    // Shared-ancestor support --------------------------------------------------------------
-    //
-    // A fully-configured XFTY_DummySObjectProvider can be handed to
-    // XFTY_SharedAncestor.get(name).suppliedBy(...) as the complete recipe for the
-    // one shared record - its override template, variant, value strategies,
-    // relationship control, path values and all. XFTY_SharedAncestorResolver reads
-    // it back through these three methods, builds the graph with no persistence,
-    // then depth-batch-inserts it honouring the caller's mode.
+    // Shared-ancestor support -------------------------------------------------------------
+    // XFTY_ConfiguredAncestorProvider reads this Provider back as the recipe for one
+    // shared record: build the graph with no persistence, take row 0.
 
     /** The SObjectType this Provider produces. */
     public SObjectType targetSObjectType() {
         return this.sObjectType;
-    }
-
-    /**
-     * Reject the knobs that have no meaning when this Provider is the recipe for
-     * one shared-ancestor record. A shared ancestor is a single record whose
-     * persistence follows the call that references it, so quantity, a
-     * multi-template list, an explicit insert mode, `.depthBatched()`, and child
-     * collections are all errors here. Called by `XFTY_SharedAncestorResolver`.
-     */
-    public void assertUsableAsSharedAncestorSource() {
-        if (this.quantityPerListedTemplate > 1) {
-            throw new SanityException(
-                    'suppliedBy(...): a shared ancestor is one record - remove setQuantityPerTemplate('
-                            + this.quantityPerListedTemplate + ').'
-            );
-        }
-        if (this.overrideTemplateList != null && this.overrideTemplateList.size() > 1) {
-            throw new SanityException(
-                    'suppliedBy(...): a shared ancestor is one record - pass a single override template, not a list of '
-                            + this.overrideTemplateList.size() + '.'
-            );
-        }
-        if (this.insertMode != XFTY_InsertModeEnum.NEVER) {
-            throw new SanityException(
-                    'suppliedBy(...): the shared record\'s persistence follows the call that references it '
-                            + '(or resolveNow(lookup, mode)) - do not setInsertMode(...) on the Provider.'
-            );
-        }
-        if (this.depthBatched) {
-            throw new SanityException(
-                    'suppliedBy(...): .depthBatched() has no effect here - the resolver already depth-batches the '
-                            + 'shared record\'s sub-graph.'
-            );
-        }
-        if (!this.childProviders.isEmpty()) {
-            throw new SanityException(
-                    'suppliedBy(...): child collections (with(...) / withChildren(...)) on a shared-ancestor '
-                            + 'Provider are not supported.'
-            );
-        }
     }
 
     /** The primary target field of the resolved Provider variant (the record's `Id` field). */
@@ -671,6 +623,26 @@ public class XFTY_DummySObjectProvider {
             return this.supplyBundle();
         } finally {
             this.insertMode = callerMode;
+        }
+    }
+
+    /** Reject the knobs that describe more than one record - a shared ancestor is exactly one. */
+    public void assertUsableAsSharedAncestorSource() {
+        rejectForSharedAncestor(this.quantityPerListedTemplate > 1, 'drop setQuantityPerTemplate(...)');
+        rejectForSharedAncestor(
+                this.overrideTemplateList != null && this.overrideTemplateList.size() > 1,
+                'pass a single override template, not a list');
+        rejectForSharedAncestor(this.insertMode != XFTY_InsertModeEnum.NEVER,
+                'drop setInsertMode(...) - persistence follows the referencing call (or resolveNow)');
+        rejectForSharedAncestor(this.depthBatched,
+                'drop .depthBatched() - the resolver already depth-batches the sub-graph');
+        rejectForSharedAncestor(!this.childProviders.isEmpty(),
+                'child collections (with / withChildren) are not supported here');
+    }
+
+    private static void rejectForSharedAncestor(Boolean offending, String fix) {
+        if (offending) {
+            throw new SanityException('suppliedBy(...): a shared ancestor is one record - ' + fix + '.');
         }
     }
 

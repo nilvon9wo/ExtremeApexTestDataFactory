@@ -230,7 +230,7 @@ For one Provider's records:
 
 0. **Shared ancestors** (`XFTY_SharedAncestorResolver`, from
    `XFTY_DummySObjectProvider.supplyBundle()` →
-   `XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`) — every
+   `XFTY_SharedAncestorResolver.resolveAllConfigured`) — every
    `XFTY_SharedAncestor` configured this test method is collected
    (dependency-ordered, following nested shared ancestors), generated in memory
    (`NEVER`), and persisted one depth-batched pass per sub-graph, **before**

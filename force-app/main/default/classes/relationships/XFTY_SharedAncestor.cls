@@ -1,54 +1,18 @@
 /**
- * One record, shared by every relationship that references it - the same
- * instance and the same Id everywhere, generated at most once per test method.
+ * One record shared by every relationship that references it - the same instance
+ * and Id everywhere, generated at most once per test method.
  *
  * ```apex
- * // configure once, centrally
  * XFTY_SharedAncestor.get('acme-hq').of(new Account(Name = 'ACME HQ'));
  *
- * // reference it from any Master Template, any field
  * new XFTY_DummySObjectMasterTemplate(Contact.Id)
- *     .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'))
- *
- * new XFTY_DummySObjectMasterTemplate(Case.Id)
- *     .putOptional(Case.AccountId, XFTY_SharedAncestor.get('acme-hq'))
+ *     .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'));
  * ```
  *
- * Generate 50 Contacts under one `acme-hq` Account with a single generated
- * Account and (in `NOW` mode) a single Account insert.
- *
- * Flyweight: obtain instances with `get(name)`, never `new`. State is static, so
- * it resets between test methods automatically - each method starts clean and is
- * responsible for its own shared ancestors (Salesforce never shares data between
- * tests). No reset hook is needed or provided.
- *
- * **One API, resolution handled automatically.** There is nothing to declare or
- * register - configure a shared ancestor with `get(name).of(...)` and reference
- * it. Before a Provider generates anything, every shared ancestor configured
- * this test method is resolved in one place ({@link #ensureConfiguredAncestorsResolved}):
- *
- * - a **flat** one (its Provider has no relationships of its own) becomes a
- *   single record;
- * - a **deep** one (its Provider pulls in ancestors) has its whole sub-graph
- *   built once and persisted one dependency layer at a time - the fewest
- *   `insert` statements. A deep chain converging on a singleton root collapses
- *   to one shared sub-graph.
- *
- * Either way the caller's insert mode is honoured (`NOW` inserts, `MOCK`
- * mock-Ids, `NEVER` leaves it in memory; a `DEFERRED` / `.depthBatched()` call
- * resolves its shared ancestors up front so they are ready when the deferred
- * graph flushes).
- *
- * **How much you can say about the shared record.** `of(template)` and/or
- * `withKey(variant)` cover the simple case. For anything richer - value
- * strategies, `putRequired` / `includeOptional` / `put(path, ...)` into its own
- * ancestors, child collections - hand `suppliedBy(...)` a fully-configured
- * `XFTY_DummySObjectProvider`; the whole generation API then describes the one
- * shared record.
- *
- * A shared ancestor that references itself while resolving - directly or round a
- * chain of other shared ancestors - is a cycle: it throws, and the fix is to
- * register one side with `put(name, record)`.
+ * Flyweight - obtain instances with `get(name)`, never `new`. State is static and
+ * resets between test methods. Configure with `of(...)` / `withKey(...)`, or
+ * `suppliedBy(...)` for the full generation API; {@link XFTY_SharedAncestorResolver}
+ * resolves every configured ancestor before the first `supply*()` call.
  *
  * See docs/use/shared-ancestors.md.
  */
@@ -69,6 +33,8 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         this.name = name;
     }
 
+    // Registry ------------------------------------------------------------
+
     /** The interned instance for `name`, creating it on first use. */
     public static XFTY_SharedAncestor get(String name) {
         if (String.isBlank(name)) {
@@ -80,154 +46,25 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return BY_NAME.get(name);
     }
 
-    /**
-     * `get(name)`, configuring it with `template` only if it has not been
-     * configured yet this test method (later calls ignore `template`). Lets a
-     * shared setup helper that may run more than once - or that configures more
-     * ancestors than one test uses - carry its own defaults inline.
-     */
+    /** `get(name)`, applying `template` only if it is not configured yet (for a setup helper that may run twice). */
     public static XFTY_SharedAncestor getOrElse(String name, SObject template) {
         XFTY_SharedAncestor ancestor = get(name);
-        if (ancestor.isUnconfigured()) {
+        if (ancestor.source == null && ancestor.resolvedRecord == null) {
             ancestor.of(template);
         }
         return ancestor;
     }
 
-    /** As {@link #getOrElse(String, SObject)}, but pins the Provider variant instead of a template. */
+    /** As {@link #getOrElse(String, SObject)}, pinning the variant instead of a template. */
     public static XFTY_SharedAncestor getOrElse(String name, XFTY_LookupKeyIntf variantKey) {
         XFTY_SharedAncestor ancestor = get(name);
-        if (ancestor.isUnconfigured()) {
+        if (ancestor.source == null && ancestor.resolvedRecord == null) {
             ancestor.withKey(variantKey);
         }
         return ancestor;
     }
 
-    private Boolean isUnconfigured() {
-        return this.source == null && this.resolvedRecord == null;
-    }
-
-    private Boolean isConfigured() {
-        return this.source != null;
-    }
-
-    /** Package-internal, for {@link XFTY_SharedAncestorResolver}: the recipe for this ancestor's record. */
-    public XFTY_SharedAncestorProvider source() {
-        if (this.source == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '" was never configured. Call '
-                            + 'XFTY_SharedAncestor.get("' + this.name + '").of(...), .withKey(...), or .suppliedBy(...).'
-            );
-        }
-        return this.source;
-    }
-
-    // Automatic pre-phase --------------------------------------------------
-    //
-    // Called by the Provider before it generates anything. Every shared ancestor
-    // configured this test method is resolved now, each in one depth-batched
-    // pass over its own sub-graph, honouring the caller's insert mode. Idempotent
-    // - a resolved ancestor is skipped, so repeated supply*() calls cost only the
-    // BY_NAME scan. Re-entrant calls (a shared ancestor's own generation reaching
-    // another one inline) are a no-op here - the inner reference resolves itself.
-
-    private static Boolean prePhaseRunning = false;
-    private static final Set<String> IN_PROGRESS = new Set<String>();
-
-    /** Resolve every configured shared ancestor, before the main graph build. */
-    public static void ensureConfiguredAncestorsResolved(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            XFTY_InsertModeEnum callInsertMode
-    ) {
-        if (prePhaseRunning) {
-            return;
-        }
-        List<XFTY_SharedAncestor> pending = new List<XFTY_SharedAncestor>();
-        for (XFTY_SharedAncestor ancestor : BY_NAME.values()) {
-            if (!ancestor.isResolved() && ancestor.isConfigured()) {
-                pending.add(ancestor);
-            }
-        }
-        if (!pending.isEmpty()) {
-            new XFTY_SharedAncestorResolver(providerLookup, resolutionModeFor(callInsertMode)).resolve(pending);
-        }
-    }
-
-    /**
-     * Package-internal, for {@link XFTY_SharedAncestorResolver}: mark the whole
-     * pre-phase as running so a nested `supplyBundle()` (a shared ancestor built by
-     * its own configured Provider) does not start a second scan of the registry.
-     * `enterPrePhase()` returns `false` when it was already running (a re-entrant
-     * caller must not clear the flag).
-     */
-    public static Boolean enterPrePhase() {
-        if (prePhaseRunning) {
-            return false;
-        }
-        prePhaseRunning = true;
-        return true;
-    }
-    public static void exitPrePhase() {
-        prePhaseRunning = false;
-    }
-
-    /**
-     * Package-internal, for {@link XFTY_SharedAncestorResolver}: mark this ancestor
-     * as mid-resolution (returns `false` if it already is - a re-entrant hit), and
-     * report whether a named ancestor is mid-resolution (a live cycle).
-     */
-    public Boolean beginResolving() {
-        if (IN_PROGRESS.contains(this.name)) {
-            return false;
-        }
-        IN_PROGRESS.add(this.name);
-        return true;
-    }
-    public void endResolving() {
-        IN_PROGRESS.remove(this.name);
-    }
-    public static Boolean isResolving(String name) {
-        return IN_PROGRESS.contains(name);
-    }
-
-    /**
-     * Resolve this shared ancestor now, outside any `supply*()` call - for a test
-     * that reads `getId(name)` before it generates anything.
-     */
-    public XFTY_SharedAncestor resolveNow(
-            XFTY_DummySObjectProviderLookupIntf providerLookup,
-            XFTY_InsertModeEnum insertMode
-    ) {
-        if (this.resolvedRecord == null) {
-            new XFTY_SharedAncestorResolver(providerLookup, insertMode)
-                    .resolve(new List<XFTY_SharedAncestor>{ this });
-        }
-        return this;
-    }
-
-    private static XFTY_InsertModeEnum resolutionModeFor(XFTY_InsertModeEnum callInsertMode) {
-        Boolean resolveEagerly = callInsertMode == null
-                || callInsertMode == XFTY_InsertModeEnum.DEFERRED
-                || callInsertMode == XFTY_InsertModeEnum.RELATED_ONLY;
-        return resolveEagerly ? XFTY_InsertModeEnum.NOW : callInsertMode;
-    }
-
-    public Boolean isResolved() {
-        return this.resolvedRecord != null;
-    }
-
-    /** Package-internal: the resolver hands back the generated record + its bundle. */
-    public void acceptResolved(SObject record, XFTY_DummySObjectBundle bundle, Boolean persisted) {
-        this.resolvedRecord = record;
-        this.resolvedBundle = bundle;
-        this.resolvedRecordIsPersisted = persisted;
-    }
-
-    /**
-     * Register a record the test built itself as this shared ancestor - from here
-     * `get(name)` resolves to it and no record is generated. Logs a WARN if it
-     * replaces a different, already-resolved record.
-     */
+    /** Register a record the test built itself. WARNs if it replaces a different, already-resolved one. */
     public static void put(String name, SObject record) {
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.resolvedRecord != null && ancestor.resolvedRecord != record) {
@@ -236,29 +73,36 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         }
         ancestor.resolvedRecord = record;
         ancestor.resolvedBundle = null;
-        // A record handed in with an Id is treated as already inserted.
         ancestor.resolvedRecordIsPersisted = (record != null && record.Id != null);
     }
 
-    /** The resolved record's Id. Throws if it has not been resolved yet this test method. */
     public static Id getId(String name) {
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.resolvedRecord == null) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + name + '" is not resolved yet. Reference it from a relationship in a '
-                            + 'supply*() call first, register a record with XFTY_SharedAncestor.put("' + name
-                            + '", record), or call XFTY_SharedAncestor.get("' + name + '").resolveNow(lookup, mode).'
+                    'Shared ancestor "' + name + '" is not resolved yet. Reference it in a supply*() call first, '
+                            + 'or call XFTY_SharedAncestor.get("' + name + '").resolveNow(lookup, mode).'
             );
         }
         return ancestor.resolvedRecord.Id;
     }
 
-    // Configuration ----------------------------------------------------------
+    /** Package-internal, for {@link XFTY_SharedAncestorResolver}: every configured ancestor not yet resolved. */
+    public static List<XFTY_SharedAncestor> configuredUnresolved() {
+        List<XFTY_SharedAncestor> pending = new List<XFTY_SharedAncestor>();
+        for (XFTY_SharedAncestor ancestor : BY_NAME.values()) {
+            if (ancestor.source != null && ancestor.resolvedRecord == null) {
+                pending.add(ancestor);
+            }
+        }
+        return pending;
+    }
+
+    // Configuration -----------------------------------------------------
     //
-    // of(template) and/or withKey(variant) build a XFTY_KeyedAncestorProvider;
-    // suppliedBy(provider) builds a XFTY_ConfiguredAncestorProvider. The two are
-    // mutually exclusive - the Provider already says what of / withKey would.
-    // copyingRelatedField composes with either.
+    // of / withKey build a XFTY_KeyedAncestorProvider; suppliedBy builds a
+    // XFTY_ConfiguredAncestorProvider. Mutually exclusive; copyingRelatedField
+    // composes with either.
 
     /** The override template for the shared record; also identifies its SObject type. */
     public XFTY_SharedAncestor of(SObject overrideTemplate) {
@@ -276,18 +120,13 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
 
     /**
      * Build the shared record from a fully-configured `XFTY_DummySObjectProvider` -
-     * anything a normal generation call can express (value strategies, `putRequired`
-     * / `includeOptional` / `put(path, ...)`, a pinned variant). The Provider
-     * carries its own override template and lookup, so `of(...)` / `withKey(...)`
-     * are not used alongside it. The caller's insert mode still governs persistence.
+     * value strategies, `putRequired` / `includeOptional` / `put(path, ...)`, a
+     * pinned variant. Not combined with `of(...)` / `withKey(...)`.
      */
     public XFTY_SharedAncestor suppliedBy(XFTY_DummySObjectProvider provider) {
         this.assertUnresolved('suppliedBy(...)');
         if (this.source != null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '": use suppliedBy(provider) OR of(...)/withKey(...), not both. '
-                            + 'The Provider already carries its override template and variant.'
-            );
+            throw notBoth('suppliedBy(...)');
         }
         this.source = new XFTY_ConfiguredAncestorProvider(provider);
         return this;
@@ -300,17 +139,13 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return this;
     }
 
-    /** The keyed recipe, created on first `of`/`withKey`; throws if `suppliedBy` already claimed the slot. */
     private XFTY_KeyedAncestorProvider keyed(String call) {
         if (this.source == null) {
             this.keyedSource = new XFTY_KeyedAncestorProvider(this.name);
             this.source = this.keyedSource;
         }
         if (this.keyedSource == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '": ' + call + ' cannot be combined with '
-                            + 'suppliedBy(provider) - configure the Provider instead.'
-            );
+            throw notBoth(call);
         }
         return this.keyedSource;
     }
@@ -323,7 +158,42 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         }
     }
 
-    // XFTY_DummyDefaultRelationshipIntf ------------------------------------
+    private XFTY_DummySObjectFtyProviderException notBoth(String call) {
+        return new XFTY_DummySObjectFtyProviderException(
+                'Shared ancestor "' + this.name + '": use suppliedBy(provider) OR of(...) / withKey(...), not both '
+                        + '(' + call + ') - the Provider carries its own template and variant.'
+        );
+    }
+
+    // Resolution ------------------------------------------------------
+
+    /** Resolve now - e.g. to read `getId(name)` before any `supply*()` call. */
+    public XFTY_SharedAncestor resolveNow(XFTY_DummySObjectProviderLookupIntf lookup, XFTY_InsertModeEnum insertMode) {
+        if (this.resolvedRecord == null) {
+            new XFTY_SharedAncestorResolver(lookup, insertMode).resolve(new List<XFTY_SharedAncestor>{ this });
+        }
+        return this;
+    }
+
+    /** Package-internal, for {@link XFTY_SharedAncestorResolver}: the recipe for this ancestor's record. */
+    public XFTY_SharedAncestorProvider source() {
+        if (this.source == null) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Shared ancestor "' + this.name + '" was never configured - call get("' + this.name
+                            + '").of(...), .withKey(...), or .suppliedBy(...).'
+            );
+        }
+        return this.source;
+    }
+
+    /** Package-internal: the resolver hands back the generated record and its graph. */
+    public void acceptResolved(SObject record, XFTY_DummySObjectBundle bundle, Boolean persisted) {
+        this.resolvedRecord = record;
+        this.resolvedBundle = bundle;
+        this.resolvedRecordIsPersisted = persisted;
+    }
+
+    // XFTY_DummyDefaultRelationshipIntf --------------------------------
 
     public SObject getOverrideTemplate() {
         return (this.keyedSource != null) ? this.keyedSource.overrideTemplate() : null;
@@ -337,59 +207,47 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return this.source().lookupKey(providerLookup);
     }
 
-    // XFTY_SharedRelationshipIntf ----------------------------------------
+    // XFTY_SharedRelationshipIntf -------------------------------------
 
     public String getSharedName() {
         return this.name;
     }
 
+    public Boolean isResolved() {
+        return this.resolvedRecord != null;
+    }
+
+    public Boolean isResolvedRecordPersisted() {
+        return this.resolvedRecordIsPersisted;
+    }
+
     public SObject resolveSharedRecord(XFTY_GenerationContext context) {
-        if (this.resolvedRecord != null) {
-            return this.resolvedRecord;
-        }
-        // Normally the Provider's pre-phase has already resolved every configured
-        // shared ancestor. Reaching an unresolved one here means it was configured
-        // after that pre-phase ran (a later supply*() call in the same test) -
-        // resolve it now, alone, in the same depth-batched way.
-        XFTY_SharedAncestor.ensureConfiguredAncestorsResolved(context.providerLookup, context.insertMode);
         if (this.resolvedRecord == null) {
-            this.resolveNow(context.providerLookup, resolutionModeFor(context.insertMode));
+            XFTY_SharedAncestorResolver.resolveAllConfigured(context.providerLookup, context.insertMode);
+        }
+        if (this.resolvedRecord == null) {
+            // Configured after the pre-phase ran (a later supply*() call) - resolve it alone.
+            this.resolveNow(context.providerLookup, context.insertMode);
         }
         return this.resolvedRecord;
     }
 
     /**
-     * A bundle exposing the shared record as a single-record sub-graph. It is the
-     * bundle produced when the record was generated; for a record supplied with
-     * `put(name, record)` there is no such bundle, so one wrapping just that
-     * record is built on first request, keyed by its `Id` field. Never null once
-     * the shared ancestor is resolved - `bundle.getBundle(field)` and
-     * `bundle.getList(field)` stay consistent.
+     * The shared record as a single-record sub-bundle, so `getBundle(field)` and
+     * `getList(field)` stay consistent. For a `put(name, record)` record, one is
+     * built on first request. Never null once resolved.
      */
     public XFTY_DummySObjectBundle getResolvedBundle() {
         if (this.resolvedBundle == null && this.resolvedRecord != null) {
-            this.resolvedBundle = wrap(this.resolvedRecord);
+            this.resolvedBundle = singleRecordBundle(this.resolvedRecord);
         }
         return this.resolvedBundle;
     }
 
-    private static XFTY_DummySObjectBundle wrap(SObject record) {
-        SObjectField idField = record.getSObjectType()
-                .getDescribe()
-                .fields
-                .getMap()
-                .get('Id');
+    private static XFTY_DummySObjectBundle singleRecordBundle(SObject record) {
+        SObjectField idField = record.getSObjectType().getDescribe().fields.getMap().get('Id');
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
         bundle.putPrimaries(idField, new List<SObject>{ record });
         return bundle;
-    }
-
-    /**
-     * Whether the shared record has been inserted (has a real Id). A child being
-     * generated with `NOW` needs this to be true, or its lookup would carry a
-     * mock / null Id into a real `insert`.
-     */
-    public Boolean isResolvedRecordPersisted() {
-        return this.resolvedRecordIsPersisted;
     }
 }

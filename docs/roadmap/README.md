@@ -54,9 +54,8 @@ list are **done** — `142c6d9`, and the commit after it.)
    [descendant-value-reads.md](descendant-value-reads.md).
 5. ~~Deep / batched shared ancestors~~ — **done, and with no manual opt-in.**
    `get(name).of(...)` / `getOrElse(name, ...)` / `resolveNow(lookup, mode)`; the
-   pre-phase (`XFTY_SharedAncestorResolver` via
-   `XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`) auto-detects flat vs
-   deep from the Provider's Master Template, depth-batches each sub-graph, honours
+   pre-phase (`XFTY_SharedAncestorResolver.resolveAllConfigured`) auto-detects
+   flat vs deep from the Provider's Master Template, depth-batches each sub-graph, honours
    the call's mode (incl. `.depthBatched()` / `DEFERRED`), and guards cycles +
    depth + the re-entrant boundary. **Still open:** one S2 pass across all shared
    ancestors at once (currently per sub-graph); resolving only the ancestors

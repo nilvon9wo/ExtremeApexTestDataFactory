@@ -8,7 +8,7 @@ Status: **implemented, one API, resolution auto-detected** (v4). Usage in
 > A test configures a shared ancestor with `get(name).of(...)` (or
 > `getOrElse(name, ...)`) and references it. Before a Provider generates, every
 > shared ancestor configured this test method is resolved in one pre-phase
-> (`XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`), each honouring the
+> (`XFTY_SharedAncestorResolver.resolveAllConfigured`), each honouring the
 > call's insert mode. XFTY inspects each one's Provider's Master Template: **no
 > relationships → flat**, resolved as a single record; **relationships → deep**,
 > its sub-graph built once and depth-batch-inserted. `resolveNow(lookup, mode)`
@@ -33,7 +33,7 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 - `XFTY_SharedAncestor.put(name, record)` (decision 6), `getId(name)`,
   `resolveNow(lookup, mode)`.
 - Pre-phase in `XFTY_DummySObjectProvider.supplyBundle` →
-  `ensureConfiguredAncestorsResolved`. S0 collect: depth-first over each
+  `XFTY_SharedAncestorResolver.resolveAllConfigured`. S0 collect: depth-first over each
   configured ancestor, following its Provider's Master Template into nested
   shared ancestors, dependency-ordered; cycle → throw, depth > 10 → WARN
   (decision 8). Re-entrant hits (an ancestor's own generation reaching another)
@@ -523,7 +523,7 @@ So a shared ancestor is always generated fresh within the test that needs it -
    `require(...)`. The "undeclared → throw" error is gone (there is nothing to
    declare). `resolveNow(lookup, mode)` is the pre-`supply` `getId` entry point.
 3. ~~Phases S0-S2, triggered from the first `supply*()`~~ — **done**
-   (`XFTY_SharedAncestorResolver`, via `ensureConfiguredAncestorsResolved`). S2 is
+   (`XFTY_SharedAncestorResolver`, via `XFTY_SharedAncestorResolver.resolveAllConfigured`). S2 is
    one depth-batched pass per ancestor sub-graph, not one across the whole set;
    resolving only the *reachable* ancestors (not every configured one) is still
    open.

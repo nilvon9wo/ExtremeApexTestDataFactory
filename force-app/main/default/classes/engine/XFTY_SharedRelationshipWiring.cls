@@ -17,11 +17,6 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     public void wire(XFTY_DummySObjectBundle bundle, SObjectField field, Integer quantity) {
-        // Every configured shared ancestor is resolved by the Provider's pre-phase
-        // before generation, honouring the caller's mode - even under
-        // .depthBatched() / DEFERRED, where it is resolved up front so its Id is
-        // ready when the deferred graph flushes. resolveSharedRecord covers the
-        // rare case of one configured after that pre-phase ran.
         SObject record = this.shared.resolveSharedRecord(this.context);
         this.assertSavedConsistently();
         List<SObject> children = this.repeat(record, quantity);

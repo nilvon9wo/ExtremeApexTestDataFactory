@@ -71,9 +71,7 @@ public class XFTY_KeyedAncestorProvider implements XFTY_SharedAncestorProvider {
     private SObject requireTemplate() {
         if (this.overrideTemplate == null) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.ancestorName + '" was never fully configured. Call '
-                            + 'XFTY_SharedAncestor.get("' + this.ancestorName + '").of(new SomeSObject()), '
-                            + '.withKey(...), or .suppliedBy(...) before generating.'
+                    'Shared ancestor "' + this.ancestorName + '" needs of(template) or withKey(key) before it can resolve.'
             );
         }
         return this.overrideTemplate;
