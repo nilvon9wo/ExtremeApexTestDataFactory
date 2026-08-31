@@ -1,7 +1,7 @@
 # Deferred & Depth-Batched Insert
 
-> Status: 🔧 built on branch `deferred-persistence`, not yet merged to
-> `xfty-4.0-beta`. Rationale: [roadmap/deferred-persistence.md](../roadmap/deferred-persistence.md).
+> On `xfty-4.0-beta` (like the rest of 4.0; `master` is frozen). Design rationale:
+> [roadmap/deferred-persistence.md](../roadmap/deferred-persistence.md).
 
 Two ways to move DML out of the per-Provider recursion.
 
