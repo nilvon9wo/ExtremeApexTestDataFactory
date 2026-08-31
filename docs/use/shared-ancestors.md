@@ -8,17 +8,18 @@ whole hierarchy converging on one root — use `XFTY_SharedAncestor`.
 
 ## Two kinds — you do not register the light one
 
-| | **On-demand** (shipped) | **Declared** (📋 [roadmap](../roadmap/shared-ancestors.md)) |
+| | **On-demand** | **Declared** |
 |---|---|---|
-| How the test asks for it | Just `get(name).of(...)` and reference it — **no registration** | `XFTY_SharedAncestor.require('name', ...)` at the top of the test |
+| Status | **shipped** | **designed only — no code yet** ([roadmap](../roadmap/shared-ancestors.md)) |
+| How the test asks for it | `get(name).of(...)` and reference it — **no registration** | `XFTY_SharedAncestor.require('name', ...)` at the top of the test *(not built)* |
 | When it resolves | lazily, the first time generation references it | up front, in a batched pre-phase |
-| What it may be | **lightweight — no ancestors of its own** (a self-referential one throws rather than recurse) | may be deep, may have its own ancestors, may be heavy |
+| What it may be | **lightweight — no ancestors of its own** (a self-referential one throws rather than recurse; a plain non-self parent works but adds an `insert`) | may be deep, may have its own ancestors, may be heavy |
 | Cost in `NOW` | one `insert` per shared ancestor | one batched pass for the whole declared set |
+| Insert modes | `NOW` / `MOCK` / `NEVER` — **not** `.depthBatched()` / `DEFERRED` (throws) | (would support the batched modes — that is its point) |
 
-Everything below is the **on-demand** kind. It is the common case: a shared
-`Account`, a shared `Pricebook`, a shared parent `Case`. You configure it and
-reference it — there is nothing to register. The declared kind exists for a deep
-hierarchy converging on a singleton root; it is designed but not built yet.
+Everything below is the **on-demand** kind — the only one that exists today. The
+declared kind is for a deep hierarchy converging on a singleton root; its design
+is settled (`roadmap/shared-ancestors.md`) but none of it is implemented.
 
 ---
 
