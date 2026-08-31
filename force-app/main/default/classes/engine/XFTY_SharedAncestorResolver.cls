@@ -143,6 +143,7 @@ public class XFTY_SharedAncestorResolver {
         if (configured != null) {
             // The developer handed over a fully-configured Provider - values,
             // relationship control, path values and all. Run it structurally.
+            configured.assertUsableAsSharedAncestorSource();
             return configured.buildStructurally();
         }
         XFTY_GenerationContext structuralContext = new XFTY_GenerationContext(

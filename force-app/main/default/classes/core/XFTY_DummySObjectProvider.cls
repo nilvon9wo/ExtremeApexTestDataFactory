@@ -613,6 +613,46 @@ public class XFTY_DummySObjectProvider {
         return this.sObjectType;
     }
 
+    /**
+     * Reject the knobs that have no meaning when this Provider is the recipe for
+     * one shared-ancestor record. A shared ancestor is a single record whose
+     * persistence follows the call that references it, so quantity, a
+     * multi-template list, an explicit insert mode, `.depthBatched()`, and child
+     * collections are all errors here. Called by `XFTY_SharedAncestorResolver`.
+     */
+    public void assertUsableAsSharedAncestorSource() {
+        if (this.quantityPerListedTemplate > 1) {
+            throw new SanityException(
+                    'suppliedBy(...): a shared ancestor is one record - remove setQuantityPerTemplate('
+                            + this.quantityPerListedTemplate + ').'
+            );
+        }
+        if (this.overrideTemplateList != null && this.overrideTemplateList.size() > 1) {
+            throw new SanityException(
+                    'suppliedBy(...): a shared ancestor is one record - pass a single override template, not a list of '
+                            + this.overrideTemplateList.size() + '.'
+            );
+        }
+        if (this.insertMode != XFTY_InsertModeEnum.NEVER) {
+            throw new SanityException(
+                    'suppliedBy(...): the shared record\'s persistence follows the call that references it '
+                            + '(or resolveNow(lookup, mode)) - do not setInsertMode(...) on the Provider.'
+            );
+        }
+        if (this.depthBatched) {
+            throw new SanityException(
+                    'suppliedBy(...): .depthBatched() has no effect here - the resolver already depth-batches the '
+                            + 'shared record\'s sub-graph.'
+            );
+        }
+        if (!this.childProviders.isEmpty()) {
+            throw new SanityException(
+                    'suppliedBy(...): child collections (with(...) / withChildren(...)) on a shared-ancestor '
+                            + 'Provider are not supported.'
+            );
+        }
+    }
+
     /** The primary target field of the resolved Provider variant (the record's `Id` field). */
     public SObjectField primaryTargetField() {
         return this.factoryOutlet.getPrimaryTargetField();

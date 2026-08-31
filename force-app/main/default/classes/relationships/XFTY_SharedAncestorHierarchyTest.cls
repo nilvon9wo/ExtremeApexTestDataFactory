@@ -283,6 +283,43 @@ private class XFTY_SharedAncestorHierarchyTest {
     }
 
     @IsTest
+    static void suppliedByRejectsKnobsThatMakeNoSenseForOneRecord() {
+        XFTY_SharedAncestor.get('hq').suppliedBy(
+                new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup())
+                        .setOverrideTemplate(new Account(Name = 'HQ'))
+                        .setQuantityPerTemplate(2)
+        );
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supply();
+            System.assert(false, 'expected a "one record" error');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('one record'), e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void suppliedByRejectsAnExplicitInsertModeOnTheProvider() {
+        XFTY_SharedAncestor.get('hq').suppliedBy(
+                new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup())
+                        .setOverrideTemplate(new Account(Name = 'HQ'))
+                        .setInsertMode(XFTY_InsertModeEnum.NOW)
+        );
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supply();
+            System.assert(false, 'expected an insert-mode error');
+        } catch (Exception e) {
+            System.assert(e.getMessage().containsIgnoreCase('insert mode') || e.getMessage().contains('setInsertMode'),
+                    e.getMessage());
+        }
+    }
+
+    @IsTest
     static void suppliedByAndOfAreMutuallyExclusive() {
         try {
             XFTY_SharedAncestor.get('x').of(new Account()).suppliedBy(

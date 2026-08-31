@@ -129,12 +129,17 @@ XFTY_SharedAncestor.get('hq').suppliedBy(
 );
 ```
 
-Anything a normal generation call can express applies to the one shared record.
-The Provider carries its own override template, variant, **and lookup** (so the
-shared ancestor's Provider can come from your project's full lookup even when the
-test itself uses a minimal one). The **first generated row** is the shared
-record. Persistence still follows the call that references it (or
+Anything that shapes a single record applies. The Provider carries its own
+override template, variant, **and lookup** (so the shared ancestor's Provider can
+come from your project's full lookup even when the test itself uses a minimal
+one). Persistence still follows the call that references it (or
 `resolveNow(lookup, mode)`).
+
+The knobs that describe **more than one record** are rejected with a clear error,
+because a shared ancestor is exactly one: `setQuantityPerTemplate(n > 1)`, a
+multi-element `setOverrideTemplateList([...])`, `setInsertMode(...)` (persistence
+follows the referencing call), `.depthBatched()` (the resolver already
+depth-batches), and child collections (`with(...)` / `withChildren(...)`).
 
 `suppliedBy` and `of` / `withKey` cannot both be set — the Provider already says
 everything they would.
