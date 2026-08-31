@@ -319,6 +319,43 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    // Path-scoped value overrides -----------------------------------------------------------------------------------------
+    // put(path, value) walks a path of relationship fields into a generated ancestor and sets
+    // its target field (the last element), for this call only. Every relationship on the way is
+    // forced generated (as includeOptional does). See docs/roadmap/path-scoped-values.md.
+
+    private final List<XFTY_PathValue> pathValues = new List<XFTY_PathValue>();
+
+    /** `put([Opportunity.Pricebook2Id, Pricebook2.Name], strategy)` - set a field on a generated ancestor. */
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_DummyDefaultValueIntf valueStrategy) {
+        this.pathValues.add(XFTY_PathValue.ofStrategy(path, valueStrategy));
+        return this;
+    }
+
+    /** `put([...path], contextAwareValue)` - the ancestor field is evaluated by a context-aware strategy. */
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ContextAwareValueIntf contextAwareValue) {
+        this.pathValues.add(XFTY_PathValue.ofContextAware(path, contextAwareValue));
+        return this;
+    }
+
+    /** `put([...path], literal)` - a constant on a generated ancestor's field. */
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, Object literal) {
+        this.pathValues.add(XFTY_PathValue.ofLiteral(path, literal));
+        return this;
+    }
+
+    /** `putRequired([...path], relationship)` - a generated ancestor's own lookup gets a generated parent. */
+    public XFTY_DummySObjectProvider putRequired(List<SObjectField> path, XFTY_DummyDefaultRelationshipIntf relationship) {
+        this.pathValues.add(XFTY_PathValue.ofRequiredRelationship(path, relationship));
+        return this;
+    }
+
+    /** `putOptional([...path], relationship)` - as `putRequired([...path], ...)` but optional on the ancestor. */
+    public XFTY_DummySObjectProvider putOptional(List<SObjectField> path, XFTY_DummyDefaultRelationshipIntf relationship) {
+        this.pathValues.add(XFTY_PathValue.ofOptionalRelationship(path, relationship));
+        return this;
+    }
+
     /**
      * Do not generate one specific relationship on this call - required or
      * optional. For this instance the relationship becomes non-existent: not
@@ -485,6 +522,7 @@ public class XFTY_DummySObjectProvider {
         XFTY_InsertModeEnum mode = this.contextInsertMode();
         XFTY_GenerationContext context = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity)
                 .withForcedRelationshipPaths(this.forcedRelationshipPaths)
+                .withPathValues(this.pathValues)
                 .withAncestorCycleGuard(this.ancestorCyclesAllowed);
         return this.buildsStructurallyForBatchedInsert()
                 ? context.forBatchedInsert()

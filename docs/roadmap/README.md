@@ -21,7 +21,7 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
 | Shared ancestors — declared / deep chains / DML-batched resolution | 📋 (on-demand path complete + hardened against self-cycles) | [shared-ancestors.md](shared-ancestors.md) |
 | Descendant (up-flowing) value reads | 📋 | [descendant-value-reads.md](descendant-value-reads.md) |
-| Path-scoped value overrides (`put(List<SObjectField>, value)` into an ancestor) | 📋 | [path-scoped-values.md](path-scoped-values.md) |
+| Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
 | Namespace / AppExchange listing | 📋 | [namespace-appexchange.md](namespace-appexchange.md) |
 

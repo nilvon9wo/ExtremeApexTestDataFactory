@@ -52,6 +52,34 @@ generation. Whether a step is a plain relationship or a
 [shared ancestor](shared-ancestors.md) makes no difference.
 `includeOptional(field)` is shorthand for the one-element path.
 
-▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` _(pending — Pass B)_
+---
+
+## Setting a value on a generated ancestor — `put(path, value)`
+
+The same path walk can set **how a field on an ancestor is generated**, for this
+call — without editing that ancestor's Provider. `path` is
+`[rel1, ..., relN, targetField]`.
+
+```apex
+new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
+    .supply();
+// the generated Account has Industry = 'Aerospace'
+```
+
+The value can be anything plain `put` / `putRequired` / `putOptional` accept — a
+literal, a value strategy, a context-aware value (evaluated against that
+ancestor), or a relationship (`putRequired(path, ...)` gives the ancestor its own
+generated parent).
+
+Like `includeOptional`, it **follows inclusivity** — the ancestor still has to be
+generated (pair with `REQUIRED` / `ALL`); a `put(path, ...)` on an ancestor that
+is not generated is a no-op. A path `put` on a field the ancestor's Provider
+already sets wins.
+
+Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
+
+▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` _(pending — Pass B)_ · `XFTY_PathValueTest`
 
 See also: [relationships](relationships.md) · [provider-variants](provider-variants.md)

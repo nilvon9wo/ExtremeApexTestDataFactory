@@ -25,6 +25,7 @@ One line per public entry point. Follow the links for detail.
 | `.putRequired(SObjectField, relationship)` / `.putOptional(...)` | add a relationship |
 | `.removeFromMasterTemplate(SObjectField)` | drop a value field's generation |
 | `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
+| `.put(List<SObjectField> path, value)` / `.putRequired(path, rel)` / `.putOptional(path, rel)` | set a field on a generated ancestor (last path element = target); follows inclusivity |
 | `.excludeRelationship(SObjectField)` | skip one relationship, this call only |
 | `.with(XFTY_SObjectChildProvider)` / `.withChildren(field, n)` / `.withChild(field)` | downward — generate child records; read via `bundle.getChild/getChildList/getChildBundle(field)` |
 | `.depthBatched()` | one `insert` per depth instead of per Provider (`NOW` only) |

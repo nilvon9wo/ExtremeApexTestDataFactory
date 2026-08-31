@@ -60,6 +60,16 @@ public class XFTY_GenerationContext {
     public final List<List<SObjectField>> forcedRelationshipPaths;
 
     /**
+     * `put(List<SObjectField> path, value)` overrides still to apply. A path value
+     * whose only remaining element is the target field (`isAtTarget()`) lands on
+     * the master template being generated now; {@link #forRelated} drops the head
+     * and carries the rest into the child, exactly like `forcedRelationshipPaths`.
+     * The relationship walk itself is forced by adding each path's prefix to
+     * `forcedRelationshipPaths`.
+     */
+    public final List<XFTY_PathValue> pathValues;
+
+    /**
      * True on a structural (`NEVER`-like) build whose records get inserted later,
      * depth-batched - by `.depthBatched()` or the `DEFERRED` mode. Carried down
      * every derived context so `wireSharedAncestor` can reject it.
@@ -82,7 +92,8 @@ public class XFTY_GenerationContext {
     ) {
         this(
                 providerLookup, insertMode, inclusivity, null, null, -1,
-                new List<List<SObjectField>>(), false, null, new XFTY_AncestorCycleGuard(false)
+                new List<List<SObjectField>>(), new List<XFTY_PathValue>(), false, null,
+                new XFTY_AncestorCycleGuard(false)
         );
     }
 
@@ -94,6 +105,7 @@ public class XFTY_GenerationContext {
             XFTY_DummySObjectBundle bundleSoFar,
             Integer rowIndex,
             List<List<SObjectField>> forcedRelationshipPaths,
+            List<XFTY_PathValue> pathValues,
             Boolean batchedInsertPending,
             XFTY_ValueFieldPass valueFieldPass,
             XFTY_AncestorCycleGuard cycleGuard
@@ -110,6 +122,7 @@ public class XFTY_GenerationContext {
         this.forcedRelationshipPaths = (forcedRelationshipPaths == null)
                 ? new List<List<SObjectField>>()
                 : forcedRelationshipPaths;
+        this.pathValues = (pathValues == null) ? new List<XFTY_PathValue>() : pathValues;
         this.batchedInsertPending = (batchedInsertPending == true);
         this.valueFieldPass = valueFieldPass;
         this.cycleGuard = cycleGuard;
@@ -119,8 +132,25 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext withForcedRelationshipPaths(List<List<SObjectField>> paths) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.batchedInsertPending,
-                this.valueFieldPass, this.cycleGuard
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.pathValues,
+                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
+        );
+    }
+
+    /**
+     * A copy carrying the given `put(List<SObjectField>, value)` overrides, and
+     * their relationship prefixes folded into the forced-relationship paths so the
+     * ancestors on the way are generated (top-level entry point).
+     */
+    public XFTY_GenerationContext withPathValues(List<XFTY_PathValue> pathValues) {
+        List<List<SObjectField>> forced = new List<List<SObjectField>>(this.forcedRelationshipPaths);
+        for (XFTY_PathValue pathValue : pathValues) {
+            forced.add(pathValue.relationshipPrefix());
+        }
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, forced, pathValues,
+                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -135,7 +165,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
-                this.batchedInsertPending, this.valueFieldPass, new XFTY_AncestorCycleGuard(cyclesAllowed)
+                this.pathValues, this.batchedInsertPending, this.valueFieldPass, new XFTY_AncestorCycleGuard(cyclesAllowed)
         );
     }
 
@@ -144,7 +174,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
-                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard.descendingInto(providerKeyHash)
+                this.pathValues, this.batchedInsertPending, this.valueFieldPass, this.cycleGuard.descendingInto(providerKeyHash)
         );
     }
 
@@ -152,7 +182,7 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forBatchedInsert() {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, true,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, this.pathValues, true,
                 this.valueFieldPass, this.cycleGuard
         );
     }
@@ -189,6 +219,12 @@ public class XFTY_GenerationContext {
                 childPaths.add(tail);
             }
         }
+        List<XFTY_PathValue> childPathValues = new List<XFTY_PathValue>();
+        for (XFTY_PathValue pathValue : this.pathValues) {
+            if (relationshipField != null && !pathValue.isAtTarget() && pathValue.head() == relationshipField) {
+                childPathValues.add(pathValue.tail());
+            }
+        }
         return new XFTY_GenerationContext(
                 this.providerLookup,
                 XFTY_InsertModeEnum.RELATED_ONLY == this.insertMode
@@ -197,7 +233,7 @@ public class XFTY_GenerationContext {
                 XFTY_InsertInclusivityEnum.PREVENT_CASCADE == this.inclusivity
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
-                null, null, -1, childPaths, this.batchedInsertPending, null, this.cycleGuard
+                null, null, -1, childPaths, childPathValues, this.batchedInsertPending, null, this.cycleGuard
         );
     }
 
@@ -209,7 +245,7 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.batchedInsertPending, null,
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending, null,
                 this.cycleGuard
         );
     }
@@ -223,7 +259,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex,
-                this.forcedRelationshipPaths, this.batchedInsertPending,
+                this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending,
                 new XFTY_ValueFieldPass(fieldBeingBuilt, pendingContextAwareValues), this.cycleGuard
         );
     }

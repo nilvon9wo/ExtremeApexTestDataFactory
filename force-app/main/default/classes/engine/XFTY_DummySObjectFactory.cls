@@ -13,7 +13,9 @@ public class XFTY_DummySObjectFactory {
             XFTY_DummySObjectMasterTemplate masterTemplate
     ) {
         this.context = context;
-        this.template = XFTY_RelationshipForcer.apply(context.forcedRelationshipPaths, masterTemplate);
+        XFTY_DummySObjectMasterTemplate forced =
+                XFTY_RelationshipForcer.apply(context.forcedRelationshipPaths, masterTemplate);
+        this.template = XFTY_PathValueApplier.apply(context.pathValues, forced);
     }
 
     public static XFTY_DummySObjectBundle createBundle(
