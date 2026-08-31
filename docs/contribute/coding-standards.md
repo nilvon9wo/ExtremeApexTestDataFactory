@@ -191,7 +191,19 @@ More than **~250 lines** is a strong smell that the class does too much.
   naming the misconfiguration and the fix — never a silent `null` or an opaque
   downstream DML error. Accessors that can miss throw at the call site.
 - One test class per purpose (suites group by class). Split a class that mixes
-  DML-free and DML-backed methods.
+  DML-free and DML-backed methods. **One behaviour per test method** — a big
+  end-to-end scenario is legitimate, but split it so each `@IsTest` asserts one
+  thing.
+- **`Assert.*`, never `System.assert*`.** Expecting a throw: `try { …;
+  Assert.fail('expected …'); } catch (XFTY_SpecificException ex) { … }` — catch
+  the *exact* type, not bare `Exception`.
+- **Test doubles are code too.** Do not paste near-identical
+  `XFTY_DummySObjectProviderLookupIntf` inner classes — use
+  `XFTY_ProviderLookups.of(map)` behind a named fixture helper. Collapse
+  near-identical Provider doubles into one parameterised inner class.
+- Everything in `## Style` applies: `Assert` calls broken off chained builders,
+  no one-line ternaries, named constants over magic numbers, `~250` / `~10` line
+  bars.
 
 ---
 
