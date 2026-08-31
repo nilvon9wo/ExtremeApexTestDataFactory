@@ -28,20 +28,33 @@ public class XFTY_DepthBatchedInserter {
 
     private final List<List<ParentLink>> linksByChild;
     private final List<SObject> records;
+    private final XFTY_InsertModeEnum mode;
 
-    private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links) {
+    private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links, XFTY_InsertModeEnum mode) {
         this.records = records;
+        this.mode = mode;
         Integer recordCount = records.size();
         this.linksByChild = groupLinksByChild(recordCount, links);
     }
 
+    /** Depth-batched real DML. */
     public static void insertAll(List<SObject> records, List<ParentLink> links) {
-        Boolean nothingToInsert = records == null
-                || records.isEmpty();
-        if (nothingToInsert) {
+        resolveAll(records, links, XFTY_InsertModeEnum.NOW);
+    }
+
+    /**
+     * Depth-batched resolution honouring the mode:
+     * `NOW` inserts each depth layer, `MOCK` gives it mock Ids - either way the
+     * child lookups are pointed at the layer above as it lands. `NEVER` does nothing.
+     */
+    public static void resolveAll(List<SObject> records, List<ParentLink> links, XFTY_InsertModeEnum mode) {
+        Boolean nothingToDo = records == null
+                || records.isEmpty()
+                || mode == XFTY_InsertModeEnum.NEVER;
+        if (nothingToDo) {
             return;
         }
-        new XFTY_DepthBatchedInserter(records, links)
+        new XFTY_DepthBatchedInserter(records, links, mode)
                 .insertLayerByLayer();
     }
 
@@ -80,9 +93,20 @@ public class XFTY_DepthBatchedInserter {
         for (Integer index : indexes) {
             this.pointAtParents(index);
             SObject record = this.records[index];
-            layer.add(record);
+            // A record already carrying an Id is a pre-existing anchor (e.g. an
+            // already-resolved shared ancestor) - point children at it, don't re-insert.
+            if (record.Id == null) {
+                layer.add(record);
+            }
         }
-        insert layer;
+        if (layer.isEmpty()) {
+            return;
+        }
+        if (this.mode == XFTY_InsertModeEnum.MOCK) {
+            XFTY_IdMocker.addIds(layer);
+        } else {
+            insert layer;
+        }
     }
 
     private void pointAtParents(Integer child) {

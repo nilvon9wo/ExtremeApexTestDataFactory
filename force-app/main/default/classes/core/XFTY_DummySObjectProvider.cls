@@ -482,6 +482,9 @@ public class XFTY_DummySObjectProvider {
     public XFTY_DummySObjectBundle supplyBundle() {
         this.warnIfMixingCustomTemplateWithOverrides();
         XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
+        // Declared shared ancestors (require(...)) resolve up front, in their own
+        // batched pass, before anything in this call is generated.
+        XFTY_SharedAncestor.ensureDeclaredResolved(this.sObjectProviderLookup, this.insertMode);
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);

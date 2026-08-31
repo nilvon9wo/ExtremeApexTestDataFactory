@@ -37,6 +37,11 @@ public class XFTY_DeferredInsertBuffer {
         XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks);
     }
 
+    /** Depth-batched resolution of every buffered bundle honouring `mode` (NOW / MOCK / NEVER). */
+    public void resolveAll(XFTY_InsertModeEnum mode) {
+        XFTY_DepthBatchedInserter.resolveAll(this.pendingRecords, this.pendingLinks, mode);
+    }
+
     private List<XFTY_IndexedRecord> collect(XFTY_DummySObjectBundle bundle) {
         List<SObject> primaries = primaryRecordsOf(bundle);
         if (primaries == null) {

@@ -30,4 +30,7 @@ public interface XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationsh
 
     /** Whether the shared record has a real (inserted) Id - a `NOW` child needs this to be true. */
     Boolean isResolvedRecordPersisted();
+
+    /** Whether the shared record has been generated yet (inline or in the declared pre-phase). */
+    Boolean isResolved();
 }

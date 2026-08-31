@@ -17,7 +17,12 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     public void wire(XFTY_DummySObjectBundle bundle, SObjectField field, Integer quantity) {
-        this.assertNotBatchedInsert();
+        // An already-resolved shared ancestor (declared, pre-resolved in S0-S2) is
+        // just an Id to wire - the batched-insert restriction only applies when the
+        // shared record would still have to be generated inline.
+        if (!this.shared.isResolved()) {
+            this.assertNotBatchedInsert();
+        }
         SObject record = this.shared.resolveSharedRecord(this.context);
         this.assertSavedConsistently();
         List<SObject> children = this.repeat(record, quantity);

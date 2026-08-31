@@ -74,19 +74,23 @@ public class XFTY_AncestorGenerator {
     }
 
     /**
-     * A `put(path, ...)` cannot reach into a shared ancestor's generation - the
-     * shared record is resolved once and shared by every child, so a per-call
-     * value would not have a well-defined meaning. Fail loudly rather than drop it.
+     * A `put(path, ...)` that sets a plain value on a shared ancestor is rejected -
+     * the shared record is resolved once and shared by every child, so a per-call
+     * value has no well-defined meaning; configure it with
+     * `XFTY_SharedAncestor.get(name).of(...)`. Wiring a shared ancestor *in* as a
+     * relationship value (`putRequired(path, XFTY_SharedAncestor.get(name))`) is
+     * fine - on-demand or declared - and is not blocked here.
      */
     private void assertNoPathValueInto(SObjectField field) {
         for (XFTY_PathValue pathValue : this.context.pathValues) {
-            Boolean reachesIntoTheSharedRecord = pathValue.head() == field
-                    && (!pathValue.isAtTarget() || pathValue.isRelationshipKind());
-            if (reachesIntoTheSharedRecord) {
+            if (pathValue.head() != field || pathValue.isSharedRelationshipValue()) {
+                continue;
+            }
+            Boolean setsAValueOnTheSharedRecord = !pathValue.isAtTarget() || pathValue.isRelationshipKind();
+            if (setsAValueOnTheSharedRecord) {
                 throw new XFTY_DummySObjectFtyProviderException(
-                        'put(...) / putRequired(...) with a path through ' + field
-                                + ' targets a shared ancestor. Configure the shared record with '
-                                + 'XFTY_SharedAncestor.get(name).of(...) instead.'
+                        'put(...) with a path through ' + field + ' sets a value on a shared ancestor. '
+                                + 'Configure the shared record with XFTY_SharedAncestor.get(name).of(...) instead.'
                 );
             }
         }

@@ -83,6 +83,11 @@ public class XFTY_PathValue {
         return this.kind == Kind.REQUIRED_RELATIONSHIP || this.kind == Kind.OPTIONAL_RELATIONSHIP;
     }
 
+    /** True when the value is a shared ancestor (`putRequired(path, XFTY_SharedAncestor.get(name))`). */
+    public Boolean isSharedRelationshipValue() {
+        return this.relationship instanceof XFTY_SharedRelationshipIntf;
+    }
+
     /** The same value, one relationship deeper (head dropped). Only valid when `!isAtTarget()`. */
     public XFTY_PathValue tail() {
         List<SObjectField> rest = new List<SObjectField>();
