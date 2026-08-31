@@ -32,6 +32,25 @@ private class XFTY_DeferredInsertBufferTest {
     }
 
     @IsTest
+    static void aChildLookupThatIsAlreadySetIsLeftAlone() {
+        Account existing = new Account(Name = 'Already Linked');
+        Account generatedParent = new Account(Name = 'Generated Parent');
+        Contact childCon = new Contact(LastName = 'Pre Linked');
+        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, childCon);
+        childBundle.put(Contact.AccountId, bundleOf(Account.Id, generatedParent));
+        childBundle.put(Contact.AccountId, new List<SObject>{ generatedParent });
+
+        System.runAs(TEST_ADMIN) {
+            insert existing;
+            childCon.AccountId = existing.Id;
+            XFTY_DeferredInsertBuffer.insertGraph(childBundle);
+        }
+
+        Assert.areEqual(existing.Id, childCon.AccountId, 'the pre-set lookup is not repointed');
+        Assert.isNotNull(generatedParent.Id, 'the generated parent still inserts');
+    }
+
+    @IsTest
     static void aRelationshipFieldWithNoSubBundleIsSkipped() {
         Account onlyRecord = new Account(Name = 'No Parent Bundle');
         XFTY_DummySObjectBundle bundle = bundleOf(Account.Id, onlyRecord);
