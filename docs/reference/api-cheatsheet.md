@@ -75,7 +75,8 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_DummyDefaultRelationship(SObject template)` | generate a parent |
 | `XFTY_DummyDefaultRelationship(XFTY_LookupKeyIntf key, SObject template)` | …of a specific variant |
 | `XFTY_SharedAncestor.get(name)` | one shared parent for many children (flat or deep — auto-detected) |
-| `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it |
+| `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it (`of` + `withKey` may be combined) |
+| `.suppliedBy(XFTY_DummySObjectProvider)` | full generation API for the shared record — value strategies, its own ancestors, variant (excludes `of`/`withKey`) |
 | `XFTY_SharedAncestor.getOrElse(name, template)` / `getOrElse(name, lookupKey)` | `get(name)`, configuring only if not already configured |
 | `XFTY_SharedAncestor.put(name, record)` · `.getId(name)` | supply / read |
 | `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)` | resolve it (and fix its mode) before any `supply*()` call |

@@ -237,6 +237,70 @@ private class XFTY_SharedAncestorHierarchyTest {
         System.assertEquals('First', [SELECT Name FROM Account].Name);
     }
 
+    // suppliedBy - the full Provider API describes the shared record ------
+
+    @IsTest
+    static void suppliedByShapesTheSharedRecordWithValueStrategies() {
+        XFTY_SharedAncestor.get('hq').suppliedBy(
+                new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup())
+                        .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
+                        .put(Account.Site, 'Berlin')
+        );
+
+        Test.startTest();
+        Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        Account hq = [SELECT Name, Site FROM Account];
+        System.assertEquals('HQ Ltd', hq.Name);
+        System.assertEquals('Berlin', hq.Site, 'a put(...) strategy on the suppliedBy Provider landed on the shared record');
+        System.assertEquals(hq.Id, c.AccountId);
+    }
+
+    @IsTest
+    static void suppliedByCanShapeTheSharedRecordsOwnAncestors() {
+        XFTY_SharedAncestor.get('hq').suppliedBy(
+                new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup())
+                        .setOverrideTemplate(new Account(Name = 'HQ'))
+                        .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'HQ Parent')))
+                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+        );
+
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        Account hq = [SELECT ParentId FROM Account WHERE Name = 'HQ'];
+        Account parent = [SELECT Id FROM Account WHERE Name = 'HQ Parent'];
+        System.assertEquals(parent.Id, hq.ParentId, 'the shared record got the parent configured via suppliedBy');
+        System.assertEquals(2, [SELECT COUNT() FROM Account]);
+    }
+
+    @IsTest
+    static void suppliedByAndOfAreMutuallyExclusive() {
+        try {
+            XFTY_SharedAncestor.get('x').of(new Account()).suppliedBy(
+                    new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup()));
+            System.assert(false, 'expected a mutual-exclusion error');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('not both'), e.getMessage());
+        }
+        try {
+            XFTY_SharedAncestor.get('y')
+                    .suppliedBy(new XFTY_DummySObjectProvider(Account.SObjectType, new ContactUnderHqLookup()))
+                    .of(new Account());
+            System.assert(false, 'expected a mutual-exclusion error');
+        } catch (Exception e) {
+            System.assert(e.getMessage().containsIgnoreCase('suppliedby'), e.getMessage());
+        }
+    }
+
     // Path-scoped value + shared ancestor, no special setup ------------
 
     @IsTest

@@ -101,11 +101,43 @@ MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
 | `XFTY_SharedAncestor.get(name)` | the interned shared ancestor for `name` (use in `putRequired` / `putOptional`) |
 | `.of(SObject template)` | the override template for the shared record (also sets its type) — needed before generation unless `.withKey(...)` is used |
 | `.withKey(XFTY_LookupKeyIntf key)` | pin which Provider variant generates it (see [provider-variants](provider-variants.md)) |
+| `.of(...)` **and** `.withKey(...)` together | fine — the key picks the Provider, the template is its override |
+| `.suppliedBy(XFTY_DummySObjectProvider provider)` | build the shared record from a fully-configured Provider — see below. Mutually exclusive with `.of(...)` / `.withKey(...)`. |
 | `.copyingRelatedField(SObjectField f)` | copy `f` from the shared record into the child's field instead of its Id |
 | `XFTY_SharedAncestor.getOrElse(name, template)` | `get(name)`, applying `template` only if it has not been configured yet this test — for a shared setup helper that may run more than once, or configures more ancestors than one test uses |
 | `XFTY_SharedAncestor.getOrElse(name, lookupKey)` | as above, pinning the Provider variant instead of a template |
 
 Reconfiguring a shared ancestor after it has resolved throws.
+
+### `suppliedBy` — the whole generation API for one shared record
+
+When `.of(...)` / `.withKey(...)` are not enough — you need value strategies on
+the shared record, or want to shape *its* own ancestors — hand `suppliedBy(...)`
+a fully-configured `XFTY_DummySObjectProvider`:
+
+```apex
+XFTY_SharedAncestor.get('hq').suppliedBy(
+    new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
+        .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
+        .withVariant(enterpriseKey)
+        .put(Account.Rating, new XFTY_DummyDefaultValueExact('Hot'))
+        .put(Account.Site, 'Berlin')
+        .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'Global HQ')))
+        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+        .includeOptional(Account.OwnerId)
+        .put(new List<SObjectField>{ Account.ParentId, Account.Site }, 'Global')
+);
+```
+
+Anything a normal generation call can express applies to the one shared record.
+The Provider carries its own override template, variant, **and lookup** (so the
+shared ancestor's Provider can come from your project's full lookup even when the
+test itself uses a minimal one). The **first generated row** is the shared
+record. Persistence still follows the call that references it (or
+`resolveNow(lookup, mode)`).
+
+`suppliedBy` and `of` / `withKey` cannot both be set — the Provider already says
+everything they would.
 
 **The shared record's own field values go on `.of(...)`** — it is one record for
 every child, so there is no per-call place to set them. A

@@ -33,10 +33,17 @@ public class XFTY_SharedAncestorResolver {
         this.mode = mode;
     }
 
-    public void resolve(List<XFTY_SharedAncestor> deepAncestors) {
-        for (XFTY_SharedAncestor ancestor : this.collectInDependencyOrder(deepAncestors)) {
-            if (!ancestor.isResolved()) {
-                this.resolveOne(ancestor);
+    public void resolve(List<XFTY_SharedAncestor> ancestors) {
+        Boolean owns = XFTY_SharedAncestor.enterPrePhase();
+        try {
+            for (XFTY_SharedAncestor ancestor : this.collectInDependencyOrder(ancestors)) {
+                if (!ancestor.isResolved()) {
+                    this.resolveOne(ancestor);
+                }
+            }
+        } finally {
+            if (owns) {
+                XFTY_SharedAncestor.exitPrePhase();
             }
         }
     }
@@ -90,7 +97,7 @@ public class XFTY_SharedAncestorResolver {
     }
 
     private List<XFTY_SharedAncestor> nestedSharedAncestorsOf(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectMasterTemplate masterTemplate = this.providerFor(ancestor).getMasterTemplate();
+        XFTY_DummySObjectMasterTemplate masterTemplate = this.masterTemplateOf(ancestor);
         List<XFTY_DummyDefaultRelationshipIntf> relationships = new List<XFTY_DummyDefaultRelationshipIntf>();
         relationships.addAll(masterTemplate.requiredRelationshipBySObjectFieldMap.values());
         relationships.addAll(masterTemplate.optionalRelationshipBySObjectFieldMap.values());
@@ -120,21 +127,45 @@ public class XFTY_SharedAncestorResolver {
     }
 
     private void buildAndPersist(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySobjectProviderIntf provider = this.providerFor(ancestor);
-        XFTY_GenerationContext structuralContext = new XFTY_GenerationContext(
-                this.lookup, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.REQUIRED
-        );
-        XFTY_DummySObjectBundle bundle = provider.createBundle(
-                structuralContext,
-                new List<SObject>{ this.templateFor(ancestor).clone(true, true, true, true) }
-        );
+        XFTY_DummySObjectBundle bundle = this.buildInMemory(ancestor);
 
         XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
         buffer.add(bundle);
         buffer.resolveAll(this.mode);
 
-        SObject record = bundle.getList(provider.getPrimaryTargetField())[0];
+        SObject record = bundle.getList(this.primaryFieldOf(ancestor))[0];
         ancestor.acceptResolved(record, bundle, this.mode == XFTY_InsertModeEnum.NOW);
+    }
+
+    /** S1: the ancestor's whole graph, generated with no persistence. */
+    private XFTY_DummySObjectBundle buildInMemory(XFTY_SharedAncestor ancestor) {
+        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
+        if (configured != null) {
+            // The developer handed over a fully-configured Provider - values,
+            // relationship control, path values and all. Run it structurally.
+            return configured.buildStructurally();
+        }
+        XFTY_GenerationContext structuralContext = new XFTY_GenerationContext(
+                this.lookup, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.REQUIRED
+        );
+        return this.providerFor(ancestor).createBundle(
+                structuralContext,
+                new List<SObject>{ this.templateFor(ancestor).clone(true, true, true, true) }
+        );
+    }
+
+    private XFTY_DummySObjectMasterTemplate masterTemplateOf(XFTY_SharedAncestor ancestor) {
+        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
+        return (configured != null)
+                ? configured.effectiveMasterTemplate()
+                : this.providerFor(ancestor).getMasterTemplate();
+    }
+
+    private SObjectField primaryFieldOf(XFTY_SharedAncestor ancestor) {
+        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
+        return (configured != null)
+                ? configured.primaryTargetField()
+                : this.providerFor(ancestor).getPrimaryTargetField();
     }
 
     private XFTY_DummySobjectProviderIntf providerFor(XFTY_SharedAncestor ancestor) {

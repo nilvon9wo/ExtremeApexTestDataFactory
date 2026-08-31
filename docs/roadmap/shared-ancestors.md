@@ -19,9 +19,13 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 
 - `XFTY_SharedAncestor.get(name)` - flyweight, interned by name, static state so it
   resets between test methods (decision 5).
-- `.of(template)` / `.withKey(key)` / `.copyingRelatedField(field)` configuration;
-  reconfiguring after resolution throws. `getOrElse(name, template|lookupKey)`
-  configures only if unconfigured (for a shared setup helper / superset config).
+- `.of(template)` / `.withKey(key)` (combinable) / `.copyingRelatedField(field)`
+  configuration; reconfiguring after resolution throws. `getOrElse(name,
+  template|lookupKey)` configures only if unconfigured (for a shared setup helper
+  / superset config). `.suppliedBy(XFTY_DummySObjectProvider)` for the full case:
+  the whole generation API (value strategies, the shared record's own ancestors,
+  variant, child collections) describes the one shared record — resolver runs it
+  `buildStructurally()` then depth-batches. Mutually exclusive with `of`/`withKey`.
 - Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`
   so it drops into `putRequired` / `putOptional`. The factory branches on the
   interface: one record resolved (generated once, or supplied via `put(...)`),

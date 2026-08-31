@@ -599,6 +599,41 @@ public class XFTY_DummySObjectProvider {
         return this.supplyList()[0];
     }
 
+    // Shared-ancestor support --------------------------------------------------------------
+    //
+    // A fully-configured XFTY_DummySObjectProvider can be handed to
+    // XFTY_SharedAncestor.get(name).suppliedBy(...) as the complete recipe for the
+    // one shared record - its override template, variant, value strategies,
+    // relationship control, path values and all. XFTY_SharedAncestorResolver reads
+    // it back through these three methods, builds the graph with no persistence,
+    // then depth-batch-inserts it honouring the caller's mode.
+
+    /** The SObjectType this Provider produces. */
+    public SObjectType targetSObjectType() {
+        return this.sObjectType;
+    }
+
+    /** The primary target field of the resolved Provider variant (the record's `Id` field). */
+    public SObjectField primaryTargetField() {
+        return this.factoryOutlet.getPrimaryTargetField();
+    }
+
+    /** This Provider's Master Template with every `put(...)` customization applied. */
+    public XFTY_DummySObjectMasterTemplate effectiveMasterTemplate() {
+        return this.masterTemplate;
+    }
+
+    /** Generate this Provider's whole graph with no persistence and hand back the bundle. */
+    public XFTY_DummySObjectBundle buildStructurally() {
+        XFTY_InsertModeEnum callerMode = this.insertMode;
+        this.insertMode = XFTY_InsertModeEnum.NEVER;
+        try {
+            return this.supplyBundle();
+        } finally {
+            this.insertMode = callerMode;
+        }
+    }
+
     // Consistency checks ----------------------------------------------------------------
 
     private void assertNoSObjectTypeConflict(List<SObject> overrideTemplateList) {
