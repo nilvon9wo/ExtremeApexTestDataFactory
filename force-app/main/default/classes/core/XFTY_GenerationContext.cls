@@ -140,10 +140,10 @@ public class XFTY_GenerationContext {
         }
         return new XFTY_GenerationContext(
                 this.providerLookup,
-                XFTY_InsertModeEnum.RELATED_ONLY.equals(this.insertMode)
+                XFTY_InsertModeEnum.RELATED_ONLY == this.insertMode
                         ? XFTY_InsertModeEnum.NOW
                         : this.insertMode,
-                XFTY_InsertInclusivityEnum.PREVENT_CASCADE.equals(this.inclusivity)
+                XFTY_InsertInclusivityEnum.PREVENT_CASCADE == this.inclusivity
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
                 null, null, -1, childPaths, this.batchedInsertPending

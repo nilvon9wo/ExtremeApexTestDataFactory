@@ -376,11 +376,11 @@ public class XFTY_DummySObjectProvider {
 
     private Boolean flushesGraphWhenThisCallEnds() {
         return this.depthBatched
-                && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
+                && XFTY_InsertModeEnum.NOW == this.insertMode;
     }
 
     private Boolean deferredToRegistry() {
-        return XFTY_InsertModeEnum.DEFERRED.equals(this.insertMode);
+        return XFTY_InsertModeEnum.DEFERRED == this.insertMode;
     }
 
     private List<SObject> templatesToFill() {

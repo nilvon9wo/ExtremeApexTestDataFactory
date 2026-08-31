@@ -150,7 +150,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
                     new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
             );
             this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
-            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW.equals(ancestorContext.insertMode);
+            this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW == ancestorContext.insertMode;
         }
         return this.resolvedRecord;
     }

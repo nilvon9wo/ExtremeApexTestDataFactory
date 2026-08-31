@@ -36,7 +36,7 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     private void assertSavedConsistently() {
-        Boolean safe = !XFTY_InsertModeEnum.NOW.equals(this.context.insertMode)
+        Boolean safe = XFTY_InsertModeEnum.NOW != this.context.insertMode
                 || this.shared.isResolvedRecordPersisted();
         if (safe) {
             return;

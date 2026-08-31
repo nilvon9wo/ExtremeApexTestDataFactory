@@ -92,7 +92,7 @@ public class XFTY_AncestorGenerator {
     }
 
     private Boolean inclusivityIs(XFTY_InsertInclusivityEnum value) {
-        return value.equals(this.context.inclusivity);
+        return value == this.context.inclusivity;
     }
 
     private static List<SObjectField> fieldsOf(

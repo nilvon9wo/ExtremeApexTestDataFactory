@@ -17,7 +17,7 @@ public class XFTY_LookupWiring {
     }
 
     public void wire() {
-        if (XFTY_InsertInclusivityEnum.NONE.equals(this.context.inclusivity)) {
+        if (XFTY_InsertInclusivityEnum.NONE == this.context.inclusivity) {
             return;
         }
         List<SObject> records = this.bundle.primaryRecords();
