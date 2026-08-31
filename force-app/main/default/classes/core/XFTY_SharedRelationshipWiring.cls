@@ -57,10 +57,7 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     private void placeResolvedBundle(XFTY_DummySObjectBundle bundle, SObjectField field) {
-        XFTY_DummySObjectBundle resolved = this.shared.getResolvedBundle();
-        if (resolved != null) {
-            bundle.put(field, resolved);
-        }
+        bundle.put(field, this.shared.getResolvedBundle());
     }
 
     private String name() {

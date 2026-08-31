@@ -155,9 +155,30 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return this.resolvedRecord;
     }
 
-    /** The bundle produced when the shared record was generated (null if it was `put(...)` in). */
+    /**
+     * A bundle exposing the shared record as a single-record sub-graph. It is the
+     * bundle produced when the record was generated; for a record supplied with
+     * `put(name, record)` there is no such bundle, so one wrapping just that
+     * record is built on first request, keyed by its `Id` field. Never null once
+     * the shared ancestor is resolved - `bundle.getBundle(field)` and
+     * `bundle.getList(field)` stay consistent.
+     */
     public XFTY_DummySObjectBundle getResolvedBundle() {
+        if (this.resolvedBundle == null && this.resolvedRecord != null) {
+            this.resolvedBundle = wrap(this.resolvedRecord);
+        }
         return this.resolvedBundle;
+    }
+
+    private static XFTY_DummySObjectBundle wrap(SObject record) {
+        SObjectField idField = record.getSObjectType()
+                .getDescribe()
+                .fields
+                .getMap()
+                .get('Id');
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(idField, new List<SObject>{ record });
+        return bundle;
     }
 
     /**

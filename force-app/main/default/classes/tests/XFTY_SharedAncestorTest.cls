@@ -134,6 +134,31 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
+    static void aPutRecordIsAvailableThroughGetBundleNotJustGetList() {
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Supplied HQ'));
+
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supplyBundle();
+            Test.stopTest();
+        }
+
+        Assert.isNotNull(bundle.getBundle(Contact.AccountId),
+                'getBundle is populated even for a put(...) record');
+        Assert.areEqual('Supplied HQ',
+                bundle.getBundle(Contact.AccountId).getList(Account.Id)[0].get(Account.Name));
+        Assert.areEqual(
+                bundle.getList(Contact.AccountId)[0],
+                bundle.getBundle(Contact.AccountId).getList(Account.Id)[0],
+                'getList and getBundle expose the same shared instance');
+    }
+
+    @IsTest
     static void theSameSharedAncestorIsReusedAcrossSeparateSupplyCalls() {
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 

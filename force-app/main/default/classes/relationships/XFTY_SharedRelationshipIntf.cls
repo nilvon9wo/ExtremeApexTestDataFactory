@@ -21,7 +21,11 @@ public interface XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationsh
      */
     SObject resolveSharedRecord(XFTY_GenerationContext context);
 
-    /** The sub-bundle generated with the shared record, or null if it was supplied directly. */
+    /**
+     * A single-record sub-bundle exposing the shared record, so `getBundle(field)`
+     * and `getList(field)` on the parent bundle stay consistent. Never null once
+     * the record is resolved.
+     */
     XFTY_DummySObjectBundle getResolvedBundle();
 
     /** Whether the shared record has a real (inserted) Id - a `NOW` child needs this to be true. */
