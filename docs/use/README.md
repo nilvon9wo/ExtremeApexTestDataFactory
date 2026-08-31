@@ -49,6 +49,7 @@ examples compile and behave as documented.
 | `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | _(pending)_ |
 | `PREVENT_CASCADE` | [relationships](relationships.md) | _(pending)_ |
 | `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | _(pending)_ |
+| `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_ChildGenerationTest` |
 | `XFTY_SharedAncestor` (on-demand) | [shared-ancestors](shared-ancestors.md) | _(pending)_ |
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | _(pending)_ |
 | insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | _(pending)_ |

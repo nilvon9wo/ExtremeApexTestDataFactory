@@ -29,6 +29,7 @@ public class XFTY_SObjectChildProvider {
     private XFTY_InsertInclusivityEnum inclusivityOverride;
     private XFTY_LookupKeyIntf variantKey;
     private final List<PendingPut> pendingPuts = new List<PendingPut>();
+    private final List<XFTY_SObjectChildProvider> grandchildProviders = new List<XFTY_SObjectChildProvider>();
 
     public XFTY_SObjectChildProvider(SObjectField relationshipField) {
         this(relationshipField, null);
@@ -114,6 +115,39 @@ public class XFTY_SObjectChildProvider {
         return this;
     }
 
+    /**
+     * Nest a further child collection under these children - grandchildren, and so
+     * on. The nested relationship field must point at *this* child's SObjectType.
+     *
+     * ```apex
+     * new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(3)
+     *     .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(2))
+     * // per Account: 3 Contacts, 6 Cases
+     * ```
+     *
+     * The row count multiplies down the tree; a governor-budget warning fires if
+     * generation gets expensive.
+     */
+    public XFTY_SObjectChildProvider with(XFTY_SObjectChildProvider grandchildProvider) {
+        if (grandchildProvider == null) {
+            throw new SanityException('with(...) needs an XFTY_SObjectChildProvider.');
+        }
+        assertFieldPointsAt(grandchildProvider.relationshipField, this.childType);
+        this.grandchildProviders.add(grandchildProvider);
+        return this;
+    }
+
+    /** A relationship field used to hang a child collection must actually point at the parent type. */
+    public static void assertFieldPointsAt(SObjectField relationshipField, SObjectType parentType) {
+        List<SObjectType> referenceTo = relationshipField.getDescribe().getReferenceTo();
+        if (!referenceTo.contains(parentType)) {
+            throw new SanityException(
+                    relationshipField + ' points at ' + referenceTo + ' but it is being hung off a '
+                            + parentType + ' collection.'
+            );
+        }
+    }
+
     // Used by XFTY_DummySObjectProvider ---------------------------------------------------
 
     public Integer getQuantity() {
@@ -141,13 +175,16 @@ public class XFTY_SObjectChildProvider {
         return templates;
     }
 
-    /** A fresh Provider for these children, with this child provider's puts / variant applied. */
+    /** A fresh Provider for these children, with this child provider's puts / variant / nested children applied. */
     public XFTY_DummySObjectProvider newProvider(XFTY_DummySObjectProviderLookupIntf lookup) {
         XFTY_DummySObjectProvider provider = (this.variantKey == null)
                 ? new XFTY_DummySObjectProvider(this.childType, lookup)
                 : new XFTY_DummySObjectProvider(this.variantKey, lookup);
         for (PendingPut pendingPut : this.pendingPuts) {
             pendingPut.applyTo(provider);
+        }
+        for (XFTY_SObjectChildProvider grandchildProvider : this.grandchildProviders) {
+            provider.with(grandchildProvider);
         }
         return provider;
     }

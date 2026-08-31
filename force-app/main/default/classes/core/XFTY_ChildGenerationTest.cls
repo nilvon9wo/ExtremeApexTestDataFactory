@@ -154,6 +154,73 @@ private class XFTY_ChildGenerationTest {
         }
     }
 
+    // Grandchildren ----------------------------------------------------------------
+
+    @IsTest
+    static void nestedChildProvidersGenerateGrandchildren() {
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(3))
+                )
+                .supplyBundle();
+
+        List<SObject> contacts = bundle.getChildList(Contact.AccountId);
+        System.assertEquals(2, contacts.size());
+
+        XFTY_DummySObjectBundle contactBundle = bundle.getChildBundle(Contact.AccountId);
+        List<SObject> cases = contactBundle.getChildList(Case.ContactId);
+        System.assertEquals(6, cases.size(), '2 Contacts x 3 Cases');
+        Set<Id> contactIds = new Map<Id, SObject>(contacts).keySet();
+        for (SObject c : cases) {
+            System.assert(contactIds.contains(((Case) c).ContactId), 'grandchild points at its Contact');
+        }
+    }
+
+    @IsTest
+    static void grandchildrenFlushWithEveryLevelInDeferredMode() {
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(2))
+                )
+                .supplyBundle();
+        XFTY_DeferredInserter.flush();
+        Test.stopTest();
+
+        System.assertEquals(1, [SELECT COUNT() FROM Account]);
+        System.assertEquals(2, [SELECT COUNT() FROM Contact]);
+        System.assertEquals(4, [SELECT COUNT() FROM Case WHERE ContactId != null]);
+        for (Contact c : [SELECT Id, (SELECT Id FROM Cases) FROM Contact]) {
+            System.assertEquals(2, c.Cases.size());
+        }
+    }
+
+    @IsTest
+    static void nestedRelationshipFieldMustPointAtTheChildType() {
+        try {
+            new XFTY_SObjectChildProvider(Contact.AccountId)
+                    .with(new XFTY_SObjectChildProvider(Contact.AccountId)); // Contact.AccountId -> Account, not Contact
+            System.assert(false, 'expected a sanity exception');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('points at'), e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void topLevelRelationshipFieldMustPointAtTheProviderType() {
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .with(new XFTY_SObjectChildProvider(Case.AccountId)); // Case.AccountId -> Account, provider is Contact
+            System.assert(false, 'expected a sanity exception');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('points at'), e.getMessage());
+        }
+    }
+
     // Deferred / depth-batched ------------------------------------------------------
 
     @IsTest

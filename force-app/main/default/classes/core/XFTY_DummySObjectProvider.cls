@@ -360,6 +360,7 @@ public class XFTY_DummySObjectProvider {
     // this Provider's primaries. See docs/use/child-records.md.
 
     private final List<XFTY_SObjectChildProvider> childProviders = new List<XFTY_SObjectChildProvider>();
+    private Boolean forceStructuralChildGeneration = false;
 
     /**
      * Add a fully-configured child collection. Repeatable - a `Contact` collection
@@ -370,7 +371,14 @@ public class XFTY_DummySObjectProvider {
         if (childProvider == null) {
             throw new SanityException('with(...) needs an XFTY_SObjectChildProvider.');
         }
+        XFTY_SObjectChildProvider.assertFieldPointsAt(childProvider.relationshipField, this.sObjectType);
         this.childProviders.add(childProvider);
+        return this;
+    }
+
+    /** Internal: a child of a DEFERRED / depthBatched parent must build its own children structurally too. */
+    public XFTY_DummySObjectProvider forceStructuralChildGeneration() {
+        this.forceStructuralChildGeneration = true;
         return this;
     }
 
@@ -420,8 +428,11 @@ public class XFTY_DummySObjectProvider {
                 .setInclusivity(childProvider.effectiveInclusivity(this.inclusivity));
         if (structural) {
             // The back-reference is wired by the deferred buffer at flush, so the
-            // child must not also generate its own parent on that field.
-            childInstance.excludeRelationshipIfPresent(childProvider.relationshipField);
+            // child must not also generate its own parent on that field, and its
+            // own children stay structural for the same flush.
+            childInstance
+                    .excludeRelationshipIfPresent(childProvider.relationshipField)
+                    .forceStructuralChildGeneration();
         }
 
         XFTY_DummySObjectBundle childBundle = childInstance.supplyBundle();
@@ -437,12 +448,15 @@ public class XFTY_DummySObjectProvider {
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);
-        Boolean deferred = this.buildsStructurallyForBatchedInsert();
-        if (deferred) {
+        if (this.buildsStructurallyForBatchedInsert()) {
             // Children join the same deferred graph - generated structurally now,
             // FK wired when the buffer flushes (parents first).
             this.generateChildren(bundle, true);
             this.persist(bundle);
+        } else if (this.forceStructuralChildGeneration) {
+            // A structural child of a deferred parent: nothing to persist here, but
+            // its own children stay structural so the flush wires the whole subtree.
+            this.generateChildren(bundle, true);
         } else {
             // NOW / MOCK: primaries already have Ids after generate(); wire the
             // children's back-reference concretely. NEVER: no Ids, FK left null.
