@@ -12,7 +12,7 @@
  *
  * Its own suite (`XFTY_Load`, also in test-support) because it is the slowest and
  * the most likely to need tuning as the engine changes - notably when
- * shared-ancestor generation lands (see docs/design/shared-ancestors.md, which
+ * shared-ancestor generation lands (see docs/roadmap/shared-ancestors.md, which
  * calls for exactly this kind of measurement). Run with:
  *   sf apex run test --suite-names XFTY_Load
  *

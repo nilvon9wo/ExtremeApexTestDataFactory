@@ -28,7 +28,7 @@ jobs:
       - name: Authenticate the Dev Hub
         run: |
           if [ -z "$DEVHUB_SFDX_AUTH_URL" ]; then
-            echo "::error::The DEVHUB_SFDX_AUTH_URL repository secret is not set. See docs/packaging.md."
+            echo "::error::The DEVHUB_SFDX_AUTH_URL repository secret is not set. See docs/contribute/ci.md."
             exit 1
           fi
           printf '%s' "$DEVHUB_SFDX_AUTH_URL" > ./devhub-auth.txt

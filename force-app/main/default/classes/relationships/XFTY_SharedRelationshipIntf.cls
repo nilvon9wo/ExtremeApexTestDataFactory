@@ -8,7 +8,7 @@
  * interface: instead of generating one parent per child it resolves the shared
  * record once and points every child at it.
  *
- * See docs/design/shared-ancestors.md.
+ * See docs/roadmap/shared-ancestors.md.
  */
 //@IsTest
 public interface XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf {

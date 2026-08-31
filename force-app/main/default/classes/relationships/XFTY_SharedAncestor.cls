@@ -25,7 +25,7 @@
  * This is the **on-demand** kind (design doc decision 9): lightweight, resolved
  * inline the first time it is referenced. Deep / declared ancestors and
  * DML-batched resolution are a later increment - see
- * docs/design/shared-ancestors.md.
+ * docs/roadmap/shared-ancestors.md.
  */
 @IsTest
 public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {

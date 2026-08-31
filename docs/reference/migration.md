@@ -48,7 +48,7 @@ Set<XFTY_LookupKeyIntf> keysFor(SObject sObj);
 The recommended lookup is now a small class holding a **complete, explicit `Map`**
 of `XFTY_LookupKeyIntf` → Provider, delegating mechanics to `XFTY_ProviderLookups`
 (no stateful `register(...)`). Copy `XFTY_DefaultSObjectProviderLookup` as the
-template. Full guide: [Providers → Provider Lookups](providers.md#provider-lookups).
+template. Full guide: [extend/provider-lookups](../extend/provider-lookups.md).
 
 ```apex
 @IsTest
@@ -95,8 +95,12 @@ return XFTY_DummySObjectFactory.createBundle(context, MASTER_TEMPLATE, templateS
 
 If you call `XFTY_DummySObjectFactory.createBundle` directly, wrap the three
 scalars: `new XFTY_GenerationContext(providerLookup, insertMode, inclusivity)`.
-`XFTY_DummySObjectFactory.cloneAndCompleteNonRelationshipValues` is renamed
-`cloneAndCompletePlainValues`.
+
+The engine internals were split into per-phase classes. The public wrapper
+`XFTY_DummySObjectFactory.cloneAndCompleteNonRelationshipValues` (later briefly
+`cloneAndCompletePlainValues`) is **gone** — the plain-value logic now lives in
+`XFTY_PlainValueFiller.cloneAndCompletePlainValues(masterTemplate, testTemplates)`.
+Only code that called that wrapper directly is affected.
 
 ## 6. `XFTY_DefaultUserDataProvider.profileIdFor` / `roleIdFor` throw
 
@@ -118,12 +122,13 @@ Not required, but available:
 
 | Feature | Where |
 |---------|-------|
-| `put(field, 'literal')` - implicit `XFTY_DummyDefaultValueExact` | [Customization → Implicit Exact Values](customization.md#implicit-exact-values) |
-| `withVariant(key)` / `new XFTY_DummySObjectProvider(key, lookup)` / `new XFTY_DummySObjectProvider(template, lookup)` | [Providers → Record Types and Variants](providers.md#record-types-and-variants), [Getting Started → Shorthand Constructors](getting-started.md#shorthand-constructors) |
-| Record-type / flavour Provider variants (`XFTY_RecordTypeLookupKey`, `XFTY_FlavouredLookupKey`, `XFTY_FieldPredicate`) | [Providers → Record Types and Variants](providers.md#record-types-and-variants) |
-| Context-aware values (`XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, `XFTY_ContextAwareValueIntf`) | [Customization → Context-Aware Values](customization.md#context-aware-values) |
-| Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [Relationships → One-Off Exceptions](relationships.md#one-off-exceptions-includeoptional--excluderelationship) |
-| Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [Relationships → Shared Ancestors](relationships.md#shared-ancestors) |
-| `.depthBatched()` - opt-in, one `insert` per dependency depth instead of one per Provider | [Testing Modes → Depth-Batched Persistence](testing-modes.md#depth-batched-persistence-depthbatched) |
-| `DEFERRED` insert mode + `XFTY_DeferredInserter.flush()` - generate over many calls, insert once | [Testing Modes → DEFERRED](testing-modes.md#deferred) |
-| `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites | [Packaging → Test suites](packaging.md#test-suites) |
+| `put(field, 'literal')` - implicit `XFTY_DummyDefaultValueExact` | [use/value-strategies](../use/value-strategies.md#implicit-exact-values) |
+| `withVariant(key)` / lookup-key constructor / template constructor | [use/provider-variants](../use/provider-variants.md), [use/generating-records](../use/generating-records.md#shorthand-constructors) |
+| Record-type / flavour Provider variants (`XFTY_RecordTypeLookupKey`, `XFTY_FlavouredLookupKey`, `XFTY_FieldPredicate`) | [extend/provider-variants](../extend/provider-variants.md) |
+| Context-aware values (`XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, `XFTY_ContextAwareValueIntf`) | [use/context-aware-values](../use/context-aware-values.md) |
+| `context.siblingValue(field)` for custom context-aware strategies - guarded sibling read, throws instead of returning a misleading `null` | [use/context-aware-values](../use/context-aware-values.md) |
+| Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [use/per-call-relationships](../use/per-call-relationships.md) |
+| Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [use/shared-ancestors](../use/shared-ancestors.md) |
+| `.depthBatched()` - opt-in, one `insert` per dependency depth instead of one per Provider | [use/deferred-insert](../use/deferred-insert.md) |
+| `DEFERRED` insert mode + `XFTY_DeferredInserter.flush()` - generate over many calls, insert once | [use/deferred-insert](../use/deferred-insert.md) |
+| `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` / `XFTY_Examples` test suites | [contribute/test-suites](../contribute/test-suites.md) |

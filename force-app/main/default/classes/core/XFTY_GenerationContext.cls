@@ -14,7 +14,7 @@
  *   see {@link #forRelated};
  * - carries the `includeOptional(...)` paths down the graph;
  * - is what a context-aware value strategy reads (see
- *   {@link XFTY_ContextAwareValueIntf}, docs/design/context-aware-values.md).
+ *   {@link XFTY_ContextAwareValueIntf}, docs/roadmap/context-aware-values.md).
  *
  * `recordBeingBuilt` / `bundleSoFar` / `rowIndex` are populated only for the
  * per-record value pass (via {@link #forRecord}); everywhere else they are

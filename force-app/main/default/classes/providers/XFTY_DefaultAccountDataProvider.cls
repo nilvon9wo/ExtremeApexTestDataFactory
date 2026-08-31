@@ -4,7 +4,7 @@
  * Record-type / Person-Account variants are handled with lookup keys and a
  * separate Provider, not by inspecting the template in `createBundle` - see
  * `test-support/` for a worked `PersonAccount` flavour + Provider, and
- * docs/providers.md "Record Types and Variants".
+ * docs/extend/provider-variants.md.
  */
 @IsTest
 public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProviderIntf {

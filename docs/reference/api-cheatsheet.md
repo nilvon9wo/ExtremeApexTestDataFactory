@@ -1,0 +1,103 @@
+# API Cheat-Sheet
+
+One line per public entry point. Follow the links for detail.
+
+---
+
+## Generating — `XFTY_DummySObjectProvider`
+
+| Constructor | |
+|-------------|--|
+| `new XFTY_DummySObjectProvider(SObjectType, lookup)` | the base form |
+| `new XFTY_DummySObjectProvider(SObject template, lookup)` | derives type + record-type variant from the template |
+| `new XFTY_DummySObjectProvider(List<SObject> templates, lookup)` | derives type from the first |
+| `new XFTY_DummySObjectProvider(XFTY_LookupKeyIntf key, lookup)` | derives type from the key, pins that variant |
+
+| Fluent setup | |
+|--------------|--|
+| `.setOverrideTemplate(SObject)` | replace specific field values ([docs](../use/override-templates.md)) |
+| `.setOverrideTemplateList(List<SObject>)` | one record per template |
+| `.setQuantityPerTemplate(Integer)` | N copies of each template |
+| `.setInsertMode(XFTY_InsertModeEnum)` | [insert modes](../use/insert-modes.md) |
+| `.setInclusivity(XFTY_InsertInclusivityEnum)` | [relationship inclusivity](../use/relationships.md#inclusivity) |
+| `.withVariant(XFTY_LookupKeyIntf)` | pick a Provider variant (before any `put`) |
+| `.put(SObjectField, strategy \| literal \| contextAwareStrategy)` | change generation of one field |
+| `.putRequired(SObjectField, relationship)` / `.putOptional(...)` | add a relationship |
+| `.removeFromMasterTemplate(SObjectField)` | drop a value field's generation |
+| `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
+| `.excludeRelationship(SObjectField)` | skip one relationship, this call only |
+| `.depthBatched()` | one `insert` per depth instead of per Provider (`NOW` only) |
+
+| Terminal | Returns |
+|----------|---------|
+| `.supply()` | first primary record |
+| `.supplyList()` | all primary records |
+| `.supplyBundle()` | `XFTY_DummySObjectBundle` — the whole graph |
+
+---
+
+## Enums
+
+| `XFTY_InsertModeEnum` | `NEVER` · `MOCK` · `RELATED_ONLY` · `NOW` · `LATER` · `DEFERRED` |
+| `XFTY_InsertInclusivityEnum` | `NONE` · `REQUIRED` · `ALL` · `PREVENT_CASCADE` |
+
+---
+
+## Bundle — `XFTY_DummySObjectBundle`
+
+| `.getList(SObjectField)` | the records produced via that field, aligned 1:1 with the primaries |
+| `.getBundle(SObjectField)` | the subgraph beneath that relationship |
+
+---
+
+## Value strategies (`put(field, …)`)
+
+| `XFTY_DummyDefaultValueExact(value)` | constant (also the implicit wrapper for a bare literal) |
+| `XFTY_DummyDefaultValueIncrementingString(prefix)` | `prefix 1`, `prefix 2`, … |
+| `XFTY_DummyDefaultValueUniqueString(prefix)` | unique strings |
+| `XFTY_DummyDefaultValueUniqueStringLength(prefix, length)` | unique, fixed length |
+| `XFTY_DummyDefaultValueUniqueEmail(prefix)` | unique emails |
+| `XFTY_DummyDefaultIncrementingDecimal(start, step)` | incrementing decimals |
+| implement `XFTY_DummyDefaultValueIntf` | `Object get()` — your own ([docs](../extend/custom-value-strategies.md)) |
+
+## Context-aware values
+
+| `XFTY_CopyFromSibling(SObjectField source)` | copy another field on the same record |
+| `XFTY_CopyFromAncestor(SObjectField rel, SObjectField source)` | copy from a generated parent |
+| `XFTY_CopyFromAncestor(List<SObjectField> path)` | multi-hop |
+| implement `XFTY_ContextAwareValueIntf` | `Object get(XFTY_GenerationContext)`; read siblings via `context.siblingValue(field)` |
+
+## Relationships
+
+| `XFTY_DummyDefaultRelationship(SObject template)` | generate a parent |
+| `XFTY_DummyDefaultRelationship(XFTY_LookupKeyIntf key, SObject template)` | …of a specific variant |
+| `XFTY_SharedAncestor.get(name)` | one shared parent for many children |
+| `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it |
+| `XFTY_SharedAncestor.put(name, record)` · `.getId(name)` | supply / read |
+
+---
+
+## Lookup keys
+
+| `XFTY_LookupKey.get(SObjectType)` | plain type key |
+| `XFTY_RecordTypeLookupKey.get(SObjectType, developerName)` | + record type |
+| `XFTY_FlavouredLookupKey.get(SObjectType, [rt,] flavour).matching(predicate)` | + arbitrary conditions |
+| `XFTY_FieldPredicate.equals/notEquals/greaterThan/lessThan/isIn/…(field, value)` | conditions for a flavoured key |
+
+## Provider extension points
+
+| implement `XFTY_DummySobjectProviderIntf` | `getPrimaryTargetField()` · `getMasterTemplate()` · `createBundle(context, templates)` |
+| implement `XFTY_DummySObjectProviderLookupIntf` | `get(SObjectType)` · `get(XFTY_LookupKeyIntf)` · `keysFor(SObject)` |
+| `XFTY_ProviderLookups.get/keysFor/resolve/of/ofTypes` | the lookup mechanics |
+| `new XFTY_DummySObjectMasterTemplate(primaryTargetField)` | `.put` · `.putRequired` · `.putOptional` |
+| `XFTY_DummySObjectFactory.createBundle(context, masterTemplate, templates)` | the engine entry point |
+
+## Deferred insert
+
+| `XFTY_DeferredInserter.flush()` | insert every `DEFERRED` graph so far, depth-batched, Ids back-filled |
+| `XFTY_DeferredInserter.pendingCount()` | registered-but-uninserted record count |
+
+## Test-user helpers — `XFTY_DefaultUserDataProvider`
+
+| `TEST_ADMIN_USER` | inserted System Administrator, for `System.runAs` |
+| `profileIdFor(label)` · `roleIdFor(developerName)` | cached lookups; **throw** on a miss |

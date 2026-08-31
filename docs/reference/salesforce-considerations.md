@@ -1,8 +1,8 @@
-# Limitations
+# Salesforce Considerations
 
 Like any framework built on top of Salesforce, XFTY is constrained by certain platform behaviours.
 
-Fortunately, there are very few limitations that affect normal usage. The most significant is the interaction between Salesforce's `@TestSetup` mechanism and static variables.
+Fortunately, there are very few that affect normal usage. The most significant is the interaction between Salesforce's `@TestSetup` mechanism and static variables.
 
 ---
 

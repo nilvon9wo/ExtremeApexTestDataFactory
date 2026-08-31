@@ -1,8 +1,8 @@
-# XFTY Internals
+# XFTY Architecture
 
 This document describes the internal architecture of XFTY and the design decisions behind it.
 
-Most users only need the public API documented elsewhere. This guide is intended for developers who want to understand how the framework works internally, extend it, or contribute to its development.
+Most users only need the public API in [../use/](../use/) and [../extend/](../extend/). This guide is for developers who want to understand how the framework works internally, or contribute to it.
 
 Unlike the other documentation, this guide focuses on *why* the framework was designed the way it was rather than simply describing individual classes.
 
@@ -64,11 +64,23 @@ Each component has a single responsibility.
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` | Identifies a Provider variant (`SObjectType`, optionally + record type / flavour). |
 | `XFTY_DummySobjectProviderIntf` | Describes how one `SObject` type should be generated. |
 | `XFTY_DummySObjectMasterTemplate` | Declarative description of default values and relationships. |
-| `XFTY_GenerationContext` | The per-run state the engine threads everywhere: Provider Lookup, insert mode, inclusivity (and, in future, the record being built + its ancestors). |
-| `XFTY_DummySObjectFactory` | Engine that constructs the object graph. |
+| `XFTY_GenerationContext` | The per-run state the engine threads everywhere: Provider Lookup, insert mode, inclusivity, forced-relationship paths, `batchedInsertPending`, and — during the value pass — the record being built, its ancestor bundle, and the field currently being generated (`valueFieldPass`). |
+| `XFTY_DummySObjectFactory` | Thin coordinator — drives the phase classes below. |
+| `XFTY_AncestorGenerator` | Phase: generate one level of related (ancestor) records. |
+| `XFTY_LookupWiring` | Phase: point each record's lookup fields at its generated parents. |
+| `XFTY_PlainValueFiller` | Phase: fill the plain (`XFTY_DummyDefaultValueIntf`) values. |
+| `XFTY_ContextAwareValuePass` | Phase: run the `XFTY_ContextAwareValueIntf` strategies, one field at a time. |
+| `XFTY_ValueFieldPass` | The narrowest scope — one context-aware field + the set of sibling context-aware fields not yet generated (drives `context.siblingValue`'s loud guard). |
+| `XFTY_RelationshipForcer` | Applies `includeOptional(...)` paths to a per-call copy of the Master Template. |
+| `XFTY_SharedRelationshipWiring` | Wires an `XFTY_SharedAncestor` (one resolved record, every child pointed at it). |
+| `XFTY_RecordCloneFactory` | Deep-clones templates so no two generated records share an instance. |
+| `XFTY_IndexedRecord` | An `(index, record)` pair — records are identified by position, since Apex `SObject` equality is by value. |
+| `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |
+| `XFTY_DeferredInserter` / `XFTY_DeferredInsertBuffer` | The `DEFERRED` registry and its bundle-walk; `flush()` runs `XFTY_DepthBatchedInserter` over the union. |
 | `XFTY_DummySObjectBundle` | Represents the generated graph. |
-| `XFTY_DummyDefaultValueIntf` | Strategy interface for generating field values. |
-| `XFTY_DummyDefaultRelationship` | Strategy for generating related records. |
+| `XFTY_DummyDefaultValueIntf` / `XFTY_ContextAwareValueIntf` | Strategy interfaces for generating field values (plain / context-aware). |
+| `XFTY_DummyDefaultRelationshipIntf` / `XFTY_DummyDefaultRelationship` / `XFTY_SharedRelationshipIntf` / `XFTY_SharedAncestor` | Strategy interfaces + implementations for generating related records. |
+| `XFTY_LookupKeyIntf` / `XFTY_LookupKey` / `XFTY_RecordTypeLookupKey` / `XFTY_FlavouredLookupKey` / `XFTY_FieldPredicate` | Identify a Provider variant. |
 | `XFTY_IdMocker` | Generates realistic Salesforce Ids without DML. |
 
 Keeping these responsibilities separate makes each component relatively small and easy to reason about.
@@ -207,31 +219,22 @@ Because the internal representation mirrors the generated graph, recursive const
 
 ---
 
-# Two-Phase Graph Construction
+# Graph construction phases
 
-Object creation occurs in multiple phases.
+`XFTY_DummySObjectFactory` is a thin coordinator; each phase is its own class.
+For one Provider's records:
 
-## Phase 1 – Create Objects
-
-The Factory recursively creates every required `SObject`.
-
-At this stage the objects exist, but relationships have not yet been wired together.
-
-## Phase 2 – Assign Ids
-
-Depending on the selected insert mode, objects are either:
-
-- inserted
-- assigned mock Ids
-- left without Ids
-
-Performing this as a separate phase allows every object at the current level to be inserted using a single DML operation rather than one insert per relationship or object type.
-
-## Phase 3 – Wire Relationships
-
-Once related records possess Ids, lookup fields can be populated.
-
-This separation greatly simplifies recursion while ensuring every lookup points at a valid record.
+1. **Ancestors** (`XFTY_AncestorGenerator`) — recursively generate one level of
+   related records. At this point the objects exist but lookups are not wired.
+2. **Id assignment** — depending on the insert mode the records are inserted
+   (`NOW`), given mock Ids (`MOCK`), or left Id-less. Doing this as a separate
+   phase lets every record at a level be inserted in one DML operation rather
+   than one per type. `.depthBatched()` / `DEFERRED` move this out of the
+   recursion entirely (`XFTY_DepthBatchedInserter`).
+3. **Lookup wiring** (`XFTY_LookupWiring`) — once parents have Ids, point each
+   child's lookup fields at them.
+4. **Plain value pass** (`XFTY_PlainValueFiller`).
+5. **Context-aware value pass** (`XFTY_ContextAwareValuePass`) — below.
 
 ## Value passes
 
@@ -255,16 +258,20 @@ the `put` order that fixes it - rather than returning a silent wrong `null`;
 the not-yet-reached set is what separates that case from a sibling that was
 genuinely generated to `null`. A field on a generated *child* cannot be read at
 all (it does not exist yet - that would need a deferred pass; see
-[design/context-aware-values.md](design/context-aware-values.md)).
+[roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md)).
+Design rationale: [roadmap/context-aware-values.md](../roadmap/context-aware-values.md).
 
 ---
 
 # The Generation Context
 
 Every step of one `supply*()` call - the top-level build and each level of
-relationship recursion - needs the same three things: the Provider Lookup, the
-insert mode, and the relationship inclusivity. These travel together as an
-`XFTY_GenerationContext` rather than as separate arguments.
+relationship recursion - needs the same run-wide state: the Provider Lookup, the
+insert mode, the relationship inclusivity, the forced-relationship paths, and the
+`batchedInsertPending` flag. These travel together as an `XFTY_GenerationContext`
+rather than as separate arguments. During the value pass a derived context also
+carries the record being built, the bundle so far, the row index, and the field
+currently being generated (`valueFieldPass`); everywhere else those are null.
 
 The context is also where the two **recursion transforms** live, in
 `context.forRelated()` - the context handed to a child (ancestor) build:
@@ -278,11 +285,10 @@ The context is also where the two **recursion transforms** live, in
 Because the transform is in one method, "what does `PREVENT_CASCADE` actually
 prevent" has a single, readable answer.
 
-The context is the intended extension point for context-aware value generation
-(it would carry the record being built and the generated ancestor bundle) and for
-the shared-ancestor insert-mode declaration - see
-[future-ideas.md](future-ideas.md) and
-[design/shared-ancestors.md](design/shared-ancestors.md).
+The context is also the intended plug-in point for the shared-ancestor
+insert-mode declaration and for a descendant (up-flowing) value pass - see
+[roadmap/shared-ancestors.md](../roadmap/shared-ancestors.md) and
+[roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
 
 ---
 
@@ -420,7 +426,7 @@ context - the reason Providers resolve through an interface at all.
 `@IsTest` classes cannot be abstract or virtual, so the pattern is copy, not
 extend; `XFTY_DefaultSObjectProviderLookup` is the copy-me example (and XFTY's
 own self-test lookup). Refined keys wrap an `XFTY_LookupKey` rather than subclass
-it. See [docs/design/multi-variant-providers.md](design/multi-variant-providers.md).
+it. See [roadmap/multi-variant-providers.md](../roadmap/multi-variant-providers.md).
 
 ---
 
@@ -430,9 +436,12 @@ Several implementation decisions intentionally favour simplicity over maximum fl
 
 Examples include:
 
-- every child currently receives its own generated parent
-- relationship generation is controlled by broad inclusion modes
-- Provider Lookup uses only `SObjectType` as its key
+- by default every child receives its own generated parent
+  ([shared ancestors](../use/shared-ancestors.md) opt out of this)
+- relationship generation is controlled by broad inclusion modes, with per-call
+  exceptions ([includeOptional / excludeRelationship](../use/per-call-relationships.md))
+- insertion is one DML per Provider by default
+  ([`.depthBatched()` / `DEFERRED`](../use/deferred-insert.md) collapse it)
 
 These choices keep the framework predictable while covering the overwhelming majority of testing scenarios.
 

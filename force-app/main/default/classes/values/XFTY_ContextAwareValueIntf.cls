@@ -13,7 +13,7 @@
  * anything that is neither this, a plain value strategy, nor a relationship is
  * treated as an exact literal.
  *
- * See docs/design/context-aware-values.md.
+ * See docs/roadmap/context-aware-values.md.
  */
 //@IsTest
 public interface XFTY_ContextAwareValueIntf {

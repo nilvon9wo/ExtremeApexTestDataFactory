@@ -1,50 +1,64 @@
 # XFTY Documentation
 
-The docs are grouped by purpose. If you are new, read the tutorials in order;
-come back to the how-to and reference material as you need it.
+The docs are split by **who you are and what you are trying to do**. Pick the
+directory that matches your goal.
 
-## Tutorials — learn XFTY by doing
+| I want to… | Go to | Start with |
+|------------|-------|-----------|
+| **Use XFTY to write tests for my code** | [`use/`](use/) | [use/getting-started.md](use/getting-started.md) |
+| **Teach XFTY about my org's SObjects** (write Providers, register variants, custom value strategies) | [`extend/`](extend/) | [extend/README.md](extend/README.md) |
+| **Work on XFTY itself** (architecture, tests, packaging, contributing) | [`contribute/`](contribute/) | [contribute/architecture.md](contribute/README.md) |
+| **Look something up** (breaking changes, platform constraints, open defects, the API list) | [`reference/`](reference/) | [reference/](reference/) |
+| **See what's built, in progress, or proposed** | [`roadmap/`](roadmap/) | [roadmap/README.md](roadmap/README.md) |
 
-Start here. Each builds on the last.
+---
 
-| Guide | You will be able to |
-|-------|---------------------|
-| [Getting Started](getting-started.md) | Generate records, customize fields, create related records, choose an insert mode. |
-| [Customization](customization.md) | Use override templates, `put(...)`, implicit exact values, and removal — and know which to reach for. |
-| [Relationships](relationships.md) | Control relationship generation and inclusivity; read and navigate Bundles. |
+## use/ — consume XFTY in your tests
 
-## How-to guides — extend and operate XFTY
+One page per feature, each opening with the simplest example and building up.
+See [use/README.md](use/README.md) for the reading order and the full feature
+matrix (every feature → its page → the runnable test that proves its examples).
 
-Task-focused, assume you know the basics.
+- [Getting Started](use/getting-started.md) — the guided tour
+- Generating & customizing: [generating-records](use/generating-records.md) ·
+  [override-templates](use/override-templates.md) ·
+  [value-strategies](use/value-strategies.md) ·
+  [context-aware-values](use/context-aware-values.md)
+- Relationships: [relationships](use/relationships.md) ·
+  [per-call-relationships](use/per-call-relationships.md) ·
+  [shared-ancestors](use/shared-ancestors.md) · [bundles](use/bundles.md)
+- Persistence: [insert-modes](use/insert-modes.md) ·
+  [deferred-insert](use/deferred-insert.md)
+- [provider-variants](use/provider-variants.md) ·
+  [test-user-helpers](use/test-user-helpers.md)
+- [advanced/](use/advanced/) — combining features
 
-| Guide | Covers |
-|-------|--------|
-| [Providers](providers.md) | Write a Provider for a new `SObject`; write a Provider Lookup; record-type and flavour variants (`withVariant`, lookup-key constructor); the bundled Providers and their test-user helpers. |
-| [Testing Modes](testing-modes.md) | Every insert mode and inclusivity setting, and when to use each. |
-| [Packaging & Development](packaging.md) | Local setup, scratch orgs, CI, the `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` test suites, unlocked-package builds, the namespace / AppExchange roadmap. |
+## extend/ — teach XFTY about your org
 
-## Reference — look things up
+- [Providers](extend/providers.md) — support a new `SObject` type
+- [Provider Lookups](extend/provider-lookups.md) — your project's registry
+- [Provider Variants](extend/provider-variants.md) — record-type / flavour keys
+- [Custom Value Strategies](extend/custom-value-strategies.md)
+- [Shared Ancestors in a Master Template](extend/shared-ancestors-in-templates.md)
+- [The Bundled Providers](extend/bundled-providers.md) — copy-and-adjust
 
-| Document | Contents |
-|----------|----------|
-| [Migration](migration.md) | Every breaking change in this release and exactly what to change. |
-| [Salesforce Considerations](salesforce-considerations.md) | Platform behaviours that constrain XFTY (`@TestSetup`, mixed DML, governor limits) and recommended practice. |
-| [Known Issues](known-issues.md) | Defects found and fixed, and the current triage list. |
+## contribute/ — work on XFTY
 
-## Explanation — understand the design
+- [Architecture](contribute/architecture.md) — the engine and why it is shaped this way
+- [Local Development](contribute/local-development.md) — scratch orgs, Nimbus, coverage
+- [Test Suites](contribute/test-suites.md) — `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` / `XFTY_Examples`
+- [Coverage Standards](contribute/coverage-standards.md)
+- [Packaging](contribute/packaging.md) · [CI](contribute/ci.md)
 
-| Document | Contents |
-|----------|----------|
-| [Internals](internals.md) | Architecture and the reasoning behind the main design decisions. |
-| [Future Ideas](future-ideas.md) | Enhancements under consideration, with their open questions. |
+## reference/
 
-## Design proposals — not yet built
+- [Migration](reference/migration.md) — every breaking change in this release
+- [Salesforce Considerations](reference/salesforce-considerations.md) — `@TestSetup`, mixed DML, governor limits
+- [Known Issues](reference/known-issues.md) — the open triage list
+- [API Cheat-Sheet](reference/api-cheatsheet.md) — every public class and method, one line each
 
-Working documents for features still being specified. Each lists open decisions.
+## roadmap/
 
-| Proposal | Status |
-|----------|--------|
-| [Multi-Variant Providers](design/multi-variant-providers.md) | Implemented — kept for the rationale. |
-| [Context-Aware Values](design/context-aware-values.md) | Sibling + ancestor reads implemented; descendant reads still designed. |
-| [Shared Ancestors](design/shared-ancestors.md) | On-demand path implemented; declared / deep-chain path still designed. |
-| [Deferred Persistence](design/deferred-persistence.md) | Not started. Depth-batched insert + an opt-in reference-preserving `DEFERRED` mode; underpins descendant reads and declared shared ancestors. |
+[roadmap/README.md](roadmap/README.md) is the single status table — what is
+**done**, **in progress**, and **proposed**, with the open question on each.
+Detail pages (the former `design/` proposals) sit beside it.

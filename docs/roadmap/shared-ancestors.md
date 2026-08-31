@@ -5,7 +5,7 @@ Status: **on-demand path implemented** (v3). The *declared* path (up-front
 "Open decisions" and the phase descriptions below.
 
 Implemented (`XFTY_SharedAncestor`, usage in
-[relationships.md](../relationships.md#shared-ancestors)):
+[use/shared-ancestors.md](../use/shared-ancestors.md)):
 
 - `XFTY_SharedAncestor.get(name)` - flyweight, interned by name, static state so it
   resets between test methods (decision 5).
@@ -66,7 +66,7 @@ point of requirement 3.
 No reset hook is needed and none will be added. Salesforce isolates every test
 method: static state never survives from one test method to the next (nor from
 `@TestSetup`, which is why XFTY documents not using it - see
-[salesforce-considerations.md](../salesforce-considerations.md)). Each test method
+[salesforce-considerations.md](../reference/salesforce-considerations.md)). Each test method
 starts with an empty registry.
 
 Each `XFTY_SharedAncestor` holds:
@@ -464,7 +464,7 @@ throws a clear error asking the author to set one. Inline resolution during a
 
 This is the narrow, shared-ancestor slice of the larger **"bring a generation
 context into the build"** question. `XFTY_GenerationContext`
-([internals.md](../internals.md#the-generation-context)) already carries the
+([architecture.md](../contribute/architecture.md#the-generation-context)) already carries the
 insert mode, the Provider Lookup, and - during the value pass - the record being
 built and its ancestor bundle; the shared-ancestor `context(mode)` declaration
 plugs into it.

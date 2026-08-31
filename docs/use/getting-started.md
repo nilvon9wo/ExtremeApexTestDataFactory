@@ -114,7 +114,7 @@ new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), providerL
 
 They are exactly equivalent to the `(SObjectType, lookup)` constructor followed
 by `setOverrideTemplate(...)` / `setOverrideTemplateList(...)` / `withVariant(...)`.
-Lookup keys and variants are covered in [Providers](providers.md#record-types-and-variants).
+Lookup keys and variants are covered in [provider-variants](provider-variants.md).
 
 ---
 
@@ -268,10 +268,14 @@ If your test needs to inspect related records, use `supplyBundle()`.
 
 # Next Steps
 
-Now that you understand the basic workflow, the remaining documentation explores each area in greater depth.
+Now that you understand the basic workflow, each feature has its own page — see
+the [feature matrix](README.md).
 
-- **Customization** explains Override Templates, `put(...)`, custom value providers, and template precedence.
-- **Relationships** explains relationship generation, Bundles, and navigation.
-- **Providers** explains how to add support for new `SObject` types.
-- **Testing Modes** discusses insert modes, relationship inclusivity, and recommended testing strategies.
-- **Limitations** documents Salesforce platform behaviors that affect XFTY.
+- [override-templates](override-templates.md) · [value-strategies](value-strategies.md) · [context-aware-values](context-aware-values.md) — customizing generated data
+- [relationships](relationships.md) · [per-call-relationships](per-call-relationships.md) · [shared-ancestors](shared-ancestors.md) · [bundles](bundles.md) — object graphs
+- [insert-modes](insert-modes.md) · [deferred-insert](deferred-insert.md) — persistence
+- [advanced/](advanced/) — combining features
+
+To teach XFTY about a new `SObject` type, see [extend/providers](../extend/providers.md).
+Platform behaviours that constrain XFTY (notably `@TestSetup`) are in
+[reference/salesforce-considerations](../reference/salesforce-considerations.md).

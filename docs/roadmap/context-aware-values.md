@@ -1,7 +1,11 @@
 # Design: Context-Aware Value Generation
 
-Status: **proposal**. Builds directly on `XFTY_GenerationContext`
-([internals.md - The Generation Context](../internals.md#the-generation-context)).
+Status: **sibling + ancestor reads shipped** (with a loud ordering guard —
+[use/context-aware-values.md](../use/context-aware-values.md)); descendant
+(up-flowing) reads still proposed —
+[descendant-value-reads.md](descendant-value-reads.md). This page is the design
+record. Builds on `XFTY_GenerationContext`
+([architecture.md - The Generation Context](../contribute/architecture.md#the-generation-context)).
 
 ---
 

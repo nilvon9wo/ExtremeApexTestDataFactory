@@ -3,7 +3,7 @@
  * `XFTY_DummySObjectFactory`, `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, and
  * a custom `XFTY_ContextAwareValueIntf` implementation.
  *
- * See docs/design/context-aware-values.md.
+ * See docs/roadmap/context-aware-values.md.
  */
 @IsTest
 private class XFTY_ContextAwareValueTest {

@@ -3,7 +3,7 @@
  * `XFTY_RecordTypeDataProvider`.
  *
  * These tests double as a template for the per-Provider test class that
- * docs/providers.md recommends writing for every new Provider.
+ * docs/extend/providers.md recommends writing for every new Provider.
  */
 @IsTest
 private class XFTY_DefaultDataProviderTest {

@@ -1,7 +1,7 @@
 /**
  * Coverage for the fluent public entry point, `XFTY_DummySObjectProvider`:
  * constructor guards, the setters, and the customization surface documented in
- * docs/customization.md.
+ * docs/use/value-strategies.md.
  *
  * The end-to-end generation behaviour (insert modes, relationship inclusivity)
  * is exercised in `XFTY_DummySObjectFactoryTest`.

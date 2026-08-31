@@ -3,7 +3,7 @@
  * one generated record shared by every child, `put(...)` / `getId(...)`, the
  * configuration guards, and `withKey` / `copyingRelatedField`.
  *
- * See docs/design/shared-ancestors.md.
+ * See docs/roadmap/shared-ancestors.md.
  */
 @IsTest
 private class XFTY_SharedAncestorTest {
