@@ -50,13 +50,12 @@ list are **done** — `142c6d9`, and the commit after it.)
    `XFTY_SharedAncestor.context(mode)`, per that document's implementation plan.
 6. **Namespace steps 1–3** ([namespace-appexchange.md](namespace-appexchange.md))
    — mechanical; gated on the distribution-model decision below only for step 4.
-7. **Test-class cleanup** — mostly **done.** `XFTY_DummySObjectProviderTests` →
-   `XFTY_DummySObjectProviderScenarioTest` (end-to-end scenarios, now `private`);
-   `XFTY_DummySObjectProviderTest` → `XFTY_DummySObjectProviderApiTest` (one test
-   per fluent-API affordance). Both moved next to `XFTY_DummySObjectProvider` in
-   `core/`. Still to do: modernise `ScenarioTest`'s `System.assert*` calls to
-   `Assert.*`, and drop its one real duplicate (the null-`SObjectType` check —
-   `ApiTest.constructorRejectsNullSObjectType` is richer).
+7. ~~Test-class cleanup~~ — **done.** `XFTY_DummySObjectProviderTests` →
+   `XFTY_DummySObjectProviderScenarioTest` (end-to-end scenarios, now `private`,
+   `Assert.*`, duplicate null-type test dropped); `XFTY_DummySObjectProviderTest`
+   → `XFTY_DummySObjectProviderApiTest` (one test per fluent-API affordance).
+   Both in `core/` beside `XFTY_DummySObjectProvider`. Part of the wider
+   test-co-location reorg.
 
 ---
 
