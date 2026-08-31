@@ -8,7 +8,10 @@ public class XFTY_SharedRelationshipWiring {
     private final XFTY_GenerationContext context;
     private final XFTY_SharedRelationshipIntf shared;
 
-    public XFTY_SharedRelationshipWiring(XFTY_GenerationContext context, XFTY_SharedRelationshipIntf shared) {
+    public XFTY_SharedRelationshipWiring(
+            XFTY_GenerationContext context,
+            XFTY_SharedRelationshipIntf shared
+    ) {
         this.context = context;
         this.shared = shared;
     }
@@ -22,12 +25,26 @@ public class XFTY_SharedRelationshipWiring {
         this.placeResolvedBundle(bundle, field);
     }
 
-    private void placeResolvedBundle(XFTY_DummySObjectBundle bundle, SObjectField field) {
-        XFTY_DummySObjectBundle resolved = this.shared.getResolvedBundle();
-        if (resolved == null) {
+    private void assertNotBatchedInsert() {
+        if (!this.context.batchedInsertPending) {
             return;
         }
-        bundle.put(field, resolved);
+        String message =
+                'Shared ancestor "' + this.name() + '" is not supported together with .depthBatched() or the DEFERRED '
+                        + 'insert mode - reference it from a Provider call using NOW / MOCK / NEVER.';
+        throw new XFTY_DummySObjectFtyProviderException(message);
+    }
+
+    private void assertSavedConsistently() {
+        if (!XFTY_InsertModeEnum.NOW.equals(this.context.insertMode)
+                || this.shared.isResolvedRecordPersisted()) {
+            return;
+        }
+        String message =
+                'Shared ancestor "' + this.name() + '" was resolved without being inserted, but this NOW run would '
+                        + 'carry its Id onto inserted records. Use a consistent insert mode across the test, or register '
+                        + 'a saved record with XFTY_SharedAncestor.put("' + this.name() + '", record).';
+        throw new XFTY_DummySObjectFtyProviderException(message);
     }
 
     private List<SObject> repeat(SObject record, Integer times) {
@@ -38,26 +55,11 @@ public class XFTY_SharedRelationshipWiring {
         return copies;
     }
 
-    private void assertNotBatchedInsert() {
-        if (!this.context.batchedInsertPending) {
-            return;
+    private void placeResolvedBundle(XFTY_DummySObjectBundle bundle, SObjectField field) {
+        XFTY_DummySObjectBundle resolved = this.shared.getResolvedBundle();
+        if (resolved != null) {
+            bundle.put(field, resolved);
         }
-        String message = 'Shared ancestor "' + this.name() + '" is not supported together with .depthBatched() or the '
-                + 'DEFERRED insert mode - reference it from a Provider call using NOW / MOCK / NEVER.';
-        throw new XFTY_DummySObjectFtyProviderException(message);
-    }
-
-    private void assertSavedConsistently() {
-        Boolean nowMode = XFTY_InsertModeEnum.NOW.equals(this.context.insertMode);
-        Boolean unsaved = !this.shared.isResolvedRecordPersisted();
-        Boolean carriesPhantomId = nowMode && unsaved;
-        if (!carriesPhantomId) {
-            return;
-        }
-        String message = 'Shared ancestor "' + this.name() + '" was resolved without being inserted, but this NOW run '
-                + 'would carry its Id onto inserted records. Use a consistent insert mode across the test, or register '
-                + 'a saved record with XFTY_SharedAncestor.put("' + this.name() + '", record).';
-        throw new XFTY_DummySObjectFtyProviderException(message);
     }
 
     private String name() {

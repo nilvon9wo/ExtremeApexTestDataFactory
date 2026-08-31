@@ -31,9 +31,7 @@ public class XFTY_PlainValues {
             SObjectField field
     ) {
         XFTY_DummyDefaultValueIntf strategy = template.defaultBySObjectFieldMap.get(field);
-        Boolean noStrategy = strategy == null;
-        Boolean alreadySet = record.get(field) != null;
-        if (noStrategy || alreadySet) {
+        if (strategy == null || record.get(field) != null) {
             return;
         }
         Object value = strategy.get();

@@ -14,17 +14,17 @@ public class XFTY_ForcedRelationships {
         }
         XFTY_DummySObjectMasterTemplate forced = template.copy();
         for (List<SObjectField> path : paths) {
-            promoteHead(path, forced, template);
+            SObjectField head = path[0];
+            promoteHead(head, forced, template);
         }
         return forced;
     }
 
     private static void promoteHead(
-            List<SObjectField> path,
+            SObjectField head,
             XFTY_DummySObjectMasterTemplate forced,
             XFTY_DummySObjectMasterTemplate source
     ) {
-        SObjectField head = path[0];
         XFTY_DummyDefaultRelationshipIntf optional = source.optionalRelationshipBySObjectFieldMap.get(head);
         if (optional == null) {
             assertIsRelationship(source, head);
@@ -35,12 +35,11 @@ public class XFTY_ForcedRelationships {
     }
 
     private static void assertIsRelationship(XFTY_DummySObjectMasterTemplate template, SObjectField head) {
-        Boolean isRelationship = template.requiredRelationshipBySObjectFieldMap.containsKey(head);
-        if (isRelationship) {
+        if (template.requiredRelationshipBySObjectFieldMap.containsKey(head)) {
             return;
         }
-        String message = 'includeOptional: ' + head + ' is not a relationship on the Provider for '
-                + template.primaryTargetField + '.';
+        String message =
+                'includeOptional: ' + head + ' is not a relationship on the Provider for ' + template.primaryTargetField + '.';
         throw new XFTY_DummySObjectFtyProviderException(message);
     }
 }

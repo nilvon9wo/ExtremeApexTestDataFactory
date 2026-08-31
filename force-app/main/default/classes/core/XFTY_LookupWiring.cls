@@ -6,7 +6,10 @@ public class XFTY_LookupWiring {
     private final Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> relationships;
     private XFTY_DummySObjectBundle bundle;
 
-    public XFTY_LookupWiring(XFTY_GenerationContext context, XFTY_DummySObjectMasterTemplate template) {
+    public XFTY_LookupWiring(
+            XFTY_GenerationContext context,
+            XFTY_DummySObjectMasterTemplate template
+    ) {
         this.context = context;
         this.relationships = mergeRelationships(template);
     }
@@ -18,26 +21,24 @@ public class XFTY_LookupWiring {
         this.bundle = bundle;
         for (Integer row = 0; row < records.size(); row++) {
             SObject record = records[row];
-            this.wireRow(record, row);
+            this.wireRecord(record, row);
         }
     }
 
-    private void wireRow(SObject record, Integer row) {
+    private void wireRecord(SObject record, Integer row) {
         for (SObjectField field : this.relationships.keySet()) {
             this.wireField(record, row, field);
         }
     }
 
     private void wireField(SObject record, Integer row, SObjectField field) {
-        Boolean alreadySet = record.get(field) != null;
-        if (alreadySet) {
+        if (record.get(field) != null) {
             return;
         }
         SObject parent = this.parentAt(field, row);
-        if (parent == null) {
-            return;
+        if (parent != null) {
+            this.pointToParent(record, field, parent);
         }
-        this.pointToParent(record, field, parent);
     }
 
     private void pointToParent(SObject record, SObjectField field, SObject parent) {
@@ -49,13 +50,16 @@ public class XFTY_LookupWiring {
 
     private SObject parentAt(SObjectField field, Integer row) {
         List<SObject> parents = this.bundle.getList(field);
-        if (parents == null) {
-            return null;
-        }
-        if (row >= parents.size()) {
+        if (parents == null || row >= parents.size()) {
             return null;
         }
         return parents[row];
+    }
+
+    private static Object readValue(SObject parent, SObjectField sourceField) {
+        return sourceField != null
+                ? parent.get(sourceField)
+                : parent.Id;
     }
 
     private static Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> mergeRelationships(
@@ -66,11 +70,5 @@ public class XFTY_LookupWiring {
         merged.putAll(template.requiredRelationshipBySObjectFieldMap);
         merged.putAll(template.optionalRelationshipBySObjectFieldMap);
         return merged;
-    }
-
-    private static Object readValue(SObject parent, SObjectField sourceField) {
-        return (sourceField != null)
-                ? parent.get(sourceField)
-                : parent.Id;
     }
 }

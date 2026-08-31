@@ -5,6 +5,17 @@
 @IsTest
 public class XFTY_DummySObjectFactory {
 
+    private final XFTY_GenerationContext context;
+    private final XFTY_DummySObjectMasterTemplate template;
+
+    private XFTY_DummySObjectFactory(
+            XFTY_GenerationContext context,
+            XFTY_DummySObjectMasterTemplate masterTemplate
+    ) {
+        this.context = context;
+        this.template = XFTY_ForcedRelationships.apply(context.forcedRelationshipPaths, masterTemplate);
+    }
+
     public static XFTY_DummySObjectBundle createBundle(
             XFTY_GenerationContext context,
             XFTY_DummySObjectMasterTemplate masterTemplate,
@@ -14,16 +25,9 @@ public class XFTY_DummySObjectFactory {
                 .build(testTemplates);
     }
 
-    private final XFTY_GenerationContext context;
-    private final XFTY_DummySObjectMasterTemplate template;
-
-    private XFTY_DummySObjectFactory(XFTY_GenerationContext context, XFTY_DummySObjectMasterTemplate masterTemplate) {
-        this.context = context;
-        this.template = XFTY_ForcedRelationships.apply(context.forcedRelationshipPaths, masterTemplate);
-    }
-
     private XFTY_DummySObjectBundle build(List<SObject> testTemplates) {
-        XFTY_DummySObjectBundle bundle = new XFTY_AncestorRecords(this.context, this.template, testTemplates.size())
+        Integer quantity = testTemplates.size();
+        XFTY_DummySObjectBundle bundle = new XFTY_AncestorRecords(this.context, quantity, this.template)
                 .generate();
         List<SObject> records = XFTY_PlainValues.cloneAndCompletePlainValues(this.template, testTemplates);
         bundle.putPrimaries(this.template.primaryTargetField, records);

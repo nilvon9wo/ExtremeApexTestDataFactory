@@ -370,14 +370,11 @@ public class XFTY_DummySObjectProvider {
     }
 
     private Boolean buildsStructurallyForBatchedInsert() {
-        Boolean flushesHere = this.flushesGraphWhenThisCallEnds();
-        Boolean deferred = this.deferredToRegistry();
-        return flushesHere || deferred;
+        return this.flushesGraphWhenThisCallEnds() || this.deferredToRegistry();
     }
 
     private Boolean flushesGraphWhenThisCallEnds() {
-        Boolean nowMode = XFTY_InsertModeEnum.NOW.equals(this.insertMode);
-        return this.depthBatched && nowMode;
+        return this.depthBatched && XFTY_InsertModeEnum.NOW.equals(this.insertMode);
     }
 
     private Boolean deferredToRegistry() {
@@ -407,8 +404,7 @@ public class XFTY_DummySObjectProvider {
     }
 
     private void warnIfMixingCustomTemplateWithOverrides() {
-        Boolean mixing = this.hasCustomMasterTemplate && this.hasOverrideTemplates();
-        if (mixing) {
+        if (this.hasCustomMasterTemplate && this.hasOverrideTemplates()) {
             System.debug(LoggingLevel.WARN, '!!!  Custom master template + overrides: overrides win all conflicts!  !!!');
         }
     }

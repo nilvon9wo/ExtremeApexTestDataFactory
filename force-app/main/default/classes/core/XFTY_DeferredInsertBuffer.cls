@@ -15,9 +15,9 @@
 @IsTest
 public class XFTY_DeferredInsertBuffer {
 
-    private final List<SObject> pendingRecords = new List<SObject>();
     private final List<XFTY_DepthBatchedInserter.ParentLink> pendingLinks =
             new List<XFTY_DepthBatchedInserter.ParentLink>();
+    private final List<SObject> pendingRecords = new List<SObject>();
 
     public static void insertGraph(XFTY_DummySObjectBundle bundle) {
         XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
@@ -37,51 +37,53 @@ public class XFTY_DeferredInsertBuffer {
         XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks);
     }
 
-    private List<XFTY_PendingRecord> collect(XFTY_DummySObjectBundle bundle) {
+    private List<XFTY_IndexedRecord> collect(XFTY_DummySObjectBundle bundle) {
         List<SObject> primaries = primaryRecordsOf(bundle);
         if (primaries == null) {
-            return new List<XFTY_PendingRecord>();
+            return new List<XFTY_IndexedRecord>();
         }
-        List<XFTY_PendingRecord> children = this.append(primaries);
+        List<XFTY_IndexedRecord> children = this.append(primaries);
         this.linkToParents(bundle, children);
         return children;
     }
 
-    private void linkToParents(XFTY_DummySObjectBundle bundle, List<XFTY_PendingRecord> children) {
-        for (SObjectField parentField : bundle.relationshipFields()) {
+    private void linkToParents(XFTY_DummySObjectBundle bundle, List<XFTY_IndexedRecord> children) {
+        Set<SObjectField> parentFields = bundle.relationshipFields();
+        for (SObjectField parentField : parentFields) {
             this.linkToParentsOn(bundle, children, parentField);
         }
     }
 
     private void linkToParentsOn(
             XFTY_DummySObjectBundle bundle,
-            List<XFTY_PendingRecord> children,
+            List<XFTY_IndexedRecord> children,
             SObjectField parentField
     ) {
         XFTY_DummySObjectBundle parentBundle = bundle.getBundle(parentField);
         if (parentBundle == null) {
             return;
         }
-        List<XFTY_PendingRecord> parents = this.collect(parentBundle);
+        List<XFTY_IndexedRecord> parents = this.collect(parentBundle);
         this.linkRows(children, parents, parentField);
     }
 
     private void linkRows(
-            List<XFTY_PendingRecord> children,
-            List<XFTY_PendingRecord> parents,
+            List<XFTY_IndexedRecord> children,
+            List<XFTY_IndexedRecord> parents,
             SObjectField field
     ) {
-        Integer rows = Math.min(children.size(), parents.size());
+        Integer childCount = children.size();
+        Integer parentCount = parents.size();
+        Integer rows = Math.min(childCount, parentCount);
         for (Integer row = 0; row < rows; row++) {
-            XFTY_PendingRecord child = children[row];
-            XFTY_PendingRecord parent = parents[row];
-            this.linkChildToParent(child, parent, field);
+            XFTY_IndexedRecord child = children[row];
+            XFTY_IndexedRecord parent = parents[row];
+            this.linkChild(child, parent, field);
         }
     }
 
-    private void linkChildToParent(XFTY_PendingRecord child, XFTY_PendingRecord parent, SObjectField field) {
-        Boolean alreadySet = child.record.get(field) != null;
-        if (alreadySet) {
+    private void linkChild(XFTY_IndexedRecord child, XFTY_IndexedRecord parent, SObjectField field) {
+        if (child.record.get(field) != null) {
             return;
         }
         XFTY_DepthBatchedInserter.ParentLink link =
@@ -89,20 +91,20 @@ public class XFTY_DeferredInsertBuffer {
         this.pendingLinks.add(link);
     }
 
-    private List<XFTY_PendingRecord> append(List<SObject> records) {
-        List<XFTY_PendingRecord> pending = new List<XFTY_PendingRecord>();
+    private List<XFTY_IndexedRecord> append(List<SObject> records) {
+        List<XFTY_IndexedRecord> indexed = new List<XFTY_IndexedRecord>();
         for (SObject record : records) {
+            Integer index = this.pendingRecords.size();
             this.pendingRecords.add(record);
-            Integer index = this.pendingRecords.size() - 1;
-            XFTY_PendingRecord entry = new XFTY_PendingRecord(record, index);
-            pending.add(entry);
+            XFTY_IndexedRecord entry = new XFTY_IndexedRecord(index, record);
+            indexed.add(entry);
         }
-        return pending;
+        return indexed;
     }
 
     private static List<SObject> primaryRecordsOf(XFTY_DummySObjectBundle bundle) {
-        return (bundle == null)
-                ? null
-                : bundle.primaryRecords();
+        return bundle != null
+                ? bundle.primaryRecords()
+                : null;
     }
 }

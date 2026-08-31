@@ -9,15 +9,6 @@
 @IsTest
 public class XFTY_DepthBatchedInserter {
 
-    public static void insertAll(List<SObject> records, List<ParentLink> links) {
-        Boolean nothingToInsert = (records == null) || records.isEmpty();
-        if (nothingToInsert) {
-            return;
-        }
-        new XFTY_DepthBatchedInserter(records, links)
-                .insertLayerByLayer();
-    }
-
     /** `records[childIndex].field` should end up pointing at `records[parentIndex]`. */
     public class ParentLink {
         public final Integer childIndex;
@@ -35,16 +26,26 @@ public class XFTY_DepthBatchedInserter {
     public class CyclicGraphException extends Exception {
     }
 
-    private final List<SObject> records;
     private final List<List<ParentLink>> linksByChild;
+    private final List<SObject> records;
 
     private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links) {
         this.records = records;
-        this.linksByChild = groupLinksByChild(records.size(), links);
+        Integer recordCount = records.size();
+        this.linksByChild = groupLinksByChild(recordCount, links);
+    }
+
+    public static void insertAll(List<SObject> records, List<ParentLink> links) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        new XFTY_DepthBatchedInserter(records, links)
+                .insertLayerByLayer();
     }
 
     private void insertLayerByLayer() {
-        Set<Integer> unpersisted = allIndexes(this.records.size());
+        Integer count = this.records.size();
+        Set<Integer> unpersisted = allIndexes(count);
         while (!unpersisted.isEmpty()) {
             List<Integer> layer = this.takeNextLayer(unpersisted);
             this.insertLayer(layer);
@@ -101,7 +102,8 @@ public class XFTY_DepthBatchedInserter {
     private static List<List<ParentLink>> groupLinksByChild(Integer recordCount, List<ParentLink> links) {
         List<List<ParentLink>> byChild = new List<List<ParentLink>>();
         for (Integer i = 0; i < recordCount; i++) {
-            byChild.add(new List<ParentLink>());
+            List<ParentLink> empty = new List<ParentLink>();
+            byChild.add(empty);
         }
         List<ParentLink> safeLinks = orEmpty(links);
         for (ParentLink link : safeLinks) {
@@ -112,9 +114,9 @@ public class XFTY_DepthBatchedInserter {
     }
 
     private static List<ParentLink> orEmpty(List<ParentLink> links) {
-        return (links == null)
-                ? new List<ParentLink>()
-                : links;
+        return links != null
+                ? links
+                : new List<ParentLink>();
     }
 
     private static Set<Integer> allIndexes(Integer count) {
