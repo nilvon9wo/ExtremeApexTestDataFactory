@@ -67,9 +67,12 @@ forced ancestor's own inclusivity to `REQUIRED` when the call asked for `NONE`.
 - `includeOptional(...)` gained the same "force regardless of inclusivity, fully
   formed" behavior in the same change — one rule for both.
 - Mirror on the read side is already there — `XFTY_CopyFromAncestor(path)`.
-- Shared ancestors: a `put(path, ...)` / `putRequired(path, ...)` whose step
-  resolves to an `XFTY_SharedAncestor` **throws** — the shared record is resolved
-  once and shared by every child, so a per-call value has no well-defined
-  meaning. Configure it with `XFTY_SharedAncestor.get(name).of(...)`. (An
-  `includeOptional(...)` path *through* a shared ancestor is still fine — it only
-  forces, it does not set a value.)
+- Shared ancestors:
+  - `put(path, literal | strategy | contextAware)` or `putRequired(path, plainRel)`
+    that would **set a value on** a shared ancestor **throws** — the shared
+    record is resolved once and shared, so a per-call value has no well-defined
+    meaning. Configure it with `XFTY_SharedAncestor.get(name).of(...)`.
+  - `putRequired(path, XFTY_SharedAncestor.get(name))` — **wiring a shared
+    ancestor in** as an ancestor's relationship value — is fine. On-demand needs
+    no `require()`; a declared name still does.
+  - `includeOptional(...)` *through* a shared ancestor is fine (it only forces).

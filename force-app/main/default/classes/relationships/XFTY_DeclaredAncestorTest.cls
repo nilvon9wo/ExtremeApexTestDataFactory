@@ -134,6 +134,70 @@ private class XFTY_DeclaredAncestorTest {
     }
 
     @IsTest
+    static void requireAcceptsAList() {
+        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Root'))
+                .withKey(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.declared('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
+        XFTY_SharedAncestor.require(new List<String>{ 'root', 'level1' });
+
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, new DeepLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        System.assertNotEquals(null, XFTY_SharedAncestor.getId('root'));
+        System.assertNotEquals(null, XFTY_SharedAncestor.getId('level1'));
+    }
+
+    @IsTest
+    static void preRegisteringOneSideBreaksAWouldBeDeclaredCycle() {
+        XFTY_SharedAncestor.declared('a').of(new Account())
+                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
+        XFTY_SharedAncestor.declared('b').of(new Account())
+                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));
+        // break the a<->b cycle by handing 'b' a record up front
+        Account existingB = new Account(Name = 'Pre-made B', Id = XFTY_IdMocker.generateId(Account.SObjectType));
+        XFTY_SharedAncestor.put('b', existingB);
+        XFTY_SharedAncestor.require('a');
+
+        Test.startTest();
+        Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new CycleLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        System.assertNotEquals(null, c.AccountId, 'the chain resolved - the cycle was broken');
+        System.assertEquals(existingB.Id, XFTY_SharedAncestor.getId('b'));
+    }
+
+    @IsTest
+    static void deepDeclaredChainStaysDmlFrugal() {
+        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Root'))
+                .withKey(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.declared('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
+        XFTY_SharedAncestor.require('level1');
+
+        Integer dmlBefore;
+        Test.startTest();
+        dmlBefore = Limits.getDmlStatements();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, new DeepLookup())
+                .setQuantityPerTemplate(4)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supplyList();
+        Test.stopTest();
+
+        Integer dml = Limits.getDmlStatements() - dmlBefore;
+        // root, level1, 4 contacts - a handful of statements, not one per record per level
+        System.assert(dml <= 4, 'deep chain DML: ' + dml);
+        System.assertEquals(2, [SELECT COUNT() FROM Account]);
+        System.assertEquals(4, [SELECT COUNT() FROM Contact]);
+    }
+
+    @IsTest
     static void declaredAncestorsInACycleThrow() {
         XFTY_SharedAncestor.declared('a').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
         XFTY_SharedAncestor.declared('b').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));

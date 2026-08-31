@@ -27,7 +27,7 @@ One line per public entry point. Follow the links for detail.
 | `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
 | `.put(List<SObjectField> path, value)` / `.putRequired(path, rel)` / `.putOptional(path, rel)` | set a field on a generated ancestor (last path element = target); follows inclusivity |
 | `.excludeRelationship(SObjectField)` | skip one relationship, this call only |
-| `.with(XFTY_SObjectChildProvider)` / `.withChildren(field, n)` / `.withChild(field)` | downward � generate child records; read via `bundle.getChild/getChildList/getChildBundle(field)` |
+| `.with(XFTY_SObjectChildProvider)` / `.withChildren(field, n)` / `.withChild(field)` | downward � generate child records; read via `bundle.getChild/getChildList/getChildBundle(field)` |
 | `.depthBatched()` | one `insert` per depth instead of per Provider (`NOW` only) |
 | `.allowAncestorCycles()` | suppress the guard that throws on a self-referential relationship chain |
 
@@ -74,9 +74,12 @@ One line per public entry point. Follow the links for detail.
 
 | `XFTY_DummyDefaultRelationship(SObject template)` | generate a parent |
 | `XFTY_DummyDefaultRelationship(XFTY_LookupKeyIntf key, SObject template)` | …of a specific variant |
-| `XFTY_SharedAncestor.get(name)` | one shared parent for many children |
+| `XFTY_SharedAncestor.get(name)` | one shared parent for many children (on-demand) |
 | `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it |
 | `XFTY_SharedAncestor.put(name, record)` · `.getId(name)` | supply / read |
+| `XFTY_SharedAncestor.declared(name).of(...)` | a **declared** shared ancestor (deep / heavy) — configured centrally |
+| `XFTY_SharedAncestor.require(name…)` / `.context(mode).require(…)` | a test opts in, at the top; `context(mode)` fixes the pre-phase insert mode |
+| `XFTY_SharedAncestor.resolveDeclared(lookup)` | run the declared pre-phase now (for a pre-`supply` `getId`) |
 
 ---
 

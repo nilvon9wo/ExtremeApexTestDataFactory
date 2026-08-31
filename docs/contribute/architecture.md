@@ -71,8 +71,11 @@ Each component has a single responsibility.
 | `XFTY_PlainValueFiller` | Phase: fill the plain (`XFTY_DummyDefaultValueIntf`) values. |
 | `XFTY_ContextAwareValuePass` | Phase: run the `XFTY_ContextAwareValueIntf` strategies, one field at a time. |
 | `XFTY_ValueFieldPass` | The narrowest scope — one context-aware field + the set of sibling context-aware fields not yet generated (drives `context.siblingValue`'s loud guard). |
-| `XFTY_RelationshipForcer` | Applies `includeOptional(...)` paths to a per-call copy of the Master Template. |
+| `XFTY_RelationshipForcer` | Applies `includeOptional(...)` / `put(path,...)` relationship-prefix paths to a per-call copy of the Master Template. |
+| `XFTY_PathValue` / `XFTY_PathValueApplier` | A `put(List<SObjectField>, value)` override targeted at a generated ancestor; the applier lands the at-target ones on the level's template. |
+| `XFTY_SObjectChildProvider` | Config for one downward child collection (`with(...)` / `withChildren(...)`); builds the child Provider + templates, recursively for grandchildren. |
 | `XFTY_SharedRelationshipWiring` | Wires an `XFTY_SharedAncestor` (one resolved record, every child pointed at it). |
+| `XFTY_DeclaredAncestorResolver` | The S0–S2 pre-phase for **declared** shared ancestors: collect (dependency-ordered, nested, cycle/depth guards) → generate `NEVER` → depth-batched persist per ancestor. |
 | `XFTY_RecordCloneFactory` | Deep-clones templates so no two generated records share an instance. |
 | `XFTY_IndexedRecord` | An `(index, record)` pair — records are identified by position, since Apex `SObject` equality is by value. |
 | `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |
@@ -224,8 +227,18 @@ Because the internal representation mirrors the generated graph, recursive const
 `XFTY_DummySObjectFactory` is a thin coordinator; each phase is its own class.
 For one Provider's records:
 
+0. **Declared shared ancestors** (`XFTY_DeclaredAncestorResolver`, from
+   `XFTY_DummySObjectProvider.supplyBundle()`) — if the test `require(...)`d any,
+   they are collected (dependency-ordered, following nested declared ancestors),
+   generated in memory (`NEVER`), and persisted one depth-batched pass per
+   ancestor, **before** step 1. On-demand shared ancestors skip this and resolve
+   inline in step 1.
 1. **Ancestors** (`XFTY_AncestorGenerator`) — recursively generate one level of
    related records. At this point the objects exist but lookups are not wired.
+   A relationship named in an `includeOptional(...)` / `put(path, ...)` path is
+   generated here whatever the inclusivity, and *fully formed* (its own required
+   relationships fill in). An `XFTY_SharedRelationshipIntf` value means "0 to
+   generate — wire the one resolved record".
 2. **Id assignment** — depending on the insert mode the records are inserted
    (`NOW`), given mock Ids (`MOCK`), or left Id-less. Doing this as a separate
    phase lets every record at a level be inserted in one DML operation rather
@@ -285,9 +298,12 @@ The context is also where the two **recursion transforms** live, in
 Because the transform is in one method, "what does `PREVENT_CASCADE` actually
 prevent" has a single, readable answer.
 
-The context is also the intended plug-in point for the shared-ancestor
-insert-mode declaration and for a descendant (up-flowing) value pass - see
-[roadmap/shared-ancestors.md](../roadmap/shared-ancestors.md) and
+The context also carries the `put(List<SObjectField>, value)` path values
+(`pathValues`), filtered head-first through `forRelated(field)` like the forced
+paths, and `withInclusivity(...)` for generating a forced ancestor fully formed.
+The declared-shared-ancestor insert mode is set separately, up front, with
+`XFTY_SharedAncestor.context(mode)`. A descendant (up-flowing) value pass is
+still a plug-in point — see
 [roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
 
 ---

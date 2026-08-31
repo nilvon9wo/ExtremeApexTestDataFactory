@@ -177,7 +177,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     private void assertDeclaredAndRequired() {
-        if (this.kind != Kind.DECLARED) {
+        if (this.kind != Kind.DECLARED || this.resolvedRecord != null) {
             return;
         }
         if (!this.isRequired()) {

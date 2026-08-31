@@ -17,6 +17,27 @@ project defines its [flavoured lookup keys](provider-variants.md):
 XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
 ```
 
+### On-demand vs declared
+
+The template reference (`XFTY_SharedAncestor.get('name')`) is the same for both
+[kinds](../use/shared-ancestors.md#two-kinds). What differs is the central
+config:
+
+```apex
+// on-demand - lightweight, resolves inline, no opt-in
+XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
+
+// declared - deep / heavy, resolves in a batched pre-phase, a test must require() it
+XFTY_SharedAncestor.declared('root')
+    .of(new MyHierarchyObj__c())
+    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+```
+
+A Provider whose Master Template references a **declared** ancestor only works in
+a test that `XFTY_SharedAncestor.require(...)`s it — otherwise generation throws,
+naming the ancestor. Reserve declared for a shared record that is itself a
+hierarchy.
+
 ---
 
 ## When to put it in a *shipped* Provider

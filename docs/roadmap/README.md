@@ -19,7 +19,7 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Deferred persistence — `.depthBatched()` + `DEFERRED` mode | ✅ (`407d38a`) | [deferred-persistence.md](deferred-persistence.md), [../use/deferred-insert.md](../use/deferred-insert.md) |
 | Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
 | Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
-| Shared ancestors — declared / deep chains / DML-batched resolution | 📋 (on-demand path complete + hardened against self-cycles) | [shared-ancestors.md](shared-ancestors.md) |
+| Shared ancestors — declared / deep chains / batched resolution | ✅ (per-ancestor depth-batch — not one pass across the whole set; no decision-3 load data yet) | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
 | Descendant (up-flowing) value reads | 📋 | [descendant-value-reads.md](descendant-value-reads.md) |
 | Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
@@ -52,10 +52,12 @@ list are **done** — `142c6d9`, and the commit after it.)
    `DEFERRED` `flush()`). Decided: skip the light `requestingChildTemplate`
    (option A). Rationale and the constraint this imposes:
    [descendant-value-reads.md](descendant-value-reads.md).
-5. **Declared shared ancestors.** Every design decision in
-   [shared-ancestors.md](shared-ancestors.md) is settled — build the S0–S2
-   batched pre-phase, `XFTY_SharedAncestor.require(...)` / `.declared(...)`, and
-   `XFTY_SharedAncestor.context(mode)`, per that document's implementation plan.
+5. ~~Declared shared ancestors~~ — **done.** `XFTY_SharedAncestor.declared(...)` /
+   `.require(...)` / `.context(mode)` / `.resolveDeclared(lookup)`, the S0–S2
+   batched pre-phase (`XFTY_DeclaredAncestorResolver`), nested auto-require, cycle
+   + depth guards, "undeclared → throw". **Still open:** one S2 pass across the
+   whole declared set (currently per ancestor); decision-3 load-test data +
+   documented limits + off-switches; on-demand + `.depthBatched()`/`DEFERRED`.
 6. **Namespace steps 1–3** ([namespace-appexchange.md](namespace-appexchange.md))
    — mechanical; gated on the distribution-model decision below only for step 4.
 7. ~~Test-class cleanup~~ — **done.** `XFTY_DummySObjectProviderTests` →

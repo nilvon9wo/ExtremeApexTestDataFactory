@@ -81,6 +81,12 @@ named path stays at the call's inclusivity. A path field that is not a
 relationship on the Provider throws — never a silent no-op. A path `put` on a
 field the ancestor's Provider already sets wins.
 
+The path's value can be a [shared ancestor](shared-ancestors.md) —
+`putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))`
+wires the generated Account's Owner to a shared `mr-smith` (on-demand: no
+`require()`). What you **cannot** do is `put` a plain value *onto* a shared
+ancestor — that throws (configure it with `.of(...)`).
+
 Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
 
 ▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` _(pending — Pass B)_ · `XFTY_PathValueTest`

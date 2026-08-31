@@ -63,6 +63,12 @@ public class XFTY_DeclaredAncestorResolver {
         if (done.contains(name)) {
             return;
         }
+        if (ancestor.isResolved()) {
+            // Pre-registered with put(name, record) - it is already a record, so its
+            // own dependencies do not matter and it cannot be part of a live cycle.
+            done.add(name);
+            return;
+        }
         if (onThePath.contains(name)) {
             throw new XFTY_DummySObjectFtyProviderException(
                     'Declared shared ancestors form a cycle involving "' + name + '". Break it by pre-registering '
