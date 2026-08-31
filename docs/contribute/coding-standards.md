@@ -86,7 +86,12 @@ one branch does not need.
   `// Assert`, and `// Sanity Check` (a pre-Act assertion that the arranged
   state is what the test assumes). Use them.
 - If a comment restates what a name could say, fix the name instead.
-- Doc comments (`/** ... */`) explaining *why* are welcome.
+- A doc comment that just re-narrates the signature (`/** The record's Id. Throws
+  if not resolved. */` over `getId()` whose throw says exactly that) is noise —
+  delete it. Doc comments earn their place by explaining *why*, a non-obvious
+  constraint, or a contract a caller cannot see from the signature.
+- A class docstring is a few lines and one example, not an essay — the prose
+  belongs in `docs/`.
 
 ### `this.`
 
@@ -143,6 +148,11 @@ More than **~250 lines** is a strong smell that the class does too much.
 
 ## Design
 
+- **Polymorphism over branching.** A `null`/`instanceof`/type check that the same
+  code makes in more than one place is a missing type. Introduce a strategy
+  interface with one implementation per case; the caller stops choosing. A wall
+  of near-identical `if (bad) throw` guards collapses the same way — one
+  `reject(condition, reason)` helper, one line per rule.
 - **Flyweight whenever possible.** Interned instances obtained through a
   `get(...)` factory, never `new`.
 - **Explicit over stateful.** Reject registry / mutable-builder APIs. Prefer a
