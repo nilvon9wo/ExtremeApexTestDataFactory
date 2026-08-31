@@ -18,7 +18,7 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | 100% framework line coverage + split test suites | ✅ | [../contribute/coverage-standards.md](../contribute/coverage-standards.md) |
 | Deferred persistence — `.depthBatched()` + `DEFERRED` mode | ✅ (`407d38a`) | [deferred-persistence.md](deferred-persistence.md), [../use/deferred-insert.md](../use/deferred-insert.md) |
 | Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
-| Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ (branch `downward-generation`) | [../use/child-records.md](../use/child-records.md) |
+| Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
 | Shared ancestors — declared / deep chains / DML-batched resolution | 📋 (on-demand path complete + hardened against self-cycles) | [shared-ancestors.md](shared-ancestors.md) |
 | Descendant (up-flowing) value reads | 📋 | [descendant-value-reads.md](descendant-value-reads.md) |
 | Path-scoped value overrides (`put(List<SObjectField>, value)` into an ancestor) | 📋 | [path-scoped-values.md](path-scoped-values.md) |
