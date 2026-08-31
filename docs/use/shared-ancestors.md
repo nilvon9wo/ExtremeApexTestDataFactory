@@ -4,9 +4,21 @@ By default every generated child gets its **own** generated parent. When several
 children should sit under **one** parent — 50 Contacts at the same Account, a
 whole hierarchy converging on one root — use `XFTY_SharedAncestor`.
 
-> Status: the **on-demand** path shown here is shipped. Declared ancestors, deep
-> shared chains, and fully DML-batched resolution are proposed — see
-> [roadmap/shared-ancestors.md](../roadmap/shared-ancestors.md).
+---
+
+## Two kinds — you do not register the light one
+
+| | **On-demand** (shipped) | **Declared** (📋 [roadmap](../roadmap/shared-ancestors.md)) |
+|---|---|---|
+| How the test asks for it | Just `get(name).of(...)` and reference it — **no registration** | `XFTY_SharedAncestor.require('name', ...)` at the top of the test |
+| When it resolves | lazily, the first time generation references it | up front, in a batched pre-phase |
+| What it may be | **lightweight — no ancestors of its own** (a self-referential one throws rather than recurse) | may be deep, may have its own ancestors, may be heavy |
+| Cost in `NOW` | one `insert` per shared ancestor | one batched pass for the whole declared set |
+
+Everything below is the **on-demand** kind. It is the common case: a shared
+`Account`, a shared `Pricebook`, a shared parent `Case`. You configure it and
+reference it — there is nothing to register. The declared kind exists for a deep
+hierarchy converging on a singleton root; it is designed but not built yet.
 
 ---
 
@@ -52,6 +64,14 @@ List<Contact> contacts = (List<Contact>) new XFTY_DummySObjectProvider(Contact.S
 | `.copyingRelatedField(SObjectField f)` | Copy `f` from the shared record into the child's field instead of its Id. |
 
 Reconfiguring a shared ancestor after it has resolved throws.
+
+**The shared record's own field values go on `.of(...)`** — it is one record for
+every child, so there is no per-call place to set them. A
+`put(new List<SObjectField>{ theSharedRelationshipField, ... }, value)` on a
+Provider instance
+([per-call ancestor values](per-call-relationships.md#setting-a-value-on-a-generated-ancestor--putpath-value))
+**throws** when the path runs into a shared ancestor, rather than silently
+applying to some children and not others.
 
 ---
 
