@@ -375,10 +375,65 @@ private class XFTY_SharedAncestorTest {
         }
     }
 
+    @IsTest
+    static void anIndirectCycleRoundThreeSharedAncestorsThrows() {
+        XFTY_LookupKeyIntf tomKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'tom');
+        XFTY_LookupKeyIntf dickKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'dick');
+        XFTY_LookupKeyIntf harryKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'harry');
+        XFTY_SharedAncestor.get('tom').of(new Account(Name = 'Tom')).withKey(tomKey);
+        XFTY_SharedAncestor.get('dick').of(new Account(Name = 'Dick')).withKey(dickKey);
+        XFTY_SharedAncestor.get('harry').of(new Account(Name = 'Harry')).withKey(harryKey);
+
+        XFTY_DummySObjectProviderLookupIntf ring = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        tomKey => new ParentedAccountProvider('dick'),
+                        dickKey => new ParentedAccountProvider('harry'),
+                        harryKey => new ParentedAccountProvider('tom'),
+                        XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider()
+                }
+        );
+
+        System.runAs(TEST_ADMIN) {
+            try {
+                new XFTY_DummySObjectProvider(Contact.SObjectType, ring)
+                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('tom'))
+                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                        .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                        .supply();
+                Assert.fail('Expected a cycle exception - tom -> dick -> harry -> tom');
+            } catch (XFTY_DummySObjectFtyProviderException ex) {
+                Assert.isTrue(ex.getMessage().contains('references itself'), ex.getMessage());
+            }
+        }
+    }
+
     private class SelfReferencingAccountProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
                 .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Loop'))
                 .putRequired(Account.ParentId, XFTY_SharedAncestor.get('loop'));
+
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
+    /** An Account Provider whose `ParentId` is the named shared ancestor - for the cycle tests. */
+    private class ParentedAccountProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template;
+
+        private ParentedAccountProvider(String parentSharedName) {
+            this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Ring'))
+                    .putRequired(Account.ParentId, XFTY_SharedAncestor.get(parentSharedName));
+        }
 
         public SObjectField getPrimaryTargetField() {
             return Account.Id;

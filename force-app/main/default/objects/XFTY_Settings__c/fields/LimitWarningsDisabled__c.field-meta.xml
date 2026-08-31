@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LimitWarningsDisabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When true, XFTY does not warn even if generating test data consumes most of a governor limit.</description>
+    <externalId>false</externalId>
+    <label>Limit Warnings Disabled</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

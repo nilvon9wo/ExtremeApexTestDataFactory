@@ -1,8 +1,9 @@
 /**
  * A 5-level self-referential Account hierarchy for the deep-chain load tests:
- * `LEVEL_1` requires a `LEVEL_2` parent (via `Account.ParentId`), and so on;
- * `LEVEL_5` has no parent. Each level is its own flavour key, so the
- * ancestor-cycle guard sees five distinct Providers, not one type five times.
+ * `LEVEL_1` requires a `LEVEL_2` parent (via `Account.ParentId`) and a `User`
+ * owner, and so on; `LEVEL_5` has just the owner. So each primary pulls a chain
+ * 5 Accounts deep, each 1 wide (its User) - deep *and* wide. Each level is its
+ * own flavour key, so the ancestor-cycle guard sees five distinct Providers.
  *
  * `test-support/` only - not shipped.
  */
@@ -20,7 +21,8 @@ public class XFTY_HierarchyKeys {
                 LEVEL_2 => new Level(LEVEL_3),
                 LEVEL_3 => new Level(LEVEL_4),
                 LEVEL_4 => new Level(LEVEL_5),
-                LEVEL_5 => new Level(null)
+                LEVEL_5 => new Level(null),
+                XFTY_LookupKey.get(User.SObjectType) => new XFTY_DefaultUserDataProvider()
         });
     }
 
@@ -29,7 +31,8 @@ public class XFTY_HierarchyKeys {
 
         private Level(XFTY_LookupKeyIntf parentKey) {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Level'));
+                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Level'))
+                    .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
             if (parentKey != null) {
                 this.template.putRequired(
                         Account.ParentId,

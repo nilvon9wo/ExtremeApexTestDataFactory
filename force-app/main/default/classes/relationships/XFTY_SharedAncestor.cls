@@ -162,10 +162,10 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
             return;
         }
         throw new XFTY_DummySObjectFtyProviderException(
-                'Shared ancestor "' + this.name + '" references itself while resolving - directly or through its '
-                        + 'own relationships - a cycle. An on-demand shared ancestor must be lightweight with no '
-                        + 'ancestors of its own; break the cycle by registering one side with '
-                        + 'XFTY_SharedAncestor.put("' + this.name + '", record).'
+                'Shared ancestor "' + this.name + '" references itself while resolving - directly, through a '
+                        + 'relationship on its own Provider, or round a chain of other shared ancestors - a cycle. '
+                        + 'An on-demand shared ancestor must be lightweight with no ancestors of its own; break the '
+                        + 'cycle by registering one side with XFTY_SharedAncestor.put("' + this.name + '", record).'
         );
     }
 

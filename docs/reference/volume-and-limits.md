@@ -1,15 +1,37 @@
 # Volume & Governor Limits
 
+## Do you need this page?
+
+**Almost certainly not for a normal test.** A typical test generates 1–20
+records; a "bulk" test 100–200. Every ceiling below is in the **thousands**. You
+would have to be deliberately building a large integration fixture, or something
+seeding-shaped, to get close. If that is you, read on.
+
+"Primary records" here means the records you asked for — one per
+`setQuantityPerTemplate(n)`, `supplyList()` returns them. Each primary may pull
+in a graph of generated parents, so *records generated* is usually a small
+multiple of *primaries*.
+
+---
+
 XFTY generation runs inside your test's transaction and spends the same
 per-transaction governor budget your code under test needs. This page says which
-limits generation touches, how each scales with volume, and roughly where it
-breaks.
+limits generation touches, how each scales, and roughly where it breaks.
 
 **XFTY warns you automatically.** After every `supply*()` call (and every
 `XFTY_DeferredInserter.flush()`), XFTY checks how much of each limit generation
 consumed and `System.debug(LoggingLevel.WARN)`s when it crossed half — so a test
 that is quietly eating the budget shows up in the debug log before it fails. The
 warning names the limit and tells you to generate less.
+
+**Tune or silence it** with the `XFTY_Settings__c` hierarchy custom setting
+(read with `getInstance()` — no SOQL, org / profile / user scoped):
+
+| Field | Effect |
+|-------|--------|
+| `LimitWarnSoftPercent__c` | warn past this % of a limit (default 50) |
+| `LimitWarnHardPercent__c` | warn *harder* past this % (default 80) |
+| `LimitWarningsDisabled__c` | turn the warning off entirely |
 
 The numbers below were measured on a standard Developer Edition org with no
 custom automation on `Account` / `Contact`. **Your org's triggers, flows,
@@ -47,6 +69,15 @@ guard; re-run it against your own org.
 - **`MOCK` / `NEVER`**: a few thousand primaries. Heap is the first wall (~5,000–6,000 primaries with a parent each).
 - **`NOW` / `DEFERRED`**: **~1,000–1,500 primaries with parents.** The inserts and their triggers eat CPU fast; 4,000 records is already half the CPU budget before your code under test runs.
 - **DML rows**: hard cap at 10,000 — so ~5,000 primaries for a 2-level graph, fewer for a deeper one.
+
+### Deep vs. wide
+
+Both cost, and they multiply. A record's **depth** (its chain of ancestors) sets
+how many `insert` *statements* / dependency layers it needs; its **width** (how
+many parent types at each level) adds records and CPU per primary. A graph that
+is 5 deep and 3 wide at each level is ~15 generated records per primary — so the
+row and CPU ceilings above divide by roughly that. `PREVENT_CASCADE` (one level)
+and tighter inclusivity are the levers.
 
 ---
 

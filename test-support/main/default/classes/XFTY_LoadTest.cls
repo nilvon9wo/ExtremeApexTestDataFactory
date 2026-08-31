@@ -127,29 +127,35 @@ private class XFTY_LoadTest {
     }
 
     /**
-     * CPU ceiling. A deep chain (5 Account levels via distinct flavour keys) times
-     * 100 primaries - 600 records - is a heavy but legitimate setup. It must land
-     * well under the 10 s synchronous CPU limit.
+     * CPU ceiling on a deep *and* wide graph: a 5-level Account chain where every
+     * level also generates a User (~10 records per primary), times 100 - ~1 000
+     * records, MOCK. It must land under the 10 s synchronous CPU limit.
      */
     @IsTest
-    static void aDeepChainTimesHundredStaysUnderTheCpuLimit() {
+    static void aDeepAndWideGraphTimesHundredStaysUnderTheCpuLimit() {
         Long cpuBefore;
         Long cpuAfter;
+        Integer generated;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             cpuBefore = Limits.getCpuTime();
-            new XFTY_DummySObjectProvider(XFTY_HierarchyKeys.LEVEL_1, XFTY_HierarchyKeys.lookup())
+            XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(
+                    XFTY_HierarchyKeys.LEVEL_1, XFTY_HierarchyKeys.lookup()
+            )
                     .setQuantityPerTemplate(100)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyList();
+                    .supplyBundle();
             cpuAfter = Limits.getCpuTime();
+            generated = bundle.primaryRecords().size();
             Test.stopTest();
         }
 
+        Assert.areEqual(100, generated);
         Assert.isTrue(
                 cpuAfter - cpuBefore < Limits.getLimitCpuTime() * 0.75,
-                'a 5-deep chain x 100 should stay under 75% of the CPU limit, used ' + (cpuAfter - cpuBefore)
+                'a 5-deep, User-at-every-level graph x 100 should stay under 75% of the CPU limit, used '
+                        + (cpuAfter - cpuBefore)
         );
     }
 }
