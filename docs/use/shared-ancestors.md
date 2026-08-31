@@ -216,7 +216,10 @@ Putting an `XFTY_SharedAncestor` in a Provider you distribute (rather than on a
 `XFTY_DummySObjectProvider` instance in one test) is an *extend* concern — see
 [extend/shared-ancestors-in-templates.md](../extend/shared-ancestors-in-templates.md).
 
-▶ Runnable: `XFTY_SharedAncestorTest` · `XFTY_SharedAncestorHierarchyTest`
+▶ Runnable: `XFTY_SharedAncestorTest` (the basics) ·
+`XFTY_SharedAncestorHierarchyTest` (deep chains, `suppliedBy`, cross-SObject, a
+full three-level all-shared spine end to end) · `XFTY_SharedAncestorLoadTest`
+(500 children, one parent insert)
 
 See also: [relationships](relationships.md) · [bundles](bundles.md) ·
 [insert-modes](insert-modes.md)
