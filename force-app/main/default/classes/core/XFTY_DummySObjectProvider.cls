@@ -341,6 +341,105 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    /** Like `excludeRelationship`, but a no-op when the field is not a relationship on this Provider. */
+    public XFTY_DummySObjectProvider excludeRelationshipIfPresent(SObjectField sObjectField) {
+        Boolean isRelationship =
+                this.masterTemplate.requiredRelationshipBySObjectFieldMap.containsKey(sObjectField)
+                        || this.masterTemplate.optionalRelationshipBySObjectFieldMap.containsKey(sObjectField);
+        if (isRelationship) {
+            this.masterTemplate.remove(sObjectField);
+            this.hasCustomMasterTemplate = true;
+        }
+        return this;
+    }
+
+    // Downward generation - child collections --------------------------------------------------------------------------------
+    //
+    // The framework generates upward by default (a record pulls in the parents it needs).
+    // `with(...)` / `withChildren(...)` / `withChild(...)` generate records that hang BELOW
+    // this Provider's primaries. See docs/use/child-records.md.
+
+    private final List<XFTY_SObjectChildProvider> childProviders = new List<XFTY_SObjectChildProvider>();
+    private Boolean forceStructuralChildGeneration = false;
+
+    /**
+     * Add a fully-configured child collection. Repeatable - a `Contact` collection
+     * and a `Case` collection on the same Account both apply; two `Contact`
+     * collections on `Contact.AccountId` with different templates are additive.
+     */
+    public XFTY_DummySObjectProvider with(XFTY_SObjectChildProvider childProvider) {
+        if (childProvider == null) {
+            throw new SanityException('with(...) needs an XFTY_SObjectChildProvider.');
+        }
+        XFTY_SObjectChildProvider.assertFieldPointsAt(childProvider.relationshipField, this.sObjectType);
+        this.childProviders.add(childProvider);
+        return this;
+    }
+
+    /** Internal: a child of a DEFERRED / depthBatched parent must build its own children structurally too. */
+    public XFTY_DummySObjectProvider forceStructuralChildGeneration() {
+        this.forceStructuralChildGeneration = true;
+        return this;
+    }
+
+    /** Shortcut: `countPerParent` children on `childRelationshipField`, everything else defaulted. */
+    public XFTY_DummySObjectProvider withChildren(SObjectField childRelationshipField, Integer countPerParent) {
+        return this.with(new XFTY_SObjectChildProvider(childRelationshipField).setQuantity(countPerParent));
+    }
+
+    /** Shortcut: one child on `childRelationshipField`. */
+    public XFTY_DummySObjectProvider withChild(SObjectField childRelationshipField) {
+        return this.with(new XFTY_SObjectChildProvider(childRelationshipField));
+    }
+
+    private void generateChildren(XFTY_DummySObjectBundle bundle, Boolean structural) {
+        if (this.childProviders.isEmpty()) {
+            return;
+        }
+        List<SObject> primaries = bundle.getList(this.factoryOutlet.getPrimaryTargetField());
+        for (XFTY_SObjectChildProvider childProvider : this.childProviders) {
+            this.generateOneChildCollection(bundle, primaries, childProvider, structural);
+        }
+    }
+
+    private void generateOneChildCollection(
+            XFTY_DummySObjectBundle bundle,
+            List<SObject> primaries,
+            XFTY_SObjectChildProvider childProvider,
+            Boolean structural
+    ) {
+        List<SObject> childTemplates = new List<SObject>();
+        List<Integer> parentRowByChildRow = new List<Integer>();
+        for (Integer parentRow = 0; parentRow < primaries.size(); parentRow++) {
+            Id parentId = structural ? null : primaries[parentRow].Id;
+            for (SObject childTemplate : childProvider.templatesForParent(parentId)) {
+                childTemplates.add(childTemplate);
+                parentRowByChildRow.add(parentRow);
+            }
+        }
+
+        XFTY_InsertModeEnum childMode = structural
+                ? XFTY_InsertModeEnum.NEVER
+                : childProvider.effectiveInsertMode(this.insertMode);
+
+        XFTY_DummySObjectProvider childInstance = childProvider.newProvider(this.sObjectProviderLookup)
+                .setOverrideTemplateList(childTemplates)
+                .setInsertMode(childMode)
+                .setInclusivity(childProvider.effectiveInclusivity(this.inclusivity));
+        if (structural) {
+            // The back-reference is wired by the deferred buffer at flush, so the
+            // child must not also generate its own parent on that field, and its
+            // own children stay structural for the same flush.
+            childInstance
+                    .excludeRelationshipIfPresent(childProvider.relationshipField)
+                    .forceStructuralChildGeneration();
+        }
+
+        XFTY_DummySObjectBundle childBundle = childInstance.supplyBundle();
+
+        bundle.putChild(childProvider.relationshipField, childBundle, parentRowByChildRow);
+    }
+
     // Supply methods ----------------------------------------------------------------------------------------------------------
 
     public XFTY_DummySObjectBundle supplyBundle() {
@@ -349,7 +448,21 @@ public class XFTY_DummySObjectProvider {
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);
-        this.persist(bundle);
+        if (this.buildsStructurallyForBatchedInsert()) {
+            // Children join the same deferred graph - generated structurally now,
+            // FK wired when the buffer flushes (parents first).
+            this.generateChildren(bundle, true);
+            this.persist(bundle);
+        } else if (this.forceStructuralChildGeneration) {
+            // A structural child of a deferred parent: nothing to persist here, but
+            // its own children stay structural so the flush wires the whole subtree.
+            this.generateChildren(bundle, true);
+        } else {
+            // NOW / MOCK: primaries already have Ids after generate(); wire the
+            // children's back-reference concretely. NEVER: no Ids, FK left null.
+            this.persist(bundle);
+            this.generateChildren(bundle, false);
+        }
         budget.warnIfExpensive();
         return bundle;
     }

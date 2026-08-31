@@ -12,6 +12,7 @@
     <testClassName>XFTY_DefaultSObjectProviderLookupTest</testClassName>
     <testClassName>XFTY_DefaultValueStrategyTest</testClassName>
     <testClassName>XFTY_DummyDefaultRelationshipTest</testClassName>
+    <testClassName>XFTY_ChildGenerationTest</testClassName>
     <testClassName>XFTY_DummySObjectBundleTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
