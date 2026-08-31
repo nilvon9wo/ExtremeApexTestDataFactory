@@ -33,10 +33,17 @@ See [deferred-insert](../deferred-insert.md) for the trade-off (it changes
 
 ---
 
+## XFTY tells you when you're close
+
+After every `supply*()` call and every `XFTY_DeferredInserter.flush()`, XFTY
+`System.debug(WARN)`s if generation alone consumed over half of any governor
+limit. Watch the log for `XFTY:` lines.
+
 ## Measuring
 
-The `XFTY_Load` suite (`XFTY_LoadTest`, in `test-support/`) asserts the framework
-leaves plenty of CPU / heap / DML headroom on worst-case graphs. Model your own
-volume assertions on it.
+The `XFTY_Load` suite (`test-support/`) pins where generation breaks each limit —
+see [reference/volume-and-limits](../../reference/volume-and-limits.md) for the
+observed ceilings (short version: ~1,000–1,500 primaries per `NOW` / `DEFERRED`
+transaction, a few thousand for `MOCK`). Model your own volume assertions on it.
 
 ▶ Runnable: `XFTY_Ex_Adv_LargeGraphsTest` _(pending — Pass B)_

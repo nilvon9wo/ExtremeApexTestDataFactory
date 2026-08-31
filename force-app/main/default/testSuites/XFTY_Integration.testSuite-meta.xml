@@ -14,5 +14,6 @@
     <testClassName>XFTY_DepthBatchedInserterTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryDmlTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderScenarioTest</testClassName>
+    <testClassName>XFTY_GovernorBudgetTest</testClassName>
     <testClassName>XFTY_SharedAncestorTest</testClassName>
 </ApexTestSuite>

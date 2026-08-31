@@ -345,10 +345,12 @@ public class XFTY_DummySObjectProvider {
 
     public XFTY_DummySObjectBundle supplyBundle() {
         this.warnIfMixingCustomTemplateWithOverrides();
+        XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);
         this.persist(bundle);
+        budget.warnIfExpensive();
         return bundle;
     }
 

@@ -17,7 +17,8 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Shared ancestors — on-demand path (`XFTY_SharedAncestor`) | ✅ | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
 | 100% framework line coverage + split test suites | ✅ | [../contribute/coverage-standards.md](../contribute/coverage-standards.md) |
 | Deferred persistence — `.depthBatched()` + `DEFERRED` mode | ✅ (`407d38a`) | [deferred-persistence.md](deferred-persistence.md), [../use/deferred-insert.md](../use/deferred-insert.md) |
-| Shared ancestors — declared / deep chains / DML-batched resolution | 📋 | [shared-ancestors.md](shared-ancestors.md) |
+| Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
+| Shared ancestors — declared / deep chains / DML-batched resolution | 📋 (on-demand path complete + hardened against self-cycles) | [shared-ancestors.md](shared-ancestors.md) |
 | Descendant (up-flowing) value reads | 📋 | [descendant-value-reads.md](descendant-value-reads.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
 | Namespace / AppExchange listing | 📋 | [namespace-appexchange.md](namespace-appexchange.md) |
@@ -39,9 +40,12 @@ list are **done** — `142c6d9`, and the commit after it.)
    per-level Providers recurse freely; `.allowAncestorCycles()` on the Provider
    suppresses the guard. `PREVENT_CASCADE` unchanged.
 3. ~~Merge deferred persistence to `xfty-4.0-beta`~~ — **done** (`407d38a`).
-   Follow-ups on the branch, not blockers: shared-ancestor support under
-   `.depthBatched()` / `DEFERRED` (refused today with a clear error), and a
-   `XFTY_Load` measurement of the bundle-walk cost at volume.
+   ~~Volume measurement~~ — **done**: the `XFTY_Load` suite now pins the
+   ceilings ([../reference/volume-and-limits.md](../reference/volume-and-limits.md));
+   `DEFERRED` `flush()` costs ~5 s CPU at 4,000 records, so the practical
+   ceiling is ~1,000–1,500 primaries per transaction. Still open on the branch:
+   shared-ancestor support under `.depthBatched()` / `DEFERRED` (refused today
+   with a clear error).
 4. **Descendant (up-flowing) value reads — build option B** (a value pass inside
    `DEFERRED` `flush()`). Decided: skip the light `requestingChildTemplate`
    (option A). Rationale and the constraint this imposes:

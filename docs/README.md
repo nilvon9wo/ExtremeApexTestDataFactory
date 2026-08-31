@@ -55,6 +55,7 @@ matrix (every feature → its page → the runnable test that proves its example
 
 - [Migration](reference/migration.md) — every breaking change in this release
 - [Salesforce Considerations](reference/salesforce-considerations.md) — `@TestSetup`, mixed DML, governor limits
+- [Volume & Limits](reference/volume-and-limits.md) — where generation breaks Salesforce, and the automatic WARN
 - [Known Issues](reference/known-issues.md) — the open triage list
 - [API Cheat-Sheet](reference/api-cheatsheet.md) — every public class and method, one line each
 

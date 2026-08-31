@@ -24,7 +24,9 @@ public class XFTY_DeferredInserter {
 
     /** Save every registered record, back-fill its Id, and clear the registry. */
     public static void flush() {
+        XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
         buffer.insertAll();
         buffer = new XFTY_DeferredInsertBuffer();
+        budget.warnIfExpensive();
     }
 }

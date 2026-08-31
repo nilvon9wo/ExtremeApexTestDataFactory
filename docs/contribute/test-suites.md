@@ -6,7 +6,7 @@ XFTY defines `ApexTestSuite`s so you can run only what you need.
 |-------|----------|--------------|-------------|
 | `XFTY_Unit` | `force-app` | Every class that generates with `MOCK` / `NEVER` / `LATER` only — no framework DML, no dependency on org data. Includes the whole generation engine. | Constantly, while developing. Fastest. |
 | `XFTY_Integration` | `force-app` | The classes that do real DML — `NOW` / `RELATED_ONLY` insert modes and the bundled Providers persisting records. Sensitive to org config. | Before a commit; in CI. |
-| `XFTY_Load` | `test-support` | `XFTY_LoadTest` — volume and governor-budget ceilings (CPU, heap, DML-per-level). Assertions assume a quiet org, so it is **not** shipped in the package. | On demand, and when changing the engine. Slowest. |
+| `XFTY_Load` | `test-support` | `XFTY_LoadTest`, `XFTY_SharedAncestorLoadTest`, `XFTY_DeferredLoadTest` — push generation toward each governor limit and pin where it breaks ([../reference/volume-and-limits.md](../reference/volume-and-limits.md)). Assertions assume a quiet org, so it is **not** shipped. | On demand, and when changing the engine. Slowest. |
 | `XFTY_Examples` | `test-support` | `XFTY_Ex_*Test` — the runnable versions of every [use/](../use/) doc example. Guards the documented public API. | With the docs; in CI. |
 
 ```bash
