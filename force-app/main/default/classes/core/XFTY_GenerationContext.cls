@@ -66,12 +66,24 @@ public class XFTY_GenerationContext {
      */
     public final Boolean batchedInsertPending;
 
+    /**
+     * The Provider keys currently being generated up the ancestor chain, so
+     * `XFTY_AncestorGenerator` can refuse to recurse into one already in progress
+     * - see {@link XFTY_AncestorCycleGuard}. Configured by
+     * {@link #withAncestorCycleGuard} and grown one level at a time by
+     * {@link #enteringProviderFor}.
+     */
+    public final XFTY_AncestorCycleGuard cycleGuard;
+
     public XFTY_GenerationContext(
             XFTY_DummySObjectProviderLookupIntf providerLookup,
             XFTY_InsertModeEnum insertMode,
             XFTY_InsertInclusivityEnum inclusivity
     ) {
-        this(providerLookup, insertMode, inclusivity, null, null, -1, new List<List<SObjectField>>(), false, null);
+        this(
+                providerLookup, insertMode, inclusivity, null, null, -1,
+                new List<List<SObjectField>>(), false, null, new XFTY_AncestorCycleGuard(false)
+        );
     }
 
     private XFTY_GenerationContext(
@@ -83,7 +95,8 @@ public class XFTY_GenerationContext {
             Integer rowIndex,
             List<List<SObjectField>> forcedRelationshipPaths,
             Boolean batchedInsertPending,
-            XFTY_ValueFieldPass valueFieldPass
+            XFTY_ValueFieldPass valueFieldPass,
+            XFTY_AncestorCycleGuard cycleGuard
     ) {
         if (providerLookup == null) {
             throw new XFTY_DummySObjectFtyProviderException('A generation context requires a Provider Lookup.');
@@ -99,6 +112,7 @@ public class XFTY_GenerationContext {
                 : forcedRelationshipPaths;
         this.batchedInsertPending = (batchedInsertPending == true);
         this.valueFieldPass = valueFieldPass;
+        this.cycleGuard = cycleGuard;
     }
 
     /** A copy carrying the given `includeOptional(...)` paths (top-level entry point). */
@@ -106,7 +120,31 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.batchedInsertPending,
-                this.valueFieldPass
+                this.valueFieldPass, this.cycleGuard
+        );
+    }
+
+    /**
+     * A copy whose cycle guard permits repeated Provider keys only if
+     * `cyclesAllowed` - `.allowAncestorCycles()` on the Provider. The chain of
+     * in-progress keys starts empty, so one level of self-reference (a record
+     * with a parent of its own type, which terminates on its own) is always fine;
+     * the guard fires on the *second* repeat. Top-level entry point.
+     */
+    public XFTY_GenerationContext withAncestorCycleGuard(Boolean cyclesAllowed) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
+                this.batchedInsertPending, this.valueFieldPass, new XFTY_AncestorCycleGuard(cyclesAllowed)
+        );
+    }
+
+    /** A copy whose cycle guard has descended one level into `providerKeyHash`. */
+    public XFTY_GenerationContext enteringProviderFor(String providerKeyHash) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
+                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard.descendingInto(providerKeyHash)
         );
     }
 
@@ -115,7 +153,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, true,
-                this.valueFieldPass
+                this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -159,7 +197,7 @@ public class XFTY_GenerationContext {
                 XFTY_InsertInclusivityEnum.PREVENT_CASCADE == this.inclusivity
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
-                null, null, -1, childPaths, this.batchedInsertPending, null
+                null, null, -1, childPaths, this.batchedInsertPending, null, this.cycleGuard
         );
     }
 
@@ -171,7 +209,8 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.batchedInsertPending, null
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.batchedInsertPending, null,
+                this.cycleGuard
         );
     }
 
@@ -185,7 +224,7 @@ public class XFTY_GenerationContext {
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex,
                 this.forcedRelationshipPaths, this.batchedInsertPending,
-                new XFTY_ValueFieldPass(fieldBeingBuilt, pendingContextAwareValues)
+                new XFTY_ValueFieldPass(fieldBeingBuilt, pendingContextAwareValues), this.cycleGuard
         );
     }
 

@@ -162,8 +162,31 @@ private class XFTY_DummySObjectProviderTest {
                     .setOverrideTemplateList(new List<SObject>{ new Contact(), new Account() });
             Assert.fail('Expected a ConflictException');
         } catch (XFTY_DummySObjectProvider.ConflictException ex) {
-            Assert.isTrue(ex.getMessage().contains('is not matched by template'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('Account override template'), ex.getMessage());
         }
+    }
+
+    @IsTest
+    static void theConstructorTypeWinsAndAMismatchedOverrideListThrows() {
+        // a homogeneous list of the "wrong" type used to silently retarget the Provider
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .setOverrideTemplateList(new List<SObject>{ new Account() });
+            Assert.fail('Expected a ConflictException - the constructor asked for Contact');
+        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
+            Assert.isTrue(ex.getMessage().contains('requests Contact'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void aHomogeneousListFromTheListConstructorIsAccepted() {
+        List<SObject> results = new XFTY_DummySObjectProvider(
+                new List<SObject>{ new Contact(FirstName = 'A'), new Contact(FirstName = 'B') }, LOOKUP
+        )
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supplyList();
+
+        Assert.areEqual(2, results.size());
     }
 
     @IsTest

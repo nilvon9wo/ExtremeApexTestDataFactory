@@ -64,14 +64,29 @@ public class XFTY_AncestorGenerator {
             SObjectField field,
             XFTY_DummyDefaultRelationshipIntf relationship
     ) {
-        XFTY_DummySobjectProviderIntf provider = this.providerFor(relationship);
+        XFTY_LookupKeyIntf childKey = relationship.resolveLookupKey(this.context.providerLookup);
+        this.assertNoAncestorCycle(field, childKey);
+        XFTY_DummySobjectProviderIntf provider = this.context.providerLookup.get(childKey);
+        XFTY_GenerationContext childContext = this.context.forRelated(field)
+                .enteringProviderFor(childKey.getHashKey());
         List<SObject> templates = this.clonedTemplatesFor(relationship);
-        XFTY_GenerationContext childContext = this.context.forRelated(field);
         XFTY_DummySObjectBundle generated = provider.createBundle(childContext, templates);
         SObjectField primaryField = provider.getPrimaryTargetField();
         List<SObject> primaries = generated.getList(primaryField);
         bundle.put(field, generated);
         bundle.put(field, primaries);
+    }
+
+    private void assertNoAncestorCycle(SObjectField field, XFTY_LookupKeyIntf childKey) {
+        if (!this.context.cycleGuard.wouldCycleOn(childKey.getHashKey())) {
+            return;
+        }
+        throw new XFTY_DummySObjectFtyProviderException(
+                'Relationship ' + field + ' would generate another ' + childKey.getSObjectType()
+                        + ', but one is already being generated further up this graph - a cycle.'
+                        + ' Use distinct per-level Providers (different lookup keys), PREVENT_CASCADE,'
+                        + ' or .allowAncestorCycles() when the chain terminates on its own.'
+        );
     }
 
     private List<SObject> clonedTemplatesFor(XFTY_DummyDefaultRelationshipIntf relationship) {
@@ -84,11 +99,6 @@ public class XFTY_AncestorGenerator {
         return required != null
                 ? required
                 : this.template.optionalRelationshipBySObjectFieldMap.get(field);
-    }
-
-    private XFTY_DummySobjectProviderIntf providerFor(XFTY_DummyDefaultRelationshipIntf relationship) {
-        XFTY_LookupKeyIntf key = relationship.resolveLookupKey(this.context.providerLookup);
-        return this.context.providerLookup.get(key);
     }
 
     private Boolean inclusivityIs(XFTY_InsertInclusivityEnum value) {
