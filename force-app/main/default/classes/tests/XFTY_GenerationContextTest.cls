@@ -111,6 +111,26 @@ private class XFTY_GenerationContextTest {
     }
 
     @IsTest
+    static void forValueFieldExposesASiblingAndGuardsAPendingOne() {
+        Account record = new Account(Name = 'sib', Site = 'HQ');
+        XFTY_GenerationContext atField = new XFTY_GenerationContext(
+                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
+        )
+                .forRecord(record, new XFTY_DummySObjectBundle(), 0)
+                .forValueField(Account.Description, new Set<SObjectField>{ Account.Type });
+
+        Assert.areEqual('HQ', atField.siblingValue(Account.Site), 'a resolved sibling is readable');
+
+        try {
+            atField.siblingValue(Account.Type);
+            Assert.fail('Expected an exception - Account.Type is still pending');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('Type'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('Description'), ex.getMessage());
+        }
+    }
+
+    @IsTest
     static void forRelatedClearsAnyPerRecordState() {
         XFTY_GenerationContext related = new XFTY_GenerationContext(
                 LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.ALL

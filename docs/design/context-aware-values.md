@@ -98,9 +98,19 @@ not something to rely on.
 | **B** | Each context-aware strategy declares the sibling fields it reads; topological sort. | arbitrary context-aware dependency chains. |
 | **C** | `context.sibling(field)` resolves that field lazily on demand, recursing, with cycle detection. | everything, including cycles (as errors). |
 
-**A** covers the motivating cases and is a small change. Document the limitation:
-a context-aware value that reads *another* context-aware value only works if the
+**A** covers the motivating cases and is a small change. The limitation: a
+context-aware value that reads *another* context-aware value only works if the
 dependency was `put(...)` first. Revisit **B**/**C** if that bites.
+
+**Shipped as A, with a loud guard.** The value pass threads the set of
+context-aware fields it has *not* reached yet ({@link XFTY_ValueFieldPass}) into
+the context. `context.siblingValue(field)` - which `XFTY_CopyFromSibling` and any
+custom strategy should use instead of `recordBeingBuilt.get(field)` - throws a
+clear `XFTY_DummySObjectFtyProviderException` (naming both fields and the `put`
+order to fix it) when `field` is still in that set. A wrong order, or a circular
+pair, therefore fails loudly rather than writing a silent wrong `null`. The set
+membership is also what tells "not generated yet" apart from "generated to
+`null`": only the former throws.
 
 Ancestor reads are unaffected by ordering - the ancestor bundle is fully built
 before any of this record's values are filled (factory phase order), so pass 2
@@ -144,7 +154,7 @@ work lands, since they share the machinery.
 ## Built-ins to ship
 
 - `XFTY_CopyFromSibling(SObjectField field)` - `get(ctx)` returns
-  `ctx.recordBeingBuilt.get(field)`.
+  `ctx.siblingValue(field)` (guarded; see decision 3).
 - `XFTY_CopyFromAncestor(SObjectField relationshipField, SObjectField sourceField)`
   - returns `ctx.bundleSoFar.getList(relationshipField)[rowIndex].get(sourceField)`.
   A deeper path (`Opportunity -> Account -> Owner.Name`) is a v2 concern - it needs
@@ -185,9 +195,11 @@ Topological / lazy sibling resolution if the insertion-order limitation bites
 
 - **1** - **B**: `XFTY_ContextAwareValueIntf` is a separate interface, second map
   on the Master Template. No LSP violation, no throwing no-arg `get()`.
-- **3** - two-pass, insertion order, shipped. Also worth doing lazy
-  `context.sibling(field)` (option C) later; only option B (declared deps +
-  topological sort) is rejected as hard to consume.
+- **3** - two-pass, insertion order, shipped, **with a loud guard**
+  (`context.siblingValue(field)` throws on a not-yet-generated / circular
+  context-aware sibling instead of returning a silent `null`). Full lazy
+  resolution (option C) is still worth doing later if arbitrary chains are needed;
+  only option B (declared deps + topological sort) is rejected as hard to consume.
 - `XFTY_CopyFromAncestor` ships single- and multi-hop.
 
 ## Open

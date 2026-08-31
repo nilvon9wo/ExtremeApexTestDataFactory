@@ -31,9 +31,13 @@ public class XFTY_ContextAwareValuePass {
     }
 
     private void completeRow(SObject record, Integer row) {
-        XFTY_GenerationContext scoped = this.context.forRecord(record, this.bundle, row);
+        XFTY_GenerationContext rowContext = this.context.forRecord(record, this.bundle, row);
+        Set<SObjectField> pendingContextAwareValues = new Set<SObjectField>();
+        pendingContextAwareValues.addAll(this.template.contextAwareBySObjectFieldMap.keySet());
         for (SObjectField field : this.template.orderedValueFields()) {
+            XFTY_GenerationContext scoped = rowContext.forValueField(field, pendingContextAwareValues);
             this.completeField(record, scoped, field);
+            pendingContextAwareValues.remove(field);
         }
     }
 

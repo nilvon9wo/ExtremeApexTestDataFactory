@@ -244,12 +244,18 @@ of the record:
 2. **Context-aware values** - the `XFTY_ContextAwareValueIntf` strategies (a
    separate map, `contextAwareBySObjectFieldMap`), after the ancestor records
    exist and lookups are wired. Each is handed a `XFTY_GenerationContext` scoped
-   to its record (`recordBeingBuilt`, `bundleSoFar`, `rowIndex`).
+   to its record (`recordBeingBuilt`, `bundleSoFar`, `rowIndex`) and to the one
+   field being generated (`valueFieldPass`, which also carries the set of
+   context-aware fields not yet reached).
 
 A context-aware value therefore sees all plain values, all wired lookups, and any
-context-aware value `put` before it. It cannot see a later context-aware value or
-a field on a generated *child* (which does not exist yet - that would need a
-deferred pass; see [design/context-aware-values.md](design/context-aware-values.md)).
+context-aware value `put` before it. Reading a *later* context-aware value, or a
+circular pair, throws from `context.siblingValue(field)` - naming both fields and
+the `put` order that fixes it - rather than returning a silent wrong `null`;
+the not-yet-reached set is what separates that case from a sibling that was
+genuinely generated to `null`. A field on a generated *child* cannot be read at
+all (it does not exist yet - that would need a deferred pass; see
+[design/context-aware-values.md](design/context-aware-values.md)).
 
 ---
 

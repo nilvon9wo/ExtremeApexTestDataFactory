@@ -79,6 +79,74 @@ private class XFTY_ContextAwareValueTest {
         Assert.isTrue(strategy instanceof XFTY_ContextAwareValueIntf);
     }
 
+    @IsTest
+    static void copyFromSiblingRejectsAContextAwareSiblingThatIsPutAfterIt() {
+        // Description (reader) is put before Site (a context-aware value it reads).
+        try {
+            new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                    .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
+                    .put(Account.Site, new XFTY_CopyFromSibling(Account.AccountNumber))
+                    .put(Account.AccountNumber, 'seed')
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supply();
+            Assert.fail('Expected an exception - Site is a context-aware value put after its reader');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('Site'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('has not been generated yet'), ex.getMessage());
+            Assert.isTrue(ex.getMessage().contains('before'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void copyFromSiblingRejectsACircularSiblingReference() {
+        try {
+            new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                    .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
+                    .put(Account.Site, new XFTY_CopyFromSibling(Account.Description))
+                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                    .supply();
+            Assert.fail('Expected an exception - Description and Site copy from each other');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('has not been generated yet'), ex.getMessage());
+        }
+    }
+
+    @IsTest
+    static void copyFromSiblingTellsAGeneratedNullApartFromANotYetGeneratedSibling() {
+        // Site is context-aware and generates to null; Description reads it, put
+        // AFTER it - so the read is legal and simply yields null, no exception.
+        Account result;
+        Test.startTest();
+        result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .put(Account.Site, new AlwaysNull())
+                .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        Assert.isNull(result.Site, 'the sibling genuinely generated to null');
+        Assert.isNull(result.Description, 'copying a generated-null sibling yields null - and does not throw');
+    }
+
+    @IsTest
+    static void copyFromSiblingCanOnlyRunInsideTheValuePass() {
+        try {
+            new XFTY_CopyFromSibling(Account.Name).get(
+                    new XFTY_GenerationContext(LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE)
+            );
+            Assert.fail('Expected an exception - there is no record being built');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            Assert.isTrue(ex.getMessage().contains('context-aware value is being generated'), ex.getMessage());
+        }
+    }
+
+    /** A context-aware strategy whose generated value is legitimately null. */
+    private class AlwaysNull implements XFTY_ContextAwareValueIntf {
+        public Object get(XFTY_GenerationContext context) {
+            return null;
+        }
+    }
+
     // --- XFTY_CopyFromAncestor ---------------------------------------------
 
     @IsTest

@@ -9,7 +9,9 @@
  * The sibling must be resolvable when this runs: a plain value / override-template
  * value (always), a wired lookup field (always - the context-aware pass runs
  * after wiring), or another context-aware value that was `put(...)` *before* this
- * one.
+ * one. Reading a context-aware sibling that was `put(...)` *after* this one (or a
+ * circular pair) throws loudly from {@link XFTY_GenerationContext#siblingValue} -
+ * it is never a silent `null`.
  */
 @IsTest
 public class XFTY_CopyFromSibling implements XFTY_ContextAwareValueIntf {
@@ -23,6 +25,6 @@ public class XFTY_CopyFromSibling implements XFTY_ContextAwareValueIntf {
     }
 
     public Object get(XFTY_GenerationContext context) {
-        return context.recordBeingBuilt.get(this.sourceField);
+        return context.siblingValue(this.sourceField);
     }
 }

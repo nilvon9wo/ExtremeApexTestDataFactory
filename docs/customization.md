@@ -258,11 +258,16 @@ For anything with logic, implement `XFTY_ContextAwareValueIntf` - one method, an
 ```apex
 public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
     public Object get(XFTY_GenerationContext context) {
-        Date birthdate = (Date) context.recordBeingBuilt.get(Contact.Birthdate);
+        Date birthdate = (Date) context.siblingValue(Contact.Birthdate);
         return birthdate != null && birthdate.addYears(18) <= Date.today();
     }
 }
 ```
+
+Read siblings with `context.siblingValue(field)` rather than
+`context.recordBeingBuilt.get(field)` directly: it returns the same value, but if
+`field` is another context-aware value that has not been generated yet it throws a
+clear error instead of handing back a misleading `null`.
 
 `XFTY_ContextAwareValueIntf` is a separate interface, not a subtype of
 `XFTY_DummyDefaultValueIntf` - a context-aware value has no meaningful no-argument
@@ -270,7 +275,8 @@ public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
 
 `context` exposes:
 
-- `recordBeingBuilt` - this record, plain values already set and lookups wired;
+- `siblingValue(field)` - the final value of another field on this record (guarded,
+  see above); `recordBeingBuilt` is the raw record behind it;
 - `bundleSoFar` - everything this generation call has built: the generated parents
   (`getList(relationshipField)`) **and** the sibling primary records
   (`getList(<primaryField>)`, e.g. `getList(Account.Id)`);
@@ -279,8 +285,9 @@ public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
 **How it runs.** Values are filled in two passes: plain strategies first, then
 context-aware strategies in the order they were `put(...)`. So a context-aware
 value can read any plain field, any wired lookup, and any *earlier* context-aware
-value. Reading a *later* context-aware value, or a field on a generated child
-(the child does not exist yet), is not supported - see
+value. Reading a *later* context-aware value (or a circular pair) throws a clear
+error naming both fields - it is never a silent `null`. Reading a field on a
+generated child is not supported (the child does not exist yet) - see
 [design/context-aware-values.md](design/context-aware-values.md).
 
 An override-template value still wins over a context-aware strategy, exactly as
