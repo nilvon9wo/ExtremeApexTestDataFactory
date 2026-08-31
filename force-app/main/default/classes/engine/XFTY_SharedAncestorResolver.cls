@@ -1,21 +1,22 @@
 /**
- * Resolves the **deep** shared ancestors a generation run will reach - those
- * whose Provider pulls in relationships of its own - before the main graph
- * build, in one depth-batched pass per ancestor sub-graph:
+ * Resolves the shared ancestors configured in the current test method, before
+ * the main graph build, in one depth-batched pass per ancestor sub-graph:
  *
  * - **S0 collect.** Depth-first from the given ancestors, following each one's
- *   Provider's Master Template into any nested shared ancestors. Cycles throw;
- *   excessive depth warns. Produces a dependency order (deepest first) so every
- *   ancestor's shared parents are resolved before it.
- * - **S1 generate.** Each ancestor's Provider `createBundle` in `NEVER` mode,
- *   `REQUIRED` inclusivity - its own non-shared parents come with it, in memory.
- * - **S2 depth-batched persist.** The ancestor's in-memory graph is inserted
- *   (or mock-Id'd, or left alone) one dependency layer at a time - the fewest
- *   `insert` statements. Already-resolved shared ancestors in the graph are
- *   anchors, not re-inserted.
+ *   {@link XFTY_SharedAncestorProvider#masterTemplate} into any nested shared
+ *   ancestors. Cycles throw; excessive depth warns. Produces a dependency order
+ *   (deepest first) so every ancestor's shared parents are resolved before it.
+ * - **S1 generate.** Each ancestor's {@link XFTY_SharedAncestorProvider#buildInMemory}
+ *   generates its whole graph with no persistence - a flat ancestor is a single
+ *   record, a deep one comes with its own parents.
+ * - **S2 depth-batched persist.** The in-memory graph is inserted (or mock-Id'd,
+ *   or left alone) one dependency layer at a time - the fewest `insert`
+ *   statements. Already-resolved shared ancestors in the graph are anchors, not
+ *   re-inserted.
  *
- * Flat shared ancestors (no relationships of their own) are not handled here -
- * they resolve inline with their siblings. See docs/use/shared-ancestors.md.
+ * The resolver never branches on how an ancestor was configured - a
+ * {@link XFTY_SharedAncestorProvider} answers for both. See
+ * docs/use/shared-ancestors.md.
  */
 @IsTest
 public class XFTY_SharedAncestorResolver {
@@ -97,7 +98,7 @@ public class XFTY_SharedAncestorResolver {
     }
 
     private List<XFTY_SharedAncestor> nestedSharedAncestorsOf(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectMasterTemplate masterTemplate = this.masterTemplateOf(ancestor);
+        XFTY_DummySObjectMasterTemplate masterTemplate = ancestor.source().masterTemplate(this.lookup);
         List<XFTY_DummyDefaultRelationshipIntf> relationships = new List<XFTY_DummyDefaultRelationshipIntf>();
         relationships.addAll(masterTemplate.requiredRelationshipBySObjectFieldMap.values());
         relationships.addAll(masterTemplate.optionalRelationshipBySObjectFieldMap.values());
@@ -127,56 +128,14 @@ public class XFTY_SharedAncestorResolver {
     }
 
     private void buildAndPersist(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectBundle bundle = this.buildInMemory(ancestor);
+        XFTY_SharedAncestorProvider source = ancestor.source();
+        XFTY_DummySObjectBundle bundle = source.buildInMemory(this.lookup);
 
         XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
         buffer.add(bundle);
         buffer.resolveAll(this.mode);
 
-        SObject record = bundle.getList(this.primaryFieldOf(ancestor))[0];
+        SObject record = bundle.getList(source.primaryField(this.lookup))[0];
         ancestor.acceptResolved(record, bundle, this.mode == XFTY_InsertModeEnum.NOW);
-    }
-
-    /** S1: the ancestor's whole graph, generated with no persistence. */
-    private XFTY_DummySObjectBundle buildInMemory(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
-        if (configured != null) {
-            // The developer handed over a fully-configured Provider - values,
-            // relationship control, path values and all. Run it structurally.
-            configured.assertUsableAsSharedAncestorSource();
-            return configured.buildStructurally();
-        }
-        XFTY_GenerationContext structuralContext = new XFTY_GenerationContext(
-                this.lookup, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.REQUIRED
-        );
-        return this.providerFor(ancestor).createBundle(
-                structuralContext,
-                new List<SObject>{ this.templateFor(ancestor).clone(true, true, true, true) }
-        );
-    }
-
-    private XFTY_DummySObjectMasterTemplate masterTemplateOf(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
-        return (configured != null)
-                ? configured.effectiveMasterTemplate()
-                : this.providerFor(ancestor).getMasterTemplate();
-    }
-
-    private SObjectField primaryFieldOf(XFTY_SharedAncestor ancestor) {
-        XFTY_DummySObjectProvider configured = ancestor.getConfiguredProvider();
-        return (configured != null)
-                ? configured.primaryTargetField()
-                : this.providerFor(ancestor).getPrimaryTargetField();
-    }
-
-    private XFTY_DummySobjectProviderIntf providerFor(XFTY_SharedAncestor ancestor) {
-        return this.lookup.get(ancestor.resolveLookupKey(this.lookup));
-    }
-
-    private SObject templateFor(XFTY_SharedAncestor ancestor) {
-        SObject template = ancestor.getOverrideTemplate();
-        return (template != null)
-                ? template
-                : ancestor.resolveLookupKey(this.lookup).getSObjectType().newSObject();
     }
 }

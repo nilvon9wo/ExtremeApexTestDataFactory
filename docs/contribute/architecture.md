@@ -75,7 +75,8 @@ Each component has a single responsibility.
 | `XFTY_PathValue` / `XFTY_PathValueApplier` | A `put(List<SObjectField>, value)` override targeted at a generated ancestor; the applier lands the at-target ones on the level's template. |
 | `XFTY_SObjectChildProvider` | Config for one downward child collection (`with(...)` / `withChildren(...)`); builds the child Provider + templates, recursively for grandchildren. |
 | `XFTY_SharedRelationshipWiring` | Wires an `XFTY_SharedAncestor` (one resolved record, every child pointed at it). |
-| `XFTY_SharedAncestorResolver` | The S0–S2 pre-phase for shared ancestors: collect (dependency-ordered, nested, cycle/depth/re-entrancy guards) → generate `NEVER` → depth-batched persist per sub-graph. Runs for every configured `XFTY_SharedAncestor`; deep ones fan into a sub-graph, flat ones are a single record. |
+| `XFTY_SharedAncestorResolver` | The S0–S2 pre-phase for shared ancestors: collect (dependency-ordered, nested, cycle/depth/re-entrancy guards) → generate `NEVER` → depth-batched persist per sub-graph. Runs for every configured `XFTY_SharedAncestor`; talks only to `XFTY_SharedAncestorProvider`. |
+| `XFTY_SharedAncestorProvider` | How one shared ancestor's record is built — the recipe the resolver works from, so it never branches on configuration kind. `XFTY_KeyedAncestorProvider` (`of` / `withKey` — a key ± override template) and `XFTY_ConfiguredAncestorProvider` (`suppliedBy` — wraps a full `XFTY_DummySObjectProvider`). |
 | `XFTY_RecordCloneFactory` | Deep-clones templates so no two generated records share an instance. |
 | `XFTY_IndexedRecord` | An `(index, record)` pair — records are identified by position, since Apex `SObject` equality is by value. |
 | `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |

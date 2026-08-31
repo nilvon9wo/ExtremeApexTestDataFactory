@@ -58,11 +58,9 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     private static final Map<String, XFTY_SharedAncestor> BY_NAME = new Map<String, XFTY_SharedAncestor>();
 
     private final String name;
-    private SObject overrideTemplate;
-    private XFTY_LookupKeyIntf explicitLookupKey;
-    private XFTY_DummySObjectProvider configuredProvider;
+    private XFTY_SharedAncestorProvider source;
+    private XFTY_KeyedAncestorProvider keyedSource;   // set iff `source` is the keyed kind
     private SObjectField relatedField;
-    private XFTY_LookupKeyIntf resolvedLookupKey;
     private SObject resolvedRecord;
     private XFTY_DummySObjectBundle resolvedBundle;
     private Boolean resolvedRecordIsPersisted = false;
@@ -91,7 +89,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     public static XFTY_SharedAncestor getOrElse(String name, SObject template) {
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.isUnconfigured()) {
-            ancestor.overrideTemplate = template;
+            ancestor.of(template);
         }
         return ancestor;
     }
@@ -100,27 +98,28 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     public static XFTY_SharedAncestor getOrElse(String name, XFTY_LookupKeyIntf variantKey) {
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.isUnconfigured()) {
-            ancestor.explicitLookupKey = variantKey;
+            ancestor.withKey(variantKey);
         }
         return ancestor;
     }
 
     private Boolean isUnconfigured() {
-        return this.overrideTemplate == null
-                && this.explicitLookupKey == null
-                && this.configuredProvider == null
-                && this.resolvedRecord == null;
+        return this.source == null && this.resolvedRecord == null;
     }
 
     private Boolean isConfigured() {
-        return this.overrideTemplate != null
-                || this.explicitLookupKey != null
-                || this.configuredProvider != null;
+        return this.source != null;
     }
 
-    /** Package-internal, for {@link XFTY_SharedAncestorResolver}. */
-    public XFTY_DummySObjectProvider getConfiguredProvider() {
-        return this.configuredProvider;
+    /** Package-internal, for {@link XFTY_SharedAncestorResolver}: the recipe for this ancestor's record. */
+    public XFTY_SharedAncestorProvider source() {
+        if (this.source == null) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Shared ancestor "' + this.name + '" was never configured. Call '
+                            + 'XFTY_SharedAncestor.get("' + this.name + '").of(...), .withKey(...), or .suppliedBy(...).'
+            );
+        }
+        return this.source;
     }
 
     // Automatic pre-phase --------------------------------------------------
@@ -216,9 +215,6 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     public Boolean isResolved() {
         return this.resolvedRecord != null;
     }
-    public XFTY_LookupKeyIntf getExplicitLookupKey() {
-        return this.explicitLookupKey;
-    }
 
     /** Package-internal: the resolver hands back the generated record + its bundle. */
     public void acceptResolved(SObject record, XFTY_DummySObjectBundle bundle, Boolean persisted) {
@@ -259,51 +255,41 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
 
     // Configuration ----------------------------------------------------------
     //
-    // Simple cases: of(template) and/or withKey(variant) - a record, a variant, or
-    // both (the key picks the Provider, the record is its override template).
-    // Full control: suppliedBy(provider) - hand over a completely configured
-    // XFTY_DummySObjectProvider (value strategies, relationship control, path
-    // values, child collections, everything). of / withKey and suppliedBy are
-    // mutually exclusive; copyingRelatedField composes with either.
+    // of(template) and/or withKey(variant) build a XFTY_KeyedAncestorProvider;
+    // suppliedBy(provider) builds a XFTY_ConfiguredAncestorProvider. The two are
+    // mutually exclusive - the Provider already says what of / withKey would.
+    // copyingRelatedField composes with either.
 
     /** The override template for the shared record; also identifies its SObject type. */
     public XFTY_SharedAncestor of(SObject overrideTemplate) {
         this.assertUnresolved('of(...)');
-        this.assertNotProviderConfigured('of(...)');
-        this.overrideTemplate = overrideTemplate;
+        this.keyed('of(...)').withTemplate(overrideTemplate);
         return this;
     }
 
     /** Pin the Provider variant that generates the shared record. */
     public XFTY_SharedAncestor withKey(XFTY_LookupKeyIntf lookupKey) {
         this.assertUnresolved('withKey(...)');
-        this.assertNotProviderConfigured('withKey(...)');
-        this.explicitLookupKey = lookupKey;
+        this.keyed('withKey(...)').withKey(lookupKey);
         return this;
     }
 
     /**
      * Build the shared record from a fully-configured `XFTY_DummySObjectProvider` -
      * anything a normal generation call can express (value strategies, `putRequired`
-     * / `includeOptional` / `put(path, ...)`, a pinned variant, child collections).
-     * The Provider carries its own override template and lookup, so `of(...)` /
-     * `withKey(...)` are not used alongside it. The first generated row is the
-     * shared record; the caller's insert mode still governs persistence.
+     * / `includeOptional` / `put(path, ...)`, a pinned variant). The Provider
+     * carries its own override template and lookup, so `of(...)` / `withKey(...)`
+     * are not used alongside it. The caller's insert mode still governs persistence.
      */
     public XFTY_SharedAncestor suppliedBy(XFTY_DummySObjectProvider provider) {
         this.assertUnresolved('suppliedBy(...)');
-        if (provider == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '": suppliedBy(...) needs an XFTY_DummySObjectProvider.'
-            );
-        }
-        if (this.overrideTemplate != null || this.explicitLookupKey != null) {
+        if (this.source != null) {
             throw new XFTY_DummySObjectFtyProviderException(
                     'Shared ancestor "' + this.name + '": use suppliedBy(provider) OR of(...)/withKey(...), not both. '
                             + 'The Provider already carries its override template and variant.'
             );
         }
-        this.configuredProvider = provider;
+        this.source = new XFTY_ConfiguredAncestorProvider(provider);
         return this;
     }
 
@@ -314,6 +300,21 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return this;
     }
 
+    /** The keyed recipe, created on first `of`/`withKey`; throws if `suppliedBy` already claimed the slot. */
+    private XFTY_KeyedAncestorProvider keyed(String call) {
+        if (this.source == null) {
+            this.keyedSource = new XFTY_KeyedAncestorProvider(this.name);
+            this.source = this.keyedSource;
+        }
+        if (this.keyedSource == null) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'Shared ancestor "' + this.name + '": ' + call + ' cannot be combined with '
+                            + 'suppliedBy(provider) - configure the Provider instead.'
+            );
+        }
+        return this.keyedSource;
+    }
+
     private void assertUnresolved(String call) {
         if (this.resolvedRecord != null) {
             throw new XFTY_DummySObjectFtyProviderException(
@@ -322,19 +323,10 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         }
     }
 
-    private void assertNotProviderConfigured(String call) {
-        if (this.configuredProvider != null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '": ' + call + ' cannot be combined with suppliedBy(provider) - '
-                            + 'configure the Provider instead.'
-            );
-        }
-    }
-
     // XFTY_DummyDefaultRelationshipIntf ------------------------------------
 
     public SObject getOverrideTemplate() {
-        return this.overrideTemplate;
+        return (this.keyedSource != null) ? this.keyedSource.overrideTemplate() : null;
     }
 
     public SObjectField getRelatedField() {
@@ -342,16 +334,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     public XFTY_LookupKeyIntf resolveLookupKey(XFTY_DummySObjectProviderLookupIntf providerLookup) {
-        if (this.resolvedLookupKey == null) {
-            if (this.configuredProvider != null) {
-                this.resolvedLookupKey = XFTY_LookupKey.get(this.configuredProvider.targetSObjectType());
-            } else if (this.explicitLookupKey != null) {
-                this.resolvedLookupKey = this.explicitLookupKey;
-            } else {
-                this.resolvedLookupKey = XFTY_ProviderLookups.resolve(providerLookup, this.requireTemplate());
-            }
-        }
-        return this.resolvedLookupKey;
+        return this.source().lookupKey(providerLookup);
     }
 
     // XFTY_SharedRelationshipIntf ----------------------------------------
@@ -408,15 +391,5 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
      */
     public Boolean isResolvedRecordPersisted() {
         return this.resolvedRecordIsPersisted;
-    }
-
-    private SObject requireTemplate() {
-        if (this.overrideTemplate == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '" was never configured. Call '
-                            + 'XFTY_SharedAncestor.get("' + this.name + '").of(new SomeSObject()) before generating.'
-            );
-        }
-        return this.overrideTemplate;
     }
 }
