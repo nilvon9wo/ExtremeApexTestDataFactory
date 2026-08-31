@@ -75,7 +75,7 @@ Each component has a single responsibility.
 | `XFTY_PathValue` / `XFTY_PathValueApplier` | A `put(List<SObjectField>, value)` override targeted at a generated ancestor; the applier lands the at-target ones on the level's template. |
 | `XFTY_SObjectChildProvider` | Config for one downward child collection (`with(...)` / `withChildren(...)`); builds the child Provider + templates, recursively for grandchildren. |
 | `XFTY_SharedRelationshipWiring` | Wires an `XFTY_SharedAncestor` (one resolved record, every child pointed at it). |
-| `XFTY_DeclaredAncestorResolver` | The S0–S2 pre-phase for **declared** shared ancestors: collect (dependency-ordered, nested, cycle/depth guards) → generate `NEVER` → depth-batched persist per ancestor. |
+| `XFTY_SharedAncestorResolver` | The S0–S2 pre-phase for shared ancestors: collect (dependency-ordered, nested, cycle/depth/re-entrancy guards) → generate `NEVER` → depth-batched persist per sub-graph. Runs for every configured `XFTY_SharedAncestor`; deep ones fan into a sub-graph, flat ones are a single record. |
 | `XFTY_RecordCloneFactory` | Deep-clones templates so no two generated records share an instance. |
 | `XFTY_IndexedRecord` | An `(index, record)` pair — records are identified by position, since Apex `SObject` equality is by value. |
 | `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |
@@ -227,12 +227,16 @@ Because the internal representation mirrors the generated graph, recursive const
 `XFTY_DummySObjectFactory` is a thin coordinator; each phase is its own class.
 For one Provider's records:
 
-0. **Declared shared ancestors** (`XFTY_DeclaredAncestorResolver`, from
-   `XFTY_DummySObjectProvider.supplyBundle()`) — if the test `require(...)`d any,
-   they are collected (dependency-ordered, following nested declared ancestors),
-   generated in memory (`NEVER`), and persisted one depth-batched pass per
-   ancestor, **before** step 1. On-demand shared ancestors skip this and resolve
-   inline in step 1.
+0. **Shared ancestors** (`XFTY_SharedAncestorResolver`, from
+   `XFTY_DummySObjectProvider.supplyBundle()` →
+   `XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`) — every
+   `XFTY_SharedAncestor` configured this test method is collected
+   (dependency-ordered, following nested shared ancestors), generated in memory
+   (`NEVER`), and persisted one depth-batched pass per sub-graph, **before**
+   step 1, honouring the call's insert mode (`DEFERRED` / `RELATED_ONLY` → `NOW`
+   so the shared Id is ready). Flat ancestors (Provider has no relationships)
+   collapse to a single record. One configured after this ran (a later
+   `supply*()` call) resolves itself the same way when first referenced.
 1. **Ancestors** (`XFTY_AncestorGenerator`) — recursively generate one level of
    related records. At this point the objects exist but lookups are not wired.
    A relationship named in an `includeOptional(...)` / `put(path, ...)` path is
@@ -301,8 +305,9 @@ prevent" has a single, readable answer.
 The context also carries the `put(List<SObjectField>, value)` path values
 (`pathValues`), filtered head-first through `forRelated(field)` like the forced
 paths, and `withInclusivity(...)` for generating a forced ancestor fully formed.
-The declared-shared-ancestor insert mode is set separately, up front, with
-`XFTY_SharedAncestor.context(mode)`. A descendant (up-flowing) value pass is
+The shared-ancestor pre-phase takes its insert mode from the `supply*()` call
+that triggers it (or from `XFTY_SharedAncestor.resolveNow(lookup, mode)` when a
+test resolves one before any call). A descendant (up-flowing) value pass is
 still a plug-in point — see
 [roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
 

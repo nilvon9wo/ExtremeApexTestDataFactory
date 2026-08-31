@@ -6,25 +6,22 @@ whole hierarchy converging on one root — use `XFTY_SharedAncestor`.
 
 ---
 
-## Two kinds
+## One API — resolution is automatic
 
-Both are implemented.
+There is nothing to declare, register, or opt into. You configure a shared
+ancestor once and reference it; XFTY works out how to resolve it.
 
-| | **On-demand** | **Declared** |
-|---|---|---|
-| How the test asks for it | `get(name).of(...)` and reference it — **nothing to register** | `XFTY_SharedAncestor.declared(name).of(...)` centrally, then `require(name)` at the top of the test |
-| When it resolves | lazily, the first time generation references it | up front, in a batched pre-phase (S0–S2), before this test's first `supply*()` |
-| What it may be | **lightweight — no ancestors of its own** (a self-referential one throws rather than recurse; a plain non-self parent works but adds an `insert`) | **may be deep**, may have its own (declared or ordinary) ancestors, may be heavy |
-| Reaching one the test did not ask for | just builds it | **throws** — names the ancestor, tells you to `require(...)` it |
-| Cost in `NOW` | one `insert` per shared ancestor | one depth-batched `insert` pass per declared ancestor's subgraph |
-| `.depthBatched()` / `DEFERRED` main call | **not supported** (throws — reference it from a `NOW`/`MOCK`/`NEVER` call) | supported (it is pre-resolved) |
+Before a Provider generates anything, every shared ancestor configured in the
+current test method is resolved in one place, each honouring the call's insert
+mode. XFTY inspects each one's Provider:
 
-Use **on-demand** for the common light case — a shared `Account`, a shared
-`Pricebook`. Use **declared** when the shared record is itself a hierarchy (a
-deep record-type chain converging on a singleton root), or heavy enough that you
-want it built once, batched, up front.
+| The shared ancestor's Provider… | How it resolves |
+|---|---|
+| **has no relationships of its own** ("flat" — a plain `Account`, a `Pricebook`) | one record, one `insert` (in `NOW`) |
+| **pulls in ancestors of its own** ("deep" — a record-type chain, a heavy graph) | its whole sub-graph is built once and inserted **one dependency layer at a time** — the fewest `insert` statements; a chain converging on a singleton root collapses to one shared sub-graph |
 
-The rest of this page is **on-demand**. Declared has its own section at the end.
+Either way: **one record, one Id, everywhere** — and it is generated at most once
+per test method.
 
 ---
 
@@ -50,14 +47,50 @@ List<Contact> contacts = (List<Contact>) new XFTY_DummySObjectProvider(Contact.S
 
 - **One record, one Id.** Every child that references `'acme-hq'` gets the same
   `Account` instance and the same `AccountId`.
-- **Generated once per test method.** The first reference generates (and, in
-  `NOW` mode, inserts) it; every later reference — in the same or a later
+- **Generated once per test method.** Every reference — in the same or a later
   `supply*()` call — reuses it. State is static, so it resets between test
   methods automatically. Each test configures its own shared ancestors
   (Salesforce never shares data between tests — see
   [../reference/salesforce-considerations.md](../reference/salesforce-considerations.md)).
 - **Persistence follows the call.** `NOW` inserts it, `MOCK` gives it a mock Id,
-  `NEVER` leaves it Id-less — same as any relationship.
+  `NEVER` leaves it Id-less. A `.depthBatched()` / `DEFERRED` call resolves its
+  shared ancestors **up front** (so their Ids are ready when the deferred graph
+  flushes) rather than deferring them.
+
+---
+
+## A deep shared ancestor
+
+Nothing extra to do — configure the rungs and reference the leaf:
+
+```apex
+// once, centrally
+XFTY_SharedAncestor.get('root').of(new MyHierarchyObj__c())
+    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+XFTY_SharedAncestor.get('level1').of(new MyHierarchyObj__c())
+    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level1'));
+// level1's Provider does putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'))
+```
+
+```apex
+MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
+        XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9'), lookup)
+    .setInsertMode(XFTY_InsertModeEnum.NOW)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .supply();
+// Level9 -> ... -> Level1 -> the one shared Root. A second supply() for a
+// different leaf reuses that same Level1 and Root.
+```
+
+- **A shared ancestor referenced by another shared ancestor's Provider is pulled
+  in automatically**, resolved before the one that needs it — you do not list
+  every rung.
+- **Depth-batched, mode-aware.** Each deep shared ancestor's sub-graph is
+  inserted one dependency layer at a time (`NOW`), mock-Id'd (`MOCK`), or left in
+  memory (`NEVER`).
+- **Deep chains past 10 levels log a `WARN`.** A cycle (`a` needs `b`, `b` needs
+  `a`) **throws** — break it by pre-registering one side with
+  `XFTY_SharedAncestor.put(name, record)`.
 
 ---
 
@@ -65,9 +98,12 @@ List<Contact> contacts = (List<Contact>) new XFTY_DummySObjectProvider(Contact.S
 
 | Call | Effect |
 |------|--------|
-| `.of(SObject template)` | The override template for the shared record (also sets its type). Required before generation. |
-| `.withKey(XFTY_LookupKeyIntf key)` | Pin which Provider variant generates it (see [provider-variants](provider-variants.md)). |
-| `.copyingRelatedField(SObjectField f)` | Copy `f` from the shared record into the child's field instead of its Id. |
+| `XFTY_SharedAncestor.get(name)` | the interned shared ancestor for `name` (use in `putRequired` / `putOptional`) |
+| `.of(SObject template)` | the override template for the shared record (also sets its type) — needed before generation unless `.withKey(...)` is used |
+| `.withKey(XFTY_LookupKeyIntf key)` | pin which Provider variant generates it (see [provider-variants](provider-variants.md)) |
+| `.copyingRelatedField(SObjectField f)` | copy `f` from the shared record into the child's field instead of its Id |
+| `XFTY_SharedAncestor.getOrElse(name, template)` | `get(name)`, applying `template` only if it has not been configured yet this test — for a shared setup helper that may run more than once, or configures more ancestors than one test uses |
+| `XFTY_SharedAncestor.getOrElse(name, lookupKey)` | as above, pinning the Provider variant instead of a template |
 
 Reconfiguring a shared ancestor after it has resolved throws.
 
@@ -75,9 +111,10 @@ Reconfiguring a shared ancestor after it has resolved throws.
 every child, so there is no per-call place to set them. A
 `put(new List<SObjectField>{ theSharedRelationshipField, deeperField }, value)`
 that would *set a value on* a shared ancestor
-([per-call ancestor values](per-call-relationships.md)) **throws**. Wiring a shared ancestor **in** as a relationship value —
+([per-call ancestor values](per-call-relationships.md)) **throws**. Wiring a
+shared ancestor **in** as a relationship value —
 `putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))` —
-is fine (on-demand, no `require()` needed).
+is fine.
 
 ---
 
@@ -90,91 +127,48 @@ XFTY_SharedAncestor.put('root', root);   // from here, get('root') resolves to t
 Id hqId = XFTY_SharedAncestor.getId('acme-hq');  // after it has resolved
 ```
 
-`getId(name)` throws if the ancestor has not been resolved yet this test method
-(reference it from a relationship in a `supply*()` call first, or `put(...)` a
-record).
+`getId(name)` throws if the ancestor has not been resolved yet this test method.
+To read it **before** any `supply*()` call, resolve it explicitly:
+
+```apex
+XFTY_SharedAncestor.get('root').resolveNow(lookup, XFTY_InsertModeEnum.NOW);
+Id rootId = XFTY_SharedAncestor.getId('root');
+```
+
+`resolveNow(lookup, mode)` also fixes the shared record's own insert mode
+independently of the call that first references it — resolve it `MOCK` up front
+and later `NOW` calls reuse that mock record.
 
 ---
 
-## Limits of on-demand
+## Gotchas
 
-- Each on-demand shared ancestor is generated with its own `createBundle` call,
-  so resolving *N* on-demand shared ancestors in `NOW` mode costs *N* inserts
-  (better than one per child, not one total — use **declared** for that).
-- **One insert mode per on-demand shared ancestor within a test.** If it is first
-  resolved in a `MOCK` call and then referenced from a `NOW` call, XFTY throws a
-  clear "consistent insert mode" error rather than drift a mock Id into real DML.
-  To share a real record across a `NOW` test, insert it yourself and register it
-  with `XFTY_SharedAncestor.put(name, record)`, or use a **declared** ancestor
-  with `context(NOW)`.
-- **Not supported with `.depthBatched()` / `DEFERRED`** on the referencing call —
-  it throws. Reference an on-demand shared ancestor from a `NOW` / `MOCK` /
-  `NEVER` call, or make it **declared**.
-
----
-
-## Declared shared ancestors
-
-For a shared record that is itself a hierarchy, or heavy. It resolves once, up
-front, in a batched pass — and a test must **opt in** to it.
-
-```apex
-// once, centrally (a *LookupKeys-style constants class is ideal)
-XFTY_SharedAncestor.declared('root')
-    .of(new MyHierarchyObj__c())
-    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
-
-// reference it from a Master Template exactly like an on-demand one
-new XFTY_DummySObjectMasterTemplate(MyHierarchyObj__c.Id)
-    .putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'));
-```
-
-```apex
-// at the top of the test - opt in
-XFTY_SharedAncestor.require('root');
-// or, when you will read getId(...) before any supply*() call:
-XFTY_SharedAncestor.context(XFTY_InsertModeEnum.NOW).require('root');
-
-MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
-        XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9'), lookup)
-    .setInsertMode(XFTY_InsertModeEnum.NOW)
-    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .supply();
-// Level9 -> ... -> Level1 -> the one shared Root. A second supply() for a
-// different leaf reuses that same Root.
-```
-
-| Call | Effect |
-|------|--------|
-| `XFTY_SharedAncestor.declared(name)` | mark `name` declared; returns it for `.of(...)` / `.withKey(...)` |
-| `.require(name)` / `.require(a, b[, c[, d]])` / `.require(List<String>)` | this test needs these declared ancestors — call at the top |
-| `.context(XFTY_InsertModeEnum).require(...)` | fix the insert mode for the declared pre-phase (needed only if you read `getId(...)` before any `supply*()`) |
-| `.resolveDeclared(lookup)` | run the pre-phase now (needs the mode set via `context(...)`) |
-
-- **Requiring one pulls in its nested declared ancestors.** If `level1`'s
-  Provider requires `root` (also declared), `require('level1')` resolves `root`
-  too — you do not list every rung.
-- **Reaching a declared ancestor you did not require throws** — `get(name)`,
-  `getId(name)`, or a relationship that resolves to it during generation. It
-  names the ancestor and tells you to add the `require(...)`. No silent build.
-- **Depth-batched, mode-aware.** Each declared ancestor's subgraph is inserted
-  one dependency layer at a time (`NOW`), mock-Id'd (`MOCK`), or left alone
-  (`NEVER`). Deep declared chains past 10 levels log a `WARN`; a cycle
-  (`a` needs `b`, `b` needs `a`) throws — break it by pre-registering one side
-  with `XFTY_SharedAncestor.put(name, record)`.
-- Works with `.depthBatched()` / `DEFERRED` on the referencing call (it is
-  already resolved by then).
+- **One insert mode per shared ancestor within a test.** If it is first resolved
+  `MOCK` and then referenced from a `NOW` call, XFTY throws a clear "consistent
+  insert mode" error rather than drift a mock Id into real DML. Share a real
+  record across a `NOW` test by inserting it yourself and registering it with
+  `XFTY_SharedAncestor.put(name, record)`, or by resolving it `NOW` up front with
+  `resolveNow(lookup, XFTY_InsertModeEnum.NOW)`.
+- **Configuring one you never reference still resolves it.** Each shared ancestor
+  configured this test method is resolved before the first `supply*()`. Configure
+  the ones this test uses; use `getOrElse(...)` if a shared helper configures a
+  superset.
+- **A cycle throws.** Two shared ancestors that need each other, or one whose
+  Provider references it back — break it with `put(name, record)`.
 
 ### Still open
 
-- Resolution is one depth-batched pass **per declared ancestor**, not one pass
-  across the whole declared set.
+- Resolution is one depth-batched pass **per shared ancestor sub-graph**, not one
+  pass across every shared ancestor at once.
+- Only the **relationships reachable from the call** could be resolved instead of
+  every configured shared ancestor — a walk of the Master Template graph
+  (planned; `getOrElse` is the interim answer).
 - Load-test data for the depth-batch cost, documented limits, and a
   disable-this-record / disable-the-feature off-switch (design-doc decision 3)
   are not done.
 - The full deep-record-type-hierarchy acceptance test needs `test-support`
   metadata (a custom SObject + ≥10 record types + a singleton trigger) that is
-  not in the repo — the mechanics are covered by `XFTY_DeclaredAncestorTest`
+  not in the repo — the mechanics are covered by `XFTY_SharedAncestorHierarchyTest`
   using `Account.ParentId`.
 
 ---
@@ -185,7 +179,7 @@ Putting an `XFTY_SharedAncestor` in a Provider you distribute (rather than on a
 `XFTY_DummySObjectProvider` instance in one test) is an *extend* concern — see
 [extend/shared-ancestors-in-templates.md](../extend/shared-ancestors-in-templates.md).
 
-▶ Runnable: `XFTY_SharedAncestorTest` (on-demand) · `XFTY_DeclaredAncestorTest` (declared)
+▶ Runnable: `XFTY_SharedAncestorTest` · `XFTY_SharedAncestorHierarchyTest`
 
 See also: [relationships](relationships.md) · [bundles](bundles.md) ·
 [insert-modes](insert-modes.md)

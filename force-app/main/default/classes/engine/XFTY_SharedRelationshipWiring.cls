@@ -17,27 +17,16 @@ public class XFTY_SharedRelationshipWiring {
     }
 
     public void wire(XFTY_DummySObjectBundle bundle, SObjectField field, Integer quantity) {
-        // An already-resolved shared ancestor (declared, pre-resolved in S0-S2) is
-        // just an Id to wire - the batched-insert restriction only applies when the
-        // shared record would still have to be generated inline.
-        if (!this.shared.isResolved()) {
-            this.assertNotBatchedInsert();
-        }
+        // Every configured shared ancestor is resolved by the Provider's pre-phase
+        // before generation, honouring the caller's mode - even under
+        // .depthBatched() / DEFERRED, where it is resolved up front so its Id is
+        // ready when the deferred graph flushes. resolveSharedRecord covers the
+        // rare case of one configured after that pre-phase ran.
         SObject record = this.shared.resolveSharedRecord(this.context);
         this.assertSavedConsistently();
         List<SObject> children = this.repeat(record, quantity);
         bundle.put(field, children);
         this.placeResolvedBundle(bundle, field);
-    }
-
-    private void assertNotBatchedInsert() {
-        if (!this.context.batchedInsertPending) {
-            return;
-        }
-        String message =
-                'Shared ancestor "' + this.name() + '" is not supported together with .depthBatched() or the DEFERRED '
-                        + 'insert mode - reference it from a Provider call using NOW / MOCK / NEVER.';
-        throw new XFTY_DummySObjectFtyProviderException(message);
     }
 
     private void assertSavedConsistently() {

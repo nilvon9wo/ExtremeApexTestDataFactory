@@ -14,12 +14,12 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Context-aware values — sibling + ancestor reads | ✅ | [context-aware-values.md](context-aware-values.md), [../use/context-aware-values.md](../use/context-aware-values.md) |
 | Context-aware values — loud guard for a mis-ordered sibling read | ✅ (`31264ed`) | [../use/context-aware-values.md](../use/context-aware-values.md) |
 | Per-call relationship control — `includeOptional` / `excludeRelationship` | ✅ | [../use/per-call-relationships.md](../use/per-call-relationships.md) |
-| Shared ancestors — on-demand path (`XFTY_SharedAncestor`) | ✅ | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
+| Shared ancestors — `XFTY_SharedAncestor` (one API, flat + deep, auto-detected) | ✅ | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
 | 100% framework line coverage + split test suites | ✅ | [../contribute/coverage-standards.md](../contribute/coverage-standards.md) |
 | Deferred persistence — `.depthBatched()` + `DEFERRED` mode | ✅ (`407d38a`) | [deferred-persistence.md](deferred-persistence.md), [../use/deferred-insert.md](../use/deferred-insert.md) |
 | Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
 | Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
-| Shared ancestors — declared / deep chains / batched resolution | ✅ (per-ancestor depth-batch — not one pass across the whole set; no decision-3 load data yet) | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
+| Shared ancestors — deep chains / batched resolution / `.depthBatched()` + `DEFERRED` | ✅ (per-sub-graph depth-batch — not one pass across all; resolves every configured ancestor, not just the reachable ones; no decision-3 load data yet) | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
 | Descendant (up-flowing) value reads | 📋 | [descendant-value-reads.md](descendant-value-reads.md) |
 | Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
@@ -45,19 +45,23 @@ list are **done** — `142c6d9`, and the commit after it.)
    ~~Volume measurement~~ — **done**: the `XFTY_Load` suite now pins the
    ceilings ([../reference/volume-and-limits.md](../reference/volume-and-limits.md));
    `DEFERRED` `flush()` costs ~5 s CPU at 4,000 records, so the practical
-   ceiling is ~1,000–1,500 primaries per transaction. Still open on the branch:
-   shared-ancestor support under `.depthBatched()` / `DEFERRED` (refused today
-   with a clear error).
+   ceiling is ~1,000–1,500 primaries per transaction. Shared ancestors under
+   `.depthBatched()` / `DEFERRED` now work (resolved up front, honouring the
+   real mode).
 4. **Descendant (up-flowing) value reads — build option B** (a value pass inside
    `DEFERRED` `flush()`). Decided: skip the light `requestingChildTemplate`
    (option A). Rationale and the constraint this imposes:
    [descendant-value-reads.md](descendant-value-reads.md).
-5. ~~Declared shared ancestors~~ — **done.** `XFTY_SharedAncestor.declared(...)` /
-   `.require(...)` / `.context(mode)` / `.resolveDeclared(lookup)`, the S0–S2
-   batched pre-phase (`XFTY_DeclaredAncestorResolver`), nested auto-require, cycle
-   + depth guards, "undeclared → throw". **Still open:** one S2 pass across the
-   whole declared set (currently per ancestor); decision-3 load-test data +
-   documented limits + off-switches; on-demand + `.depthBatched()`/`DEFERRED`.
+5. ~~Deep / batched shared ancestors~~ — **done, and with no manual opt-in.**
+   `get(name).of(...)` / `getOrElse(name, ...)` / `resolveNow(lookup, mode)`; the
+   pre-phase (`XFTY_SharedAncestorResolver` via
+   `XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`) auto-detects flat vs
+   deep from the Provider's Master Template, depth-batches each sub-graph, honours
+   the call's mode (incl. `.depthBatched()` / `DEFERRED`), and guards cycles +
+   depth + the re-entrant boundary. **Still open:** one S2 pass across all shared
+   ancestors at once (currently per sub-graph); resolving only the ancestors
+   *reachable from the call* rather than every configured one; decision-3
+   load-test data + documented limits + off-switches.
 6. **Namespace steps 1–3** ([namespace-appexchange.md](namespace-appexchange.md))
    — mechanical; gated on the distribution-model decision below only for step 4.
 7. ~~Test-class cleanup~~ — **done.** `XFTY_DummySObjectProviderTests` →

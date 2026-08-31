@@ -1,11 +1,12 @@
 /**
- * Resolves the **declared** shared ancestors a test `require(...)`d, before the
- * main graph build, in one depth-batched pass per ancestor:
+ * Resolves the **deep** shared ancestors a generation run will reach - those
+ * whose Provider pulls in relationships of its own - before the main graph
+ * build, in one depth-batched pass per ancestor sub-graph:
  *
- * - **S0 collect.** Depth-first from the required names, following each declared
- *   ancestor's Provider's Master Template into any nested *declared* shared
- *   ancestors. Cycles throw; excessive depth warns. Produces a dependency order
- *   (deepest first) so every ancestor's declared parents are resolved before it.
+ * - **S0 collect.** Depth-first from the given ancestors, following each one's
+ *   Provider's Master Template into any nested shared ancestors. Cycles throw;
+ *   excessive depth warns. Produces a dependency order (deepest first) so every
+ *   ancestor's shared parents are resolved before it.
  * - **S1 generate.** Each ancestor's Provider `createBundle` in `NEVER` mode,
  *   `REQUIRED` inclusivity - its own non-shared parents come with it, in memory.
  * - **S2 depth-batched persist.** The ancestor's in-memory graph is inserted
@@ -13,18 +14,18 @@
  *   `insert` statements. Already-resolved shared ancestors in the graph are
  *   anchors, not re-inserted.
  *
- * On-demand shared ancestors are not handled here - they resolve inline with
- * their siblings. See docs/roadmap/shared-ancestors.md.
+ * Flat shared ancestors (no relationships of their own) are not handled here -
+ * they resolve inline with their siblings. See docs/use/shared-ancestors.md.
  */
 @IsTest
-public class XFTY_DeclaredAncestorResolver {
+public class XFTY_SharedAncestorResolver {
 
     private static final Integer DEPTH_WARN_THRESHOLD = 10;
 
     private final XFTY_DummySObjectProviderLookupIntf lookup;
     private final XFTY_InsertModeEnum mode;
 
-    public XFTY_DeclaredAncestorResolver(
+    public XFTY_SharedAncestorResolver(
             XFTY_DummySObjectProviderLookupIntf lookup,
             XFTY_InsertModeEnum mode
     ) {
@@ -32,8 +33,8 @@ public class XFTY_DeclaredAncestorResolver {
         this.mode = mode;
     }
 
-    public void resolve(List<XFTY_SharedAncestor> requiredAncestors) {
-        for (XFTY_SharedAncestor ancestor : this.collectInDependencyOrder(requiredAncestors)) {
+    public void resolve(List<XFTY_SharedAncestor> deepAncestors) {
+        for (XFTY_SharedAncestor ancestor : this.collectInDependencyOrder(deepAncestors)) {
             if (!ancestor.isResolved()) {
                 this.resolveOne(ancestor);
             }
@@ -69,28 +70,26 @@ public class XFTY_DeclaredAncestorResolver {
             done.add(name);
             return;
         }
-        if (onThePath.contains(name)) {
+        if (onThePath.contains(name) || XFTY_SharedAncestor.isResolving(name)) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Declared shared ancestors form a cycle involving "' + name + '". Break it by pre-registering '
+                    'Shared ancestors form a cycle involving "' + name + '". Break it by pre-registering '
                             + 'one side with XFTY_SharedAncestor.put("' + name + '", record).'
             );
         }
         if (depth > DEPTH_WARN_THRESHOLD) {
             System.debug(LoggingLevel.WARN,
-                    'XFTY_SharedAncestor: declared chain past ' + DEPTH_WARN_THRESHOLD + ' deep at "' + name + '".');
+                    'XFTY_SharedAncestor: shared-ancestor chain past ' + DEPTH_WARN_THRESHOLD + ' deep at "' + name + '".');
         }
         onThePath.add(name);
-        for (XFTY_SharedAncestor nested : this.nestedDeclaredAncestorsOf(ancestor)) {
+        for (XFTY_SharedAncestor nested : this.nestedSharedAncestorsOf(ancestor)) {
             this.visit(nested, ordered, done, onThePath, depth + 1);
         }
         onThePath.remove(name);
         done.add(name);
-        // Reaching it through a required ancestor's own graph makes it required too.
-        XFTY_SharedAncestor.require(name);
         ordered.add(ancestor);
     }
 
-    private List<XFTY_SharedAncestor> nestedDeclaredAncestorsOf(XFTY_SharedAncestor ancestor) {
+    private List<XFTY_SharedAncestor> nestedSharedAncestorsOf(XFTY_SharedAncestor ancestor) {
         XFTY_DummySObjectMasterTemplate masterTemplate = this.providerFor(ancestor).getMasterTemplate();
         List<XFTY_DummyDefaultRelationshipIntf> relationships = new List<XFTY_DummyDefaultRelationshipIntf>();
         relationships.addAll(masterTemplate.requiredRelationshipBySObjectFieldMap.values());
@@ -99,10 +98,7 @@ public class XFTY_DeclaredAncestorResolver {
         List<XFTY_SharedAncestor> nested = new List<XFTY_SharedAncestor>();
         for (XFTY_DummyDefaultRelationshipIntf relationship : relationships) {
             if (relationship instanceof XFTY_SharedAncestor) {
-                XFTY_SharedAncestor sharedRelationship = (XFTY_SharedAncestor) relationship;
-                if (sharedRelationship.getKind() == XFTY_SharedAncestor.Kind.DECLARED) {
-                    nested.add(sharedRelationship);
-                }
+                nested.add((XFTY_SharedAncestor) relationship);
             }
         }
         return nested;
@@ -111,6 +107,19 @@ public class XFTY_DeclaredAncestorResolver {
     // S1 + S2 ----------------------------------------------------------------
 
     private void resolveOne(XFTY_SharedAncestor ancestor) {
+        if (!ancestor.beginResolving()) {
+            // Reached re-entrantly while its own generation is in flight - the
+            // outer resolveOne will finish it.
+            return;
+        }
+        try {
+            this.buildAndPersist(ancestor);
+        } finally {
+            ancestor.endResolving();
+        }
+    }
+
+    private void buildAndPersist(XFTY_SharedAncestor ancestor) {
         XFTY_DummySobjectProviderIntf provider = this.providerFor(ancestor);
         XFTY_GenerationContext structuralContext = new XFTY_GenerationContext(
                 this.lookup, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.REQUIRED
@@ -134,12 +143,8 @@ public class XFTY_DeclaredAncestorResolver {
 
     private SObject templateFor(XFTY_SharedAncestor ancestor) {
         SObject template = ancestor.getOverrideTemplate();
-        if (template == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Declared shared ancestor "' + ancestor.getSharedName() + '" was never configured. Call '
-                            + 'XFTY_SharedAncestor.declared("' + ancestor.getSharedName() + '").of(new SomeSObject()).'
-            );
-        }
-        return template;
+        return (template != null)
+                ? template
+                : ancestor.resolveLookupKey(this.lookup).getSObjectType().newSObject();
     }
 }

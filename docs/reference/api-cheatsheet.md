@@ -74,12 +74,11 @@ One line per public entry point. Follow the links for detail.
 
 | `XFTY_DummyDefaultRelationship(SObject template)` | generate a parent |
 | `XFTY_DummyDefaultRelationship(XFTY_LookupKeyIntf key, SObject template)` | …of a specific variant |
-| `XFTY_SharedAncestor.get(name)` | one shared parent for many children (on-demand) |
+| `XFTY_SharedAncestor.get(name)` | one shared parent for many children (flat or deep — auto-detected) |
 | `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it |
+| `XFTY_SharedAncestor.getOrElse(name, template)` / `getOrElse(name, lookupKey)` | `get(name)`, configuring only if not already configured |
 | `XFTY_SharedAncestor.put(name, record)` · `.getId(name)` | supply / read |
-| `XFTY_SharedAncestor.declared(name).of(...)` | a **declared** shared ancestor (deep / heavy) — configured centrally |
-| `XFTY_SharedAncestor.require(name…)` / `.context(mode).require(…)` | a test opts in, at the top; `context(mode)` fixes the pre-phase insert mode |
-| `XFTY_SharedAncestor.resolveDeclared(lookup)` | run the declared pre-phase now (for a pre-`supply` `getId`) |
+| `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)` | resolve it (and fix its mode) before any `supply*()` call |
 
 ---
 

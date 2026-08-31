@@ -1,9 +1,10 @@
 /**
- * Coverage for `XFTY_SharedAncestor` - the on-demand shared-ancestor path:
- * one generated record shared by every child, `put(...)` / `getId(...)`, the
- * configuration guards, and `withKey` / `copyingRelatedField`.
+ * Coverage for `XFTY_SharedAncestor` - one generated record shared by every
+ * child, `put(...)` / `getId(...)` / `getOrElse(...)`, the configuration guards,
+ * `withKey` / `copyingRelatedField`, and cycle detection. Deep chains and the
+ * batched pre-phase are in `XFTY_SharedAncestorHierarchyTest`.
  *
- * See docs/roadmap/shared-ancestors.md.
+ * See docs/use/shared-ancestors.md.
  */
 @IsTest
 private class XFTY_SharedAncestorTest {
@@ -313,21 +314,22 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void depthBatchedWithASharedAncestorThrows() {
+    static void depthBatchedResolvesTheSharedAncestorUpFront() {
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        Contact result;
         System.runAs(TEST_ADMIN) {
-            try {
-                new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                        .setInsertMode(XFTY_InsertModeEnum.NOW)
-                        .depthBatched()
-                        .supply();
-                Assert.fail('Expected an exception');
-            } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('not supported together'), ex.getMessage());
-            }
+            Test.startTest();
+            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .depthBatched()
+                    .supply();
+            Test.stopTest();
         }
+
+        Assert.areEqual(1, [SELECT COUNT() FROM Account], 'the shared ancestor was resolved once, up front');
+        Assert.areEqual(XFTY_SharedAncestor.getId('hq'), result.AccountId);
     }
 
     @IsTest
@@ -370,7 +372,7 @@ private class XFTY_SharedAncestorTest {
                         .supply();
                 Assert.fail('Expected a self-reference exception');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('references itself'), ex.getMessage());
+                Assert.isTrue(ex.getMessage().containsIgnoreCase('cycle'), ex.getMessage());
             }
         }
     }
@@ -402,7 +404,7 @@ private class XFTY_SharedAncestorTest {
                         .supply();
                 Assert.fail('Expected a cycle exception - tom -> dick -> harry -> tom');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('references itself'), ex.getMessage());
+                Assert.isTrue(ex.getMessage().containsIgnoreCase('cycle'), ex.getMessage());
             }
         }
     }

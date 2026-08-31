@@ -482,9 +482,11 @@ public class XFTY_DummySObjectProvider {
     public XFTY_DummySObjectBundle supplyBundle() {
         this.warnIfMixingCustomTemplateWithOverrides();
         XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
-        // Declared shared ancestors (require(...)) resolve up front, in their own
-        // batched pass, before anything in this call is generated.
-        XFTY_SharedAncestor.ensureDeclaredResolved(this.sObjectProviderLookup, this.insertMode);
+        // Every shared ancestor configured this test method resolves up front,
+        // each in its own depth-batched pass, before anything in this call is
+        // generated - so a deep chain converging on a singleton root is built
+        // once and a .depthBatched() / DEFERRED call has its shared Ids ready.
+        XFTY_SharedAncestor.ensureConfiguredAncestorsResolved(this.sObjectProviderLookup, this.insertMode);
         XFTY_GenerationContext context = this.buildContext();
         List<SObject> templates = this.templatesToFill();
         XFTY_DummySObjectBundle bundle = this.generate(context, templates);

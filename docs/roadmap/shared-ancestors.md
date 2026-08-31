@@ -1,45 +1,51 @@
 # Design: Shared Ancestors
 
-Status: **both kinds implemented** (v4). On-demand and declared. Usage in
+Status: **implemented, one API, resolution auto-detected** (v4). Usage in
 [use/shared-ancestors.md](../use/shared-ancestors.md).
 
-Implemented — **on-demand** (`XFTY_SharedAncestor`):
+> **Update (v4):** the "declared vs on-demand" split below was a real design
+> stage, but the shipped API has **no `declared()` / `require()` / `context()`**.
+> A test configures a shared ancestor with `get(name).of(...)` (or
+> `getOrElse(name, ...)`) and references it. Before a Provider generates, every
+> shared ancestor configured this test method is resolved in one pre-phase
+> (`XFTY_SharedAncestor.ensureConfiguredAncestorsResolved`), each honouring the
+> call's insert mode. XFTY inspects each one's Provider's Master Template: **no
+> relationships → flat**, resolved as a single record; **relationships → deep**,
+> its sub-graph built once and depth-batch-inserted. `resolveNow(lookup, mode)`
+> covers reading `getId(...)` before any `supply*()`. The rationale for two
+> *behaviours* still stands; only the manual opt-in is gone.
+
+Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 
 - `XFTY_SharedAncestor.get(name)` - flyweight, interned by name, static state so it
   resets between test methods (decision 5).
 - `.of(template)` / `.withKey(key)` / `.copyingRelatedField(field)` configuration;
-  reconfiguring after resolution throws.
+  reconfiguring after resolution throws. `getOrElse(name, template|lookupKey)`
+  configures only if unconfigured (for a shared setup helper / superset config).
 - Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`
   so it drops into `putRequired` / `putOptional`. The factory branches on the
   interface: one record resolved (generated once, or supplied via `put(...)`),
   every child pointed at it.
-- `XFTY_SharedAncestor.put(name, record)` (decision 6), `getId(name)`.
-- Persistence follows the call's insert mode (`context.forRelated()`).
+- `XFTY_SharedAncestor.put(name, record)` (decision 6), `getId(name)`,
+  `resolveNow(lookup, mode)`.
+- Pre-phase in `XFTY_DummySObjectProvider.supplyBundle` →
+  `ensureConfiguredAncestorsResolved`. S0 collect: depth-first over each
+  configured ancestor, following its Provider's Master Template into nested
+  shared ancestors, dependency-ordered; cycle → throw, depth > 10 → WARN
+  (decision 8). Re-entrant hits (an ancestor's own generation reaching another)
+  resolve themselves; a live cycle across that boundary still throws.
+- S1 generate `NEVER` / `REQUIRED`; S2 depth-batched persist **per ancestor
+  sub-graph**, honouring the mode (`NOW` insert / `MOCK` mock-Id / `NEVER` no-op;
+  `DEFERRED` / `RELATED_ONLY` → `NOW` so the shared Id is ready), not re-inserting
+  already-resolved anchors.
+- The main build wires the pre-resolved record; shared ancestors now work with
+  `.depthBatched()` / `DEFERRED` on the referencing call (previously refused).
 
-Implemented — **declared** (`XFTY_SharedAncestor.declared/require/context`,
-`XFTY_DeclaredAncestorResolver`):
-
-- `.declared(name).of(...).withKey(...)` to mark + configure centrally;
-  `.require(name...)` / `.require(List<String>)` for a test to opt in;
-  `.context(mode).require(...)` and `.resolveDeclared(lookup)` for pre-`supply`
-  `getId` (decision 9, the `context(mode)` sub-point).
-- Reaching a declared ancestor a test did not require **throws** — `get`,
-  `getId`, or inline during generation (decision 9). No silent fallback.
-- S0 collect: depth-first from the required set, following each declared
-  ancestor's Provider's Master Template into nested declared ancestors
-  (auto-required), dependency-ordered; cycle → throw, depth > 10 → WARN
-  (decision 8).
-- S1 generate `NEVER` / `REQUIRED`; S2 depth-batched persist **per declared
-  ancestor**, honouring the mode (`NOW` insert / `MOCK` mock-Id / `NEVER` no-op),
-  not re-inserting already-resolved anchors.
-- S3: the main build wires the pre-resolved record; declared ancestors work with
-  `.depthBatched()` / `DEFERRED` on the referencing call.
-
-**Not yet:** one S2 pass across the *whole* declared set (currently per ancestor);
-load-test data + documented limits + off-switches for the depth-batch cost
-(decision 3); on-demand ancestors with `.depthBatched()` / `DEFERRED`; the
-`parentCountFor` interface method (the `instanceof XFTY_SharedRelationshipIntf`
-branch does the job); the deep-record-type-hierarchy acceptance test's
+**Not yet:** one S2 pass across *all* shared ancestors at once (currently per
+sub-graph); resolving only the ancestors **reachable from the call** rather than
+every configured one (a Master-Template-graph walk — `getOrElse` is the interim
+answer); load-test data + documented limits + off-switches for the depth-batch
+cost (decision 3); the deep-record-type-hierarchy acceptance test's
 `test-support` metadata.
 
 ---
@@ -310,7 +316,9 @@ for a test.
 deep-level record:
 
 ```apex
-XFTY_SharedAncestor.require('root', 'level1');   // the shared part of the chain
+// configure the shared part of the chain (once, centrally)
+XFTY_SharedAncestor.get('root').of(new MyHierarchyObj__c())
+    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 
 MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
         XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9_Branch'),
@@ -331,21 +339,21 @@ same `Root` Id. Here only `root` (and maybe `level1`) need to be *shared*; the
 **Why this needs shared ancestors specifically.** Without them, each generated
 parent gets its own generated grandparent, and every chain would try to insert
 its own `Root` - the second `supply()` (or the second leaf in one call) blows up
-on the singleton constraint. A **declared** shared ancestor makes `Root` resolve
-once and be reused everywhere:
+on the singleton constraint. A shared ancestor makes `Root` resolve once and be
+reused everywhere:
 
 ```apex
-// test-support, one place - registered as a declared ancestor
-XFTY_SharedAncestor.declared('root')
+// test-support, one place
+XFTY_SharedAncestor.get('root')
         .of(new MyHierarchyObj__c())
         .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 
 // the Level1 Provider's Master Template
-.putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.ref('root'))
+.putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'))
 ```
 
-A test that references `root` (directly or through the chain) without
-`require('root')` gets an explicit error, not a second `Root` insert.
+`Root`'s Provider has no ancestors of its own, so it resolves as a single shared
+record; `Level1`, which pulls in `Root`, resolves as a depth-batched sub-graph.
 
 **What it forces onto this design:**
 
@@ -437,23 +445,16 @@ No matter how it is referenced (sibling field, ancestor, descendant, a different
 4. the shared record itself appears **everywhere** it is expected in the
    bundle / graph (including `bundle.getBundle(field)`, not just `getList(field)`).
 
-**The current on-demand implementation has two gaps against this:**
+**Both gaps that once existed here are fixed** (see
+[reference/known-issues.md](../reference/known-issues.md#fixed-kept-for-context)):
 
-- **Mixed insert modes.** If `mr-smith` is first resolved in a `MOCK` call it gets
-  a mock Id; a later `NOW` call that references him then wires children to that
-  mock Id and `insert` fails (`INVALID_CROSS_REFERENCE_KEY`). Invariant 2/3
-  broken. Fix options: (a) resolve a shared ancestor's persistence once, from a
-  declared `XFTY_SharedAncestor.context(mode)` or the first call, and **throw a
-  clear error** if a later call needs a stronger mode; (b) route shared-ancestor
-  persistence through the `DEFERRED` insert mode
-  ([deferred-persistence.md](deferred-persistence.md)) so the Id is only ever
-  assigned once, at `flush()`, consistently for every consumer.
-- **Bundle placement (invariant 4).** `wireSharedAncestor` puts the record in
-  `bundle.getList(field)` but not `bundle.getBundle(field)` - `getBundle` on a
-  shared-ancestor field returns null today. Should return a (single-record)
-  sub-bundle.
-
-Both are tracked as bugs to fix before the declared path lands.
+- **Mixed insert modes.** A `MOCK`-resolved shared ancestor referenced from a
+  later `NOW` call now **throws a clear "consistent insert mode" error** instead
+  of drifting a mock Id into real DML. Pin the mode up front with
+  `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)`.
+- **Bundle placement (invariant 4).** `getBundle(field)` on a shared-ancestor
+  field returns a single-record sub-bundle (`getResolvedBundle()`), consistent
+  with `getList(field)`.
 
 **`XFTY_SharedAncestor.getId('name')`** - the resolved record's `Id`, for anywhere
 an `Id` is what's wanted (an override template field, an assertion, a lookup the
@@ -509,23 +510,29 @@ So a shared ancestor is always generated fresh within the test that needs it -
 
 ## Implementation plan — status
 
-1. ~~`XFTY_SharedAncestor` + interned registry~~ — **done** (on-demand v3). The
-   `parentCountFor` interface method was skipped: the factory's
+1. ~~`XFTY_SharedAncestor` + interned registry~~ — **done**. The `parentCountFor`
+   interface method was skipped: the factory's
    `instanceof XFTY_SharedRelationshipIntf` branch already means "0 to generate,
    just wire".
-2. ~~`require(...)` / on-demand kinds, the "undeclared → throw" error, phase S3
-   wiring + a manual resolve entry point~~ — **done**
-   (`XFTY_SharedAncestor.declared/require/context/resolveDeclared`).
-3. ~~Phases S0-S2, triggered from the first `supply*()` (or `resolveDeclared`)~~
-   — **done** (`XFTY_DeclaredAncestorResolver`). S2 is one depth-batched pass per
-   declared ancestor, not one across the whole set.
-4. ~~Nested ancestors; depth-warning + cycle detection~~ — **done**. Load tests +
-   documented limits + off-switches (decision 3) — **not done**.
-5. ~~`put(name, record)`~~ — **done** (on-demand v3). Docs — **done**
-   ([use/shared-ancestors.md](../use/shared-ancestors.md), `XFTY_DeclaredAncestorTest`).
+2. ~~Deep vs flat behaviour + the main-build wiring~~ — **done**, but
+   **auto-detected from the Provider's Master Template**, not a manual
+   `require(...)`. The "undeclared → throw" error is gone (there is nothing to
+   declare). `resolveNow(lookup, mode)` is the pre-`supply` `getId` entry point.
+3. ~~Phases S0-S2, triggered from the first `supply*()`~~ — **done**
+   (`XFTY_SharedAncestorResolver`, via `ensureConfiguredAncestorsResolved`). S2 is
+   one depth-batched pass per ancestor sub-graph, not one across the whole set;
+   resolving only the *reachable* ancestors (not every configured one) is still
+   open.
+4. ~~Nested ancestors; depth-warning + cycle detection (incl. the re-entrant
+   boundary)~~ — **done**. Load tests + documented limits + off-switches
+   (decision 3) — **not done**.
+5. ~~`put(name, record)` / `getOrElse(name, ...)`~~ — **done**. Docs — **done**
+   ([use/shared-ancestors.md](../use/shared-ancestors.md),
+   `XFTY_SharedAncestorTest` + `XFTY_SharedAncestorHierarchyTest`).
    The deep-record-type-hierarchy worked example needs `test-support` metadata
    (custom SObject + ≥10 record types + singleton trigger) — **not created**; the
-   mechanics are covered by `XFTY_DeclaredAncestorTest` on `Account.ParentId`.
+   mechanics are covered by `XFTY_SharedAncestorHierarchyTest` on
+   `Account.ParentId`.
 
 ---
 

@@ -83,9 +83,9 @@ field the ancestor's Provider already sets wins.
 
 The path's value can be a [shared ancestor](shared-ancestors.md) —
 `putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))`
-wires the generated Account's Owner to a shared `mr-smith` (on-demand: no
-`require()`). What you **cannot** do is `put` a plain value *onto* a shared
-ancestor — that throws (configure it with `.of(...)`).
+wires the generated Account's Owner to a shared `mr-smith` — nothing extra to
+set up. What you **cannot** do is `put` a plain value *onto* a shared ancestor —
+that throws (configure it with `.of(...)`).
 
 Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
 

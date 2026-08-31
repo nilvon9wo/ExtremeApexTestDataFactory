@@ -157,8 +157,10 @@ it never reorders the caller's own intent.
   decision 4) want the whole graph in memory before values are finalised.
   `DEFERRED` gives exactly that between `supply*()` and `flush()` - a value pass
   can run in `flush()` before the insert.
-- **Declared shared ancestors** ([shared-ancestors.md](shared-ancestors.md)) can
-  be "register these in the deferred set, then `flush()`".
+- **Shared ancestors** ([shared-ancestors.md](shared-ancestors.md)) reuse the
+  same depth-batched-insert primitive for each sub-graph's pre-phase, and a
+  `DEFERRED` main call resolves its shared ancestors up front so their Ids are
+  ready when it `flush()`es.
 
-Both ideas are built. Descendant reads and declared shared ancestors can now
-reuse the `flush()` machinery.
+Both ideas are built. Descendant reads and shared ancestors reuse the `flush()`
+machinery.

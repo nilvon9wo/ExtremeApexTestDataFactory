@@ -17,26 +17,26 @@ project defines its [flavoured lookup keys](provider-variants.md):
 XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
 ```
 
-### On-demand vs declared
+### Flat vs deep — nothing to opt into
 
-The template reference (`XFTY_SharedAncestor.get('name')`) is the same for both
-[kinds](../use/shared-ancestors.md#two-kinds). What differs is the central
-config:
+The template reference (`XFTY_SharedAncestor.get('name')`) and the central config
+are the same however heavy the shared record is:
 
 ```apex
-// on-demand - lightweight, resolves inline, no opt-in
+// flat - a plain parent; resolves as a single shared record
 XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
 
-// declared - deep / heavy, resolves in a batched pre-phase, a test must require() it
-XFTY_SharedAncestor.declared('root')
+// deep - a record that pulls in ancestors of its own; resolves as a
+// depth-batched sub-graph, built once
+XFTY_SharedAncestor.get('root')
     .of(new MyHierarchyObj__c())
     .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 ```
 
-A Provider whose Master Template references a **declared** ancestor only works in
-a test that `XFTY_SharedAncestor.require(...)`s it — otherwise generation throws,
-naming the ancestor. Reserve declared for a shared record that is itself a
-hierarchy.
+XFTY decides which by inspecting the ancestor's Provider's Master Template. A
+test that configures a shared ancestor it never references still resolves it, so
+document which shared ancestors a shipped Provider expects the test to configure
+(or have the Provider's own `*LookupKeys`-style setup call `getOrElse(...)`).
 
 ---
 

@@ -121,19 +121,23 @@ private class XFTY_DeferredInserterTest {
     }
 
     @IsTest
-    static void deferredWithASharedAncestorThrows() {
+    static void deferredResolvesASharedAncestorUpFront() {
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
         System.runAs(TEST_ADMIN) {
-            try {
-                new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
-                        .supply();
-                Assert.fail('Expected an exception');
-            } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('not supported together'), ex.getMessage());
-            }
+            Test.startTest();
+            Contact result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                    .supply();
+            // the shared ancestor is inserted immediately; the Contact waits for flush()
+            Assert.areEqual(1, [SELECT COUNT() FROM Account]);
+            Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+
+            Assert.areEqual(1, [SELECT COUNT() FROM Contact]);
+            Assert.areEqual(XFTY_SharedAncestor.getId('hq'), result.AccountId);
         }
     }
 

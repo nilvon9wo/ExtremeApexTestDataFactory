@@ -42,5 +42,8 @@ _None currently._
   `XFTY_SharedAncestor.put(name, record)` (only `getList(field)` worked) —
   `getResolvedBundle()` now builds a single-record sub-bundle so the two stay
   consistent (`142c6d9`).
-- An on-demand `XFTY_SharedAncestor` whose Provider reached back to the same name
-  stack-overflowed — it now throws a clear self-reference error (`e453753`).
+- An `XFTY_SharedAncestor` whose Provider reached back to the same name
+  stack-overflowed — the pre-phase now detects the cycle (including across a
+  re-entrant resolution) and throws, naming the ancestor.
+- A shared ancestor could not be used with `.depthBatched()` / `DEFERRED` — it
+  now resolves up front, honouring the call's real insert mode, so both work.

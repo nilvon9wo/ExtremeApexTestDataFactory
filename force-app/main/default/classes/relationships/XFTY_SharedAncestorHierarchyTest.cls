@@ -1,18 +1,21 @@
 /**
- * Declared shared ancestors: `XFTY_SharedAncestor.declared(name)` +
- * `.require(...)` + the S0-S2 batched pre-phase.
+ * Shared ancestors with hierarchies of their own: automatic deep-vs-flat
+ * resolution, the depth-batched pre-phase, nested shared ancestors, cycle
+ * detection, `resolveNow(...)`, `getOrElse(...)`, and `.depthBatched()` /
+ * `DEFERRED` compatibility.
+ *
+ * See docs/use/shared-ancestors.md.
  */
 @IsTest
-private class XFTY_DeclaredAncestorTest {
+private class XFTY_SharedAncestorHierarchyTest {
 
     private static final XFTY_LookupKeyIntf LEVEL1_KEY = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'level1');
 
-    // Basic -------------------------------------------------------------------
+    // Flat -----------------------------------------------------------------
 
     @IsTest
-    static void aRequiredDeclaredAncestorIsSharedByEveryChildInOneInsert() {
-        XFTY_SharedAncestor.declared('hq').of(new Account(Name = 'HQ'));
-        XFTY_SharedAncestor.require('hq');
+    static void everyChildSharesOneConfiguredAncestorInOneInsert() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'HQ'));
 
         Integer dmlBefore;
         List<Contact> contacts;
@@ -31,49 +34,66 @@ private class XFTY_DeclaredAncestorTest {
         for (Contact contact : contacts) {
             System.assertEquals(hq.Id, contact.AccountId);
         }
-        // the HQ Account + the 5 Contacts = 2 insert statements, not 6
+        // the HQ Account + the 5 Contacts = a couple of insert statements, not 6
         System.assert(Limits.getDmlStatements() - dmlBefore <= 3, 'DML frugal: ' + (Limits.getDmlStatements() - dmlBefore));
     }
 
     @IsTest
-    static void reachingADeclaredAncestorTheTestDidNotRequireThrows() {
-        XFTY_SharedAncestor.declared('hq').of(new Account(Name = 'HQ'));
-        // note: no require('hq')
-
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply();
-            System.assert(false, 'expected a "not required" error');
-        } catch (Exception e) {
-            System.assert(e.getMessage().contains('did not require'), e.getMessage());
-            System.assert(e.getMessage().contains('hq'), e.getMessage());
-        }
-    }
-
-    @IsTest
-    static void getIdOnADeclaredNotRequiredAncestorThrows() {
-        XFTY_SharedAncestor.declared('hq').of(new Account());
-        try {
-            XFTY_SharedAncestor.getId('hq');
-            System.assert(false, 'expected a "not required" error');
-        } catch (Exception e) {
-            System.assert(e.getMessage().contains('did not require'), e.getMessage());
-        }
-    }
-
-    // Context / insert mode -------------------------------------------------
-
-    @IsTest
-    static void contextModeFixesTheResolutionMode() {
-        XFTY_SharedAncestor.declared('hq').of(new Account(Name = 'HQ'));
-        XFTY_SharedAncestor.context(XFTY_InsertModeEnum.MOCK).require('hq');
+    static void reachingADeepSharedAncestorResolvesItAutomatically() {
+        // no declare, no require - just configure and reference
+        XFTY_SharedAncestor.get('root').of(new Account(Name = 'Root'))
+                .withKey(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.get('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
 
         Test.startTest();
+        Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new DeepLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        Account root = [SELECT Id FROM Account WHERE Name = 'Root'];
+        Account level1 = [SELECT Id, ParentId FROM Account WHERE Name = 'Level 1'];
+        System.assertEquals(root.Id, level1.ParentId, 'nested shared ancestor wired');
+        System.assertEquals(level1.Id, c.AccountId);
+        System.assertEquals(2, [SELECT COUNT() FROM Account]);
+    }
+
+    // resolveNow / getId --------------------------------------------------
+
+    @IsTest
+    static void getIdBeforeResolutionThrows() {
+        XFTY_SharedAncestor.get('hq').of(new Account());
+        try {
+            XFTY_SharedAncestor.getId('hq');
+            System.assert(false, 'expected a "not resolved" error');
+        } catch (Exception e) {
+            System.assert(e.getMessage().contains('not resolved yet'), e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void resolveNowLetsGetIdRunBeforeAnySupplyCall() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'HQ'));
+
+        Test.startTest();
+        XFTY_SharedAncestor.get('hq').resolveNow(new ContactUnderHqLookup(), XFTY_InsertModeEnum.NOW);
+        Test.stopTest();
+
+        System.assertEquals(1, [SELECT COUNT() FROM Account]);
+        System.assertEquals(XFTY_SharedAncestor.getId('hq'), [SELECT Id FROM Account].Id);
+    }
+
+    @IsTest
+    static void resolveNowWithMockGivesAMockIdAndNoDml() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'HQ'));
+
+        Test.startTest();
+        XFTY_SharedAncestor.get('hq').resolveNow(new ContactUnderHqLookup(), XFTY_InsertModeEnum.MOCK);
+        // the call's own mode differs - the ancestor keeps the mock Id it already has
         new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.NEVER)   // the call's mode; the ancestor uses MOCK
+                .setInsertMode(XFTY_InsertModeEnum.NEVER)
                 .supplyList();
         Test.stopTest();
 
@@ -81,46 +101,11 @@ private class XFTY_DeclaredAncestorTest {
         System.assertNotEquals(null, XFTY_SharedAncestor.getId('hq'), 'but it has a (mock) Id');
     }
 
-    @IsTest
-    static void resolveDeclaredLetsGetIdRunBeforeAnySupplyCall() {
-        XFTY_SharedAncestor.declared('hq').of(new Account(Name = 'HQ'));
-        XFTY_SharedAncestor.context(XFTY_InsertModeEnum.NOW).require('hq');
-
-        Test.startTest();
-        XFTY_SharedAncestor.resolveDeclared(new ContactUnderHqLookup());
-        Test.stopTest();
-
-        System.assertEquals(1, [SELECT COUNT() FROM Account]);
-        System.assertEquals(XFTY_SharedAncestor.getId('hq'), [SELECT Id FROM Account].Id);
-    }
-
-    // Nested / deep -------------------------------------------------------
+    // Nested / deep ------------------------------------------------------
 
     @IsTest
-    static void requiringOneDeclaredAncestorPullsInItsNestedDeclaredAncestors() {
-        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Root'))
-                .withKey(XFTY_LookupKey.get(Account.SObjectType));
-        XFTY_SharedAncestor.declared('level1').of(new Account(Name = 'Level 1'))
-                .withKey(LEVEL1_KEY);
-        XFTY_SharedAncestor.require('level1');   // 'root' is only reached through level1's template
-
-        Test.startTest();
-        new XFTY_DummySObjectProvider(Contact.SObjectType, new DeepLookup())
-                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.NOW)
-                .supplyList();
-        Test.stopTest();
-
-        Account root = [SELECT Id FROM Account WHERE Name = 'Root'];
-        Account level1 = [SELECT Id, ParentId FROM Account WHERE Name = 'Level 1'];
-        System.assertEquals(root.Id, level1.ParentId, 'nested declared ancestor wired');
-        System.assertEquals(2, [SELECT COUNT() FROM Account]);
-    }
-
-    @IsTest
-    static void twoSupplyCallsForDifferentChildrenConvergeOnTheSameDeclaredRoot() {
-        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Singleton Root'));
-        XFTY_SharedAncestor.require('root');
+    static void twoSupplyCallsForDifferentChildrenConvergeOnTheSameRoot() {
+        XFTY_SharedAncestor.get('root').of(new Account(Name = 'Singleton Root'));
 
         Test.startTest();
         Contact a = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderRootLookup())
@@ -134,51 +119,10 @@ private class XFTY_DeclaredAncestorTest {
     }
 
     @IsTest
-    static void requireAcceptsAList() {
-        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Root'))
+    static void deepSharedAncestorChainStaysDmlFrugal() {
+        XFTY_SharedAncestor.get('root').of(new Account(Name = 'Root'))
                 .withKey(XFTY_LookupKey.get(Account.SObjectType));
-        XFTY_SharedAncestor.declared('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
-        XFTY_SharedAncestor.require(new List<String>{ 'root', 'level1' });
-
-        Test.startTest();
-        new XFTY_DummySObjectProvider(Contact.SObjectType, new DeepLookup())
-                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        System.assertNotEquals(null, XFTY_SharedAncestor.getId('root'));
-        System.assertNotEquals(null, XFTY_SharedAncestor.getId('level1'));
-    }
-
-    @IsTest
-    static void preRegisteringOneSideBreaksAWouldBeDeclaredCycle() {
-        XFTY_SharedAncestor.declared('a').of(new Account())
-                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
-        XFTY_SharedAncestor.declared('b').of(new Account())
-                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));
-        // break the a<->b cycle by handing 'b' a record up front
-        Account existingB = new Account(Name = 'Pre-made B', Id = XFTY_IdMocker.generateId(Account.SObjectType));
-        XFTY_SharedAncestor.put('b', existingB);
-        XFTY_SharedAncestor.require('a');
-
-        Test.startTest();
-        Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new CycleLookup())
-                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        System.assertNotEquals(null, c.AccountId, 'the chain resolved - the cycle was broken');
-        System.assertEquals(existingB.Id, XFTY_SharedAncestor.getId('b'));
-    }
-
-    @IsTest
-    static void deepDeclaredChainStaysDmlFrugal() {
-        XFTY_SharedAncestor.declared('root').of(new Account(Name = 'Root'))
-                .withKey(XFTY_LookupKey.get(Account.SObjectType));
-        XFTY_SharedAncestor.declared('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
-        XFTY_SharedAncestor.require('level1');
+        XFTY_SharedAncestor.get('level1').of(new Account(Name = 'Level 1')).withKey(LEVEL1_KEY);
 
         Integer dmlBefore;
         Test.startTest();
@@ -197,11 +141,12 @@ private class XFTY_DeclaredAncestorTest {
         System.assertEquals(4, [SELECT COUNT() FROM Contact]);
     }
 
+    // Cycles -----------------------------------------------------------
+
     @IsTest
-    static void declaredAncestorsInACycleThrow() {
-        XFTY_SharedAncestor.declared('a').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
-        XFTY_SharedAncestor.declared('b').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));
-        XFTY_SharedAncestor.require('a');
+    static void sharedAncestorsInACycleThrow() {
+        XFTY_SharedAncestor.get('a').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
+        XFTY_SharedAncestor.get('b').of(new Account()).withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));
 
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, new CycleLookup())
@@ -215,9 +160,31 @@ private class XFTY_DeclaredAncestorTest {
     }
 
     @IsTest
-    static void declaredAncestorWorksWithDepthBatchedMainBuild() {
-        XFTY_SharedAncestor.declared('hq').of(new Account(Name = 'HQ'));
-        XFTY_SharedAncestor.require('hq');
+    static void preRegisteringOneSideBreaksACycle() {
+        XFTY_SharedAncestor.get('a').of(new Account())
+                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'a'));
+        XFTY_SharedAncestor.get('b').of(new Account())
+                .withKey(XFTY_FlavouredLookupKey.get(Account.SObjectType, 'b'));
+        // break the a<->b cycle by handing 'b' a record up front
+        Account existingB = new Account(Name = 'Pre-made B', Id = XFTY_IdMocker.generateId(Account.SObjectType));
+        XFTY_SharedAncestor.put('b', existingB);
+
+        Test.startTest();
+        Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, new CycleLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        System.assertNotEquals(null, c.AccountId, 'the chain resolved - the cycle was broken');
+        System.assertEquals(existingB.Id, XFTY_SharedAncestor.getId('b'));
+    }
+
+    // Batched / deferred main build ------------------------------------
+
+    @IsTest
+    static void worksWithDepthBatchedMainBuild() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'HQ'));
 
         Test.startTest();
         new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
@@ -232,10 +199,48 @@ private class XFTY_DeclaredAncestorTest {
         System.assertEquals(3, [SELECT COUNT() FROM Contact]);
     }
 
-    // Path-scoped value + on-demand shared ancestor (no registration) --------
+    @IsTest
+    static void worksWithDeferredMainBuild() {
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'HQ'));
+
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                .setQuantityPerTemplate(2)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                .supplyList();
+        XFTY_DeferredInserter.flush();
+        Test.stopTest();
+
+        System.assertEquals(1, [SELECT COUNT() FROM Account], 'the shared ancestor resolved up front');
+        System.assertEquals(2, [SELECT COUNT() FROM Contact]);
+        Account hq = [SELECT Id FROM Account];
+        for (Contact c : [SELECT AccountId FROM Contact]) {
+            System.assertEquals(hq.Id, c.AccountId);
+        }
+    }
+
+    // getOrElse ------------------------------------------------------
 
     @IsTest
-    static void aPathValueCanWireInAnOnDemandSharedAncestorWithoutRequire() {
+    static void getOrElseConfiguresOnlyWhenUnconfigured() {
+        XFTY_SharedAncestor.getOrElse('hq', new Account(Name = 'First'));
+        XFTY_SharedAncestor.getOrElse('hq', new Account(Name = 'Second'));   // ignored
+
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, new ContactUnderHqLookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        System.assertEquals('First', [SELECT Name FROM Account].Name);
+    }
+
+    // Path-scoped value + shared ancestor, no special setup ------------
+
+    @IsTest
+    static void aPathValueCanWireInASharedAncestorWithNoSpecialSetup() {
         XFTY_SharedAncestor.get('shared-owner').of(new User(
                 Alias = 'shOwn', Email = 'sh.owner@example.com', Username = 'sh.owner@example.com.xfty',
                 LastName = 'Owner', EmailEncodingKey = 'ISO-8859-1', LanguageLocaleKey = 'en_US',
@@ -254,7 +259,7 @@ private class XFTY_DeclaredAncestorTest {
 
         Account account = (Account) bundle.getBundle(Contact.AccountId).primaryRecords()[0];
         System.assertEquals(XFTY_SharedAncestor.getId('shared-owner'), account.OwnerId,
-                'on-demand shared ancestor wired in via a path value, no require() needed');
+                'shared ancestor wired in via a path value, nothing to declare');
     }
 
     // Providers -------------------------------------------------------------

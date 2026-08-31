@@ -22,26 +22,35 @@
  * responsible for its own shared ancestors (Salesforce never shares data between
  * tests). No reset hook is needed or provided.
  *
- * This is the **on-demand** kind (design doc decision 9): lightweight, resolved
- * inline the first time it is referenced, and it must have no ancestors of its
- * own - a shared ancestor that references itself (directly or through its
- * Provider's relationships) throws rather than recursing. Deep / declared
- * ancestors and DML-batched resolution are a later increment - see
- * docs/roadmap/shared-ancestors.md.
+ * **One API, resolution handled automatically.** There is nothing to declare or
+ * register - configure a shared ancestor with `get(name).of(...)` and reference
+ * it. Before a Provider generates anything, every shared ancestor configured
+ * this test method is resolved in one place ({@link #ensureConfiguredAncestorsResolved}):
+ *
+ * - a **flat** one (its Provider has no relationships of its own) becomes a
+ *   single record;
+ * - a **deep** one (its Provider pulls in ancestors) has its whole sub-graph
+ *   built once and persisted one dependency layer at a time - the fewest
+ *   `insert` statements. A deep chain converging on a singleton root collapses
+ *   to one shared sub-graph.
+ *
+ * Either way the caller's insert mode is honoured (`NOW` inserts, `MOCK`
+ * mock-Ids, `NEVER` leaves it in memory; a `DEFERRED` / `.depthBatched()` call
+ * resolves its shared ancestors up front so they are ready when the deferred
+ * graph flushes).
+ *
+ * A shared ancestor that references itself while resolving - directly or round a
+ * chain of other shared ancestors - is a cycle: it throws, and the fix is to
+ * register one side with `put(name, record)`.
+ *
+ * See docs/use/shared-ancestors.md.
  */
 @IsTest
 public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
-    public enum Kind { ON_DEMAND, DECLARED }
 
     private static final Map<String, XFTY_SharedAncestor> BY_NAME = new Map<String, XFTY_SharedAncestor>();
 
-    // Declared-ancestor state - static, so it resets between test methods.
-    private static final Set<String> REQUIRED_NAMES = new Set<String>();
-    private static XFTY_InsertModeEnum declaredMode;
-    private static Boolean declaredPhaseComplete = false;
-
     private final String name;
-    private Kind kind = Kind.ON_DEMAND;
     private SObject overrideTemplate;
     private XFTY_LookupKeyIntf explicitLookupKey;
     private SObjectField relatedField;
@@ -49,7 +58,6 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     private SObject resolvedRecord;
     private XFTY_DummySObjectBundle resolvedBundle;
     private Boolean resolvedRecordIsPersisted = false;
-    private Boolean resolutionInProgress = false;
 
     private XFTY_SharedAncestor(String name) {
         this.name = name;
@@ -66,102 +74,117 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return BY_NAME.get(name);
     }
 
-    // Declared ancestors ---------------------------------------------------------
-    //
-    // A DECLARED ancestor may be deep / heavy / have its own ancestors. It is
-    // resolved once, up front, in a batched pre-phase (S0-S2), and only if the
-    // test asks for it with require(...). Reaching a declared ancestor the test
-    // did not require throws - no silent fallback.
-
     /**
-     * Mark `name` as a **declared** ancestor and return it for `.of(...)` / `.withKey(...)`
-     * configuration (do this once, centrally). A test then opts in with `require(name)`.
+     * `get(name)`, configuring it with `template` only if it has not been
+     * configured yet this test method (later calls ignore `template`). Lets a
+     * shared setup helper that may run more than once - or that configures more
+     * ancestors than one test uses - carry its own defaults inline.
      */
-    public static XFTY_SharedAncestor declared(String name) {
+    public static XFTY_SharedAncestor getOrElse(String name, SObject template) {
         XFTY_SharedAncestor ancestor = get(name);
-        ancestor.kind = Kind.DECLARED;
+        if (ancestor.isUnconfigured()) {
+            ancestor.overrideTemplate = template;
+        }
         return ancestor;
     }
 
-    /** Declare that this test needs these declared ancestors. Call at the top of the test. */
-    public static void require(List<String> names) {
-        REQUIRED_NAMES.addAll(names);
-    }
-    public static void require(String name) {
-        REQUIRED_NAMES.add(name);
-    }
-    public static void require(String a, String b) {
-        REQUIRED_NAMES.add(a);
-        REQUIRED_NAMES.add(b);
-    }
-    public static void require(String a, String b, String c) {
-        require(new List<String>{ a, b, c });
-    }
-    public static void require(String a, String b, String c, String d) {
-        require(new List<String>{ a, b, c, d });
-    }
-
-    /**
-     * Fix the insert mode the declared ancestors resolve against, before any
-     * `supply*()` call has one. Fluent: `XFTY_SharedAncestor.context(NOW).require('root')`.
-     */
-    public static DeclaredContext context(XFTY_InsertModeEnum insertMode) {
-        declaredMode = insertMode;
-        return new DeclaredContext();
-    }
-
-    public class DeclaredContext {
-        public void require(String name) {
-            XFTY_SharedAncestor.require(name);
+    /** As {@link #getOrElse(String, SObject)}, but pins the Provider variant instead of a template. */
+    public static XFTY_SharedAncestor getOrElse(String name, XFTY_LookupKeyIntf variantKey) {
+        XFTY_SharedAncestor ancestor = get(name);
+        if (ancestor.isUnconfigured()) {
+            ancestor.explicitLookupKey = variantKey;
         }
-        public void require(String a, String b) {
-            XFTY_SharedAncestor.require(a, b);
-        }
-        public void require(List<String> names) {
-            XFTY_SharedAncestor.require(names);
-        }
+        return ancestor;
     }
 
-    /**
-     * Resolve every required declared ancestor now (S0-S2), against `insertMode`
-     * (or the mode set with `context(...)`). Normally the first `supply*()` call
-     * triggers this; call it explicitly only when a test reads
-     * `getId(declaredName)` before any generation.
-     */
-    public static void resolveDeclared(XFTY_DummySObjectProviderLookupIntf providerLookup) {
-        ensureDeclaredResolved(providerLookup, declaredMode);
+    private Boolean isUnconfigured() {
+        return this.overrideTemplate == null
+                && this.explicitLookupKey == null
+                && this.resolvedRecord == null;
     }
 
-    /** Called by the factory before it generates - resolves any pending required declared ancestors. */
-    public static void ensureDeclaredResolved(
+    // Automatic pre-phase --------------------------------------------------
+    //
+    // Called by the Provider before it generates anything. Every shared ancestor
+    // configured this test method is resolved now, each in one depth-batched
+    // pass over its own sub-graph, honouring the caller's insert mode. Idempotent
+    // - a resolved ancestor is skipped, so repeated supply*() calls cost only the
+    // BY_NAME scan. Re-entrant calls (a shared ancestor's own generation reaching
+    // another one inline) are a no-op here - the inner reference resolves itself.
+
+    private static Boolean prePhaseRunning = false;
+    private static final Set<String> IN_PROGRESS = new Set<String>();
+
+    /** Resolve every configured shared ancestor, before the main graph build. */
+    public static void ensureConfiguredAncestorsResolved(
             XFTY_DummySObjectProviderLookupIntf providerLookup,
             XFTY_InsertModeEnum callInsertMode
     ) {
-        if (declaredPhaseComplete || REQUIRED_NAMES.isEmpty()) {
+        if (prePhaseRunning) {
             return;
         }
-        XFTY_InsertModeEnum mode = (declaredMode != null) ? declaredMode : callInsertMode;
-        if (mode == null) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Declared shared ancestors need an insert mode. Call '
-                            + 'XFTY_SharedAncestor.context(XFTY_InsertModeEnum.NOW).require(...) at the top of the test.'
-            );
+        List<XFTY_SharedAncestor> pending = new List<XFTY_SharedAncestor>();
+        for (XFTY_SharedAncestor ancestor : BY_NAME.values()) {
+            if (!ancestor.isResolved() && ancestor.isConfigured()) {
+                pending.add(ancestor);
+            }
         }
-        List<XFTY_SharedAncestor> required = new List<XFTY_SharedAncestor>();
-        for (String requiredName : REQUIRED_NAMES) {
-            required.add(get(requiredName));
+        if (pending.isEmpty()) {
+            return;
         }
-        new XFTY_DeclaredAncestorResolver(providerLookup, mode).resolve(required);
-        declaredPhaseComplete = true;
+        prePhaseRunning = true;
+        try {
+            new XFTY_SharedAncestorResolver(providerLookup, resolutionModeFor(callInsertMode)).resolve(pending);
+        } finally {
+            prePhaseRunning = false;
+        }
     }
 
-    /** Kind + require-state, for the resolver and the "not declared" checks. */
-    public Kind getKind() {
-        return this.kind;
+    /**
+     * Package-internal, for {@link XFTY_SharedAncestorResolver}: mark this ancestor
+     * as mid-resolution (returns `false` if it already is - a re-entrant hit), and
+     * report whether a named ancestor is mid-resolution (a live cycle).
+     */
+    public Boolean beginResolving() {
+        if (IN_PROGRESS.contains(this.name)) {
+            return false;
+        }
+        IN_PROGRESS.add(this.name);
+        return true;
     }
-    public Boolean isRequired() {
-        return REQUIRED_NAMES.contains(this.name);
+    public void endResolving() {
+        IN_PROGRESS.remove(this.name);
     }
+    public static Boolean isResolving(String name) {
+        return IN_PROGRESS.contains(name);
+    }
+
+    /**
+     * Resolve this shared ancestor now, outside any `supply*()` call - for a test
+     * that reads `getId(name)` before it generates anything.
+     */
+    public XFTY_SharedAncestor resolveNow(
+            XFTY_DummySObjectProviderLookupIntf providerLookup,
+            XFTY_InsertModeEnum insertMode
+    ) {
+        if (this.resolvedRecord == null) {
+            new XFTY_SharedAncestorResolver(providerLookup, insertMode)
+                    .resolve(new List<XFTY_SharedAncestor>{ this });
+        }
+        return this;
+    }
+
+    private Boolean isConfigured() {
+        return this.overrideTemplate != null || this.explicitLookupKey != null;
+    }
+
+    private static XFTY_InsertModeEnum resolutionModeFor(XFTY_InsertModeEnum callInsertMode) {
+        Boolean resolveEagerly = callInsertMode == null
+                || callInsertMode == XFTY_InsertModeEnum.DEFERRED
+                || callInsertMode == XFTY_InsertModeEnum.RELATED_ONLY;
+        return resolveEagerly ? XFTY_InsertModeEnum.NOW : callInsertMode;
+    }
+
     public Boolean isResolved() {
         return this.resolvedRecord != null;
     }
@@ -174,18 +197,6 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         this.resolvedRecord = record;
         this.resolvedBundle = bundle;
         this.resolvedRecordIsPersisted = persisted;
-    }
-
-    private void assertDeclaredAndRequired() {
-        if (this.kind != Kind.DECLARED || this.resolvedRecord != null) {
-            return;
-        }
-        if (!this.isRequired()) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.name + '" is declared but this test did not require it. Add '
-                            + 'XFTY_SharedAncestor.require("' + this.name + '") at the top of the test.'
-            );
-        }
     }
 
     /**
@@ -208,15 +219,11 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     /** The resolved record's Id. Throws if it has not been resolved yet this test method. */
     public static Id getId(String name) {
         XFTY_SharedAncestor ancestor = get(name);
-        ancestor.assertDeclaredAndRequired();
         if (ancestor.resolvedRecord == null) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + name + '" is not resolved yet. '
-                            + (ancestor.kind == Kind.DECLARED
-                                    ? 'Call XFTY_SharedAncestor.resolveDeclared(lookup) (or make any supply*() call) '
-                                            + 'after require("' + name + '").'
-                                    : 'Reference it from a relationship in a supply*() call first, or register a record '
-                                            + 'with XFTY_SharedAncestor.put("' + name + '", record).')
+                    'Shared ancestor "' + name + '" is not resolved yet. Reference it from a relationship in a '
+                            + 'supply*() call first, register a record with XFTY_SharedAncestor.put("' + name
+                            + '", record), or call XFTY_SharedAncestor.get("' + name + '").resolveNow(lookup, mode).'
             );
         }
         return ancestor.resolvedRecord.Id;
@@ -282,47 +289,15 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         if (this.resolvedRecord != null) {
             return this.resolvedRecord;
         }
-        this.assertDeclaredAndRequired();
-        if (this.kind == Kind.DECLARED) {
-            // A required declared ancestor should already be resolved by the S0-S2
-            // pre-phase; reaching an unresolved one means the pre-phase never ran.
-            XFTY_SharedAncestor.ensureDeclaredResolved(context.providerLookup, context.insertMode);
-            if (this.resolvedRecord != null) {
-                return this.resolvedRecord;
-            }
-        }
-        this.assertNotAlreadyResolving();
-        this.resolutionInProgress = true;
-        try {
-            this.generateSharedRecord(context);
-        } finally {
-            this.resolutionInProgress = false;
+        // Normally the Provider's pre-phase has already resolved every configured
+        // shared ancestor. Reaching an unresolved one here means it was configured
+        // after that pre-phase ran (a later supply*() call in the same test) -
+        // resolve it now, alone, in the same depth-batched way.
+        XFTY_SharedAncestor.ensureConfiguredAncestorsResolved(context.providerLookup, context.insertMode);
+        if (this.resolvedRecord == null) {
+            this.resolveNow(context.providerLookup, resolutionModeFor(context.insertMode));
         }
         return this.resolvedRecord;
-    }
-
-    private void assertNotAlreadyResolving() {
-        if (!this.resolutionInProgress) {
-            return;
-        }
-        throw new XFTY_DummySObjectFtyProviderException(
-                'Shared ancestor "' + this.name + '" references itself while resolving - directly, through a '
-                        + 'relationship on its own Provider, or round a chain of other shared ancestors - a cycle. '
-                        + 'An on-demand shared ancestor must be lightweight with no ancestors of its own; break the '
-                        + 'cycle by registering one side with XFTY_SharedAncestor.put("' + this.name + '", record).'
-        );
-    }
-
-    private void generateSharedRecord(XFTY_GenerationContext context) {
-        XFTY_GenerationContext ancestorContext = context.forRelated();
-        XFTY_DummySobjectProviderIntf provider =
-                context.providerLookup.get(this.resolveLookupKey(context.providerLookup));
-        this.resolvedBundle = provider.createBundle(
-                ancestorContext,
-                new List<SObject>{ this.requireTemplate().clone(true, true, true, true) }
-        );
-        this.resolvedRecord = this.resolvedBundle.getList(provider.getPrimaryTargetField())[0];
-        this.resolvedRecordIsPersisted = XFTY_InsertModeEnum.NOW == ancestorContext.insertMode;
     }
 
     /**
