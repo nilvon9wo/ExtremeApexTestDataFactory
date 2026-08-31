@@ -42,9 +42,23 @@ public class XFTY_DeferredInsertBuffer {
         if (primaries == null) {
             return new List<XFTY_IndexedRecord>();
         }
-        List<XFTY_IndexedRecord> children = this.append(primaries);
-        this.linkToParents(bundle, children);
-        return children;
+        List<XFTY_IndexedRecord> theseRecords = this.append(primaries);
+        this.linkToParents(bundle, theseRecords);
+        this.linkToChildCollections(bundle, theseRecords);
+        return theseRecords;
+    }
+
+    /** Downward children (`with(...)` / `withChildren(...)`): each child row points at its primary row. */
+    private void linkToChildCollections(XFTY_DummySObjectBundle bundle, List<XFTY_IndexedRecord> primaries) {
+        for (SObjectField childField : bundle.childRelationshipFields()) {
+            for (XFTY_DummySObjectBundle.ChildEntry entry : bundle.childEntries(childField)) {
+                List<XFTY_IndexedRecord> childRecords = this.collect(entry.bundle);
+                for (Integer childRow = 0; childRow < childRecords.size(); childRow++) {
+                    Integer parentRow = entry.parentRowByChildRow[childRow];
+                    this.linkChild(childRecords[childRow], primaries[parentRow], childField);
+                }
+            }
+        }
     }
 
     private void linkToParents(XFTY_DummySObjectBundle bundle, List<XFTY_IndexedRecord> children) {
