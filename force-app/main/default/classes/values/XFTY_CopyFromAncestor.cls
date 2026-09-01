@@ -44,22 +44,9 @@ public class XFTY_CopyFromAncestor implements XFTY_ContextAwareValueIntf {
     }
 
     public Object get(XFTY_GenerationContext context) {
-        Integer lastHop = this.path.size() - 2;   // index of the final relationship hop
-        SObjectField sourceField = this.path[this.path.size() - 1];
-
-        XFTY_DummySObjectBundle bundle = context.bundleSoFar;
-        for (Integer i = 0; i < lastHop; i++) {
-            bundle = (bundle == null) ? null : bundle.getBundle(this.path[i]);
-        }
-        if (bundle == null || context.rowIndex < 0) {
+        if (context.bundleSoFar == null) {
             return null;
         }
-
-        List<SObject> records = bundle.getList(this.path[lastHop]);
-        if (records == null || context.rowIndex >= records.size()) {
-            return null;
-        }
-        SObject record = records[context.rowIndex];
-        return (record == null) ? null : record.get(sourceField);
+        return context.bundleSoFar.getValue(this.path, context.rowIndex);
     }
 }

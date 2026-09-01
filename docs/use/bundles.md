@@ -62,6 +62,54 @@ the entire subgraph beneath them. Both are populated for a
 [shared ancestor](shared-ancestors.md), whether it was generated or supplied
 with `XFTY_SharedAncestor.put(...)`.
 
+---
+
+## Walking an ancestor path — `getValue`
+
+When you only want one field several hops up, `getValue` walks the path so you
+don't have to hold every intermediate bundle and list:
+
+```apex
+Object siteFromParentAccount =
+    bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Site });
+
+// deeper - each leading field is a hop down, the last field is what to read
+Object nameFromGrandparent = bundle.getValue(new List<SObjectField>{
+    Contact.AccountId, Account.ParentId, Account.Name
+});
+```
+
+The path is one or more **relationship fields** then the **field to read**. A
+second argument picks the row when the bundle has more than one primary
+(`getValue(path, rowIndex)`); the no-index form is `rowIndex` 0. Any hop that was
+not generated — an optional relationship the current inclusivity skipped — makes
+the whole call return `null` rather than throw. It only follows generated
+**ancestors**; for children use `getChildBundle(field)` and navigate from there.
+`XFTY_CopyFromAncestor` is this same walk wrapped as a context-aware value.
+
+---
+
+## Generated children
+
+Downward generation ([`with` / `withChildren`](child-records.md)) hangs children
+off the primaries. Read them back off the same bundle:
+
+```apex
+Account account            = (Account) bundle.primaryRecords()[0];
+List<Contact> contacts     = (List<Contact>) bundle.getChildList(Contact.AccountId);
+XFTY_DummySObjectBundle kids = bundle.getChildBundle(Contact.AccountId);   // navigate on to grandchildren / the children's own parents
+```
+
+| Call | Returns |
+|------|---------|
+| `bundle.getChild(field)` | the first child for that relationship field |
+| `bundle.getChildList(field)` | every child for that field, merged across configs, in declaration → primary → quantity order |
+| `bundle.getChildBundle(field)` | one bundle of all those children, for navigating deeper |
+| `bundle.childRelationshipFields()` | every child relationship field populated |
+
+Full detail — ordering, multiple child configs, grandchildren — is in
+[child-records](child-records.md).
+
 ▶ Runnable: `XFTY_Ex_BundlesTest`
 
-See also: [relationships](relationships.md) · [generating-records](generating-records.md)
+See also: [relationships](relationships.md) · [child-records](child-records.md) · [generating-records](generating-records.md)

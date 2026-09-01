@@ -112,9 +112,12 @@ public class AccountNamePlusRegion implements XFTY_ContextAwareValueIntf {
 }
 ```
 
-`XFTY_CopyFromAncestor` is exactly this, generalised to a multi-hop
-`List<SObjectField>` path (each hop is a `getBundle(...)` down, the last field the
-value to read). Reach for it first; write your own only when the value is a
+`context.bundleSoFar.getValue(new List<SObjectField>{ Contact.AccountId, Account.ShippingCountry }, context.rowIndex)`
+does the same walk in one call — use it instead of the hand-written
+`ancestorAccount` helper when you only need a field, not the whole record.
+`XFTY_CopyFromAncestor` is that walk wrapped as a ready-made context-aware value
+(multi-hop: each leading field is a `getBundle(...)` down, the last is the field
+to read). Reach for it first; write your own only when the value is a
 transformation, not a straight copy.
 
 **Limitations:**

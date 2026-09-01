@@ -83,6 +83,54 @@ private class XFTY_Ex_BundlesTest {
         Assert.areEqual(parentAccount.Id, childAccount.ParentId, 'the nested Account is wired to its parent');
     }
 
+    @IsTest
+    static void getValueWalksAnAncestorPathWithoutHoldingTheIntermediateBundles() {
+        // Arrange - a Contact with its generated parent Account
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+
+        // Act
+        Object parentAccountName = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
+
+        // Assert - same value as the long-hand navigation
+        Account parentAccount = (Account) bundle.getList(Contact.AccountId)[0];
+        Assert.areEqual(parentAccount.Name, parentAccountName);
+    }
+
+    @IsTest
+    static void getValueReturnsNullWhenAHopOfThePathWasNotGenerated() {
+        // Arrange - NONE inclusivity, so the Account is never generated
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.NONE)
+                .supplyBundle();
+
+        // Act
+        Object missing = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
+
+        // Assert
+        Assert.isNull(missing, 'an ungenerated hop reads as null, no exception');
+    }
+
+    @IsTest
+    static void aBundleExposesGeneratedChildrenByRelationshipField() {
+        // Arrange - an Account with three Contacts hung below it
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+
+        // Act
+        List<Contact> children = (List<Contact>) bundle.getChildList(Contact.AccountId);
+
+        // Assert
+        Account parentAccount = (Account) bundle.primaryRecords()[0];
+        Assert.areEqual(3, children.size());
+        Assert.areEqual(parentAccount.Id, children[0].AccountId, 'each child points back at the primary');
+    }
+
     // Fixture ---------------------------------------------------------------
 
     private class ContactUnderNestedAccount implements XFTY_DummySobjectProviderIntf {
