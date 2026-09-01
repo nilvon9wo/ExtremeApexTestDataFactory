@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, 4.0-beta]
   pull_request:
-    branches: [master]
+    branches: [master, 4.0-beta]
 
 # Serialise scratch org creation so parallel runs don't exhaust the Dev Hub's
 # active scratch org allocation.

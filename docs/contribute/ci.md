@@ -1,6 +1,7 @@
 # Continuous Integration
 
-`.github/workflows/ci.yml` runs two jobs on every push and PR against `master`.
+`.github/workflows/ci.yml` runs two jobs on every push and PR against `master`
+or `4.0-beta`.
 
 **`doc-examples`** — `scripts/verify-doc-examples.py` (no org needed): every
 significant call in every ```apex``` block on a page with a `Runnable:` line
