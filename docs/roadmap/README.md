@@ -2,14 +2,13 @@
 
 What is built, what is left, and the one decision still open.
 
-**Everything marked ✅ is on `xfty-4.0-beta`** — there are no unmerged feature
-branches. `master` carries only a pointer to `xfty-4.0-beta`. Commit hashes are
+**Everything marked ✅ is on `4.0-beta`** — there are no unmerged feature
+branches. `master` carries only a pointer to `4.0-beta`. Commit hashes are
 not tracked here; `git log --grep` on the branch finds any of them.
 
 Legend: ✅ built · 📋 designed, not built.
 
-## 
-Built (`xfty-4.0-beta`)
+## Built (`4.0-beta`)
 
 | Feature | Tests | Docs | Notes / limits |
 |---------|-------|------|----------------|

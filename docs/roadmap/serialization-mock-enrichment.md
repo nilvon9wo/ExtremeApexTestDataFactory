@@ -12,7 +12,7 @@ serialization cost is the reason it may stay proposed.
 
 Everything below is a design sketch. What is actually feasible — and which parts
 of the surface ship first — gets worked out on a dedicated branch, not in
-`xfty-4.0-beta`.
+`4.0-beta`.
 
 ---
 

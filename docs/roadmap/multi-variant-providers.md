@@ -184,7 +184,7 @@ All of these were decided and shipped; kept here so the design record is complet
    virtual, and the project uses composition anyway: `XFTY_ProviderLookups` is a
    stateless utility, and a project's lookup is a small class holding a complete
    `Map` that delegates its three methods to it.
-5. **Scope / reviewability.** Landed on the `xfty-4.0-beta` integration branch
+5. **Scope / reviewability.** Landed on the `4.0-beta` integration branch
    (formerly `sfdx-package-and-tests`). Not on `master`.
 
 Key resolution is memoised on the relationship (`resolveLookupKey`), derived from

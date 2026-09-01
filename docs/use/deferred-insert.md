@@ -1,6 +1,6 @@
 # Deferred & Depth-Batched Insert
 
-> On `xfty-4.0-beta` (like the rest of 4.0; `master` is frozen). Design rationale:
+> On `4.0-beta` (like the rest of 4.0; `master` is frozen). Design rationale:
 > [roadmap/deferred-persistence.md](../roadmap/deferred-persistence.md).
 
 Two ways to move DML out of the per-Provider recursion.

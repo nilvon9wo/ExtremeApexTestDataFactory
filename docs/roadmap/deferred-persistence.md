@@ -1,6 +1,6 @@
 # Design: Deferred Persistence
 
-Status: **built**, merged to `xfty-4.0-beta` (`407d38a`), not on `master`. Two
+Status: **built**, merged to `4.0-beta` (`407d38a`), not on `master`. Two
 related ways to move DML out of the recursion:
 
 1. **Depth-batched persistence** - the opt-in `.depthBatched()` Provider flag: one
