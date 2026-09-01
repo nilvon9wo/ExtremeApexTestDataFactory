@@ -71,7 +71,9 @@ jobs:
           sf project generate manifest --source-dir force-app --source-dir test-support --name /tmp/package.xml
           grep -v 'XFTY_PersonAccount' /tmp/package.xml > /tmp/package-ci.xml
           TESTS=$(bash scripts/list-suite-classes.sh XFTY_Unit XFTY_Integration XFTY_Examples XFTY_OrgOnly)
-          echo "running:"; echo "$TESTS" | tr ',' '\n'
+          echo "running:"; echo "$TESTS" | tr ' ' '\n'
+          # $TESTS is space-separated and deliberately unquoted so each class
+          # becomes its own value of the multi-valued --tests flag.
           sf project deploy start --dry-run --manifest /tmp/package-ci.xml \
-            --test-level RunSpecifiedTests --tests "$TESTS" \
-            --coverage-formatters text --wait 30
+            --test-level RunSpecifiedTests --tests $TESTS \
+            --wait 30
