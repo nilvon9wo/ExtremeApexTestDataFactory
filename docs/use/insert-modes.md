@@ -53,6 +53,22 @@ Inserts the generated parents but not the primary records — a test that needs
 valid lookup targets but wants to insert the primaries itself. Internally XFTY
 upgrades relationship generation to `NOW` while leaving the primaries untouched.
 
+It only inserts a Provider's **ancestors**. Child collections
+([`with` / `withChildren`](child-records.md)) are not ancestors, so under
+`RELATED_ONLY` they are generated but not inserted.
+
+---
+
+## Child collections
+
+A child collection ([`with` / `withChildren`](child-records.md)) inherits the
+parent Provider's mode unless it sets its own. A child may raise or lower that
+mode — parent `NEVER` + child `NOW` is common — with **one** exception: mixing
+mock Ids with real DML in either direction (parent `MOCK` + child `NOW`, or
+parent `NOW` + child `MOCK`) throws `XFTY_SObjectChildProvider.SanityException`.
+Under `DEFERRED` / `.depthBatched()` a child's override is ignored entirely; the
+whole subtree flushes together.
+
 ---
 
 ## Choosing

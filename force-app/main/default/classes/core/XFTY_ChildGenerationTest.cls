@@ -306,6 +306,84 @@ private class XFTY_ChildGenerationTest {
     }
 
     @IsTest
+    static void mixingRealDmlWithMockIdsThrowsTheOtherWayToo() {
+        // Arrange - parent MOCK, child NOW: the reverse of mixingMockIdsWithRealDmlThrows
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .with(new XFTY_SObjectChildProvider(Contact.AccountId).setInsertMode(XFTY_InsertModeEnum.NOW));
+
+        // Act
+        XFTY_SObjectChildProvider.SanityException thrown;
+        try {
+            provider.supplyBundle();
+        } catch (XFTY_SObjectChildProvider.SanityException ex) {
+            thrown = ex;
+        }
+
+        // Assert
+        Assert.isNotNull(thrown, 'MOCK parent + NOW child is a mock/real mix');
+        Assert.isTrue(thrown.getMessage().contains('mix mock'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void aLaterParentLeavesItsChildrenExactlyAsNeverWould() {
+        // Arrange - LATER is NEVER-with-intent, all the way down
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
+                .withChildren(Contact.AccountId, 2);
+
+        // Act
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+
+        // Assert
+        List<SObject> children = bundle.getChildList(Contact.AccountId);
+        Assert.areEqual(2, children.size(), 'the children are still generated');
+        Assert.areEqual(null, children[0].Id, 'just not inserted');
+        Assert.areEqual(null, children[0].get(Contact.AccountId), 'and the back-reference is null - no parent Id to point at');
+    }
+
+    @IsTest
+    static void aRelatedOnlyParentDoesNotPersistItsChildren() {
+        // Arrange - RELATED_ONLY does not insert the primaries, so from a child's
+        // point of view there is no persisted parent and RELATED_ONLY flows down
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY)
+                .withChildren(Contact.AccountId, 2);
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            bundle = provider.supplyBundle();
+        }
+
+        // Assert
+        Assert.areEqual(2, bundle.getChildList(Contact.AccountId).size());
+        Assert.areEqual(null, bundle.getChildList(Contact.AccountId)[0].Id, 'children are not inserted');
+        Assert.areEqual(0, [SELECT COUNT() FROM Contact], 'nothing at the child level reaches the database');
+    }
+
+    @IsTest
+    static void aDeferredParentIgnoresAChildInsertModeOverride() {
+        // Arrange - under DEFERRED the whole subtree is structural; a child override cannot opt out
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                .with(new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2).setInsertMode(XFTY_InsertModeEnum.NOW));
+
+        // Act
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            Test.startTest();
+            provider.supplyBundle();
+            Integer contactsBeforeFlush = [SELECT COUNT() FROM Contact];
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+
+            // Assert
+            Assert.areEqual(0, contactsBeforeFlush, 'the NOW override did not insert the children early');
+        }
+        Assert.areEqual(2, [SELECT COUNT() FROM Contact], 'they went in with the rest of the graph at flush');
+    }
+
+    @IsTest
     static void quantityBelowOneThrows() {
         try {
             new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(0);
