@@ -18,10 +18,13 @@
  * or any Developer Edition org.
  *
  * Neither a scratch nor a dev org admin sees a custom object's record types by
- * default, so `@TestSetup` assigns the `XFTY_HierarchyNodeRecordTypes`
- * permission set and each method runs its body inside `System.runAs` - a
- * permission-set assignment made in the test transaction only takes effect
- * inside a subsequent `runAs` block.
+ * default. Each method assigns the `XFTY_HierarchyNodeRecordTypes` permission
+ * set (setup-object DML, so it is done *before* the `System.runAs` block that
+ * follows - the `runAs` boundary keeps it clear of the framework's own DML) and
+ * runs its body inside `System.runAs`, because a permission-set assignment made
+ * in a test only takes effect inside a subsequent `runAs`. No `@TestSetup` -
+ * the framework's incrementing / unique value expressions rely on static
+ * counters that a `@TestSetup` method would perturb.
  */
 @IsTest
 private class XFTY_SharedAncestorDeepHierarchyTest {
@@ -29,8 +32,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
     private static final SObjectType NODE = XFTY_HierarchyNode__c.SObjectType;
     private static final User RUNNING_USER = new User(Id = UserInfo.getUserId());
 
-    @TestSetup
-    static void grantRecordTypeVisibility() {
+    private static void grantRecordTypeVisibility() {
         List<PermissionSet> sets = [SELECT Id FROM PermissionSet WHERE Name = 'XFTY_HierarchyNodeRecordTypes'];
         if (sets.isEmpty()) {
             return;
@@ -38,7 +40,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
         try {
             insert new PermissionSetAssignment(AssigneeId = UserInfo.getUserId(), PermissionSetId = sets[0].Id);
         } catch (DmlException alreadyAssigned) {
-            // fine on a re-run - the assignment already exists
+            // fine on a re-run in a persistent org - the assignment already exists
         }
     }
 
@@ -51,6 +53,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
 
     @IsTest
     static void twoDeepLeavesConvergeOnTheOneSharedRoot() {
+      grantRecordTypeVisibility();
       System.runAs(RUNNING_USER) {
         // Arrange - register Root + Level1..Level8 as shared ancestors, each carrying its own parent
         configureSharedSpine();
@@ -91,6 +94,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
 
     @IsTest
     static void aSecondRootCannotBeInserted() {
+      grantRecordTypeVisibility();
       System.runAs(RUNNING_USER) {
         // Arrange
         configureSharedSpine();
