@@ -6,6 +6,15 @@
 @IsTest
 private class XFTY_PathValueTest {
     private static final XFTY_DummySObjectProviderLookupIntf LOOKUP = new PathTestLookup();
+
+    // Declared before DEEP_LOOKUP: Apex initialises statics in source order, and
+    // DeepLookup's map is built from these keys - if they were declared lower
+    // they would still be null when new DeepLookup() runs, collapsing the chain
+    // onto the base User key and tripping the ancestor-cycle guard on a real org
+    // (the local runtime is more forgiving about init order).
+    private static final XFTY_LookupKeyIntf MGR_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'mgr');
+    private static final XFTY_LookupKeyIntf SKIP_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'skip');
+
     private static final XFTY_DummySObjectProviderLookupIntf DEEP_LOOKUP = new DeepLookup();
 
     @IsTest
@@ -271,9 +280,7 @@ private class XFTY_PathValueTest {
 
     // A deep chain for the relationship-path-value test:
     // Contact -> Account -> User(owner) -> User(manager, flavour 'mgr') -> User(skip, flavour 'skip')
-
-    private static final XFTY_LookupKeyIntf MGR_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'mgr');
-    private static final XFTY_LookupKeyIntf SKIP_KEY = XFTY_FlavouredLookupKey.get(User.SObjectType, 'skip');
+    // MGR_KEY / SKIP_KEY are declared at the top of the class - see the note there.
 
     private class DeepLookup implements XFTY_DummySObjectProviderLookupIntf {
         private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> byKey

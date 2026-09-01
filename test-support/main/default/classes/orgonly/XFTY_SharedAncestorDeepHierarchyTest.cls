@@ -14,12 +14,33 @@
  * `Root` and the singleton trigger blows up.
  *
  * In `test-support/orgonly/` - needs the custom object's real record-type
- * describe, which the local Apex runtime does not have. Runs on a scratch org.
+ * describe, which the local Apex runtime does not have. Runs on a scratch org
+ * or any Developer Edition org.
+ *
+ * Neither a scratch nor a dev org admin sees a custom object's record types by
+ * default, so `@TestSetup` assigns the `XFTY_HierarchyNodeRecordTypes`
+ * permission set and each method runs its body inside `System.runAs` - a
+ * permission-set assignment made in the test transaction only takes effect
+ * inside a subsequent `runAs` block.
  */
 @IsTest
 private class XFTY_SharedAncestorDeepHierarchyTest {
 
     private static final SObjectType NODE = XFTY_HierarchyNode__c.SObjectType;
+    private static final User RUNNING_USER = new User(Id = UserInfo.getUserId());
+
+    @TestSetup
+    static void grantRecordTypeVisibility() {
+        List<PermissionSet> sets = [SELECT Id FROM PermissionSet WHERE Name = 'XFTY_HierarchyNodeRecordTypes'];
+        if (sets.isEmpty()) {
+            return;
+        }
+        try {
+            insert new PermissionSetAssignment(AssigneeId = UserInfo.getUserId(), PermissionSetId = sets[0].Id);
+        } catch (DmlException alreadyAssigned) {
+            // fine on a re-run - the assignment already exists
+        }
+    }
 
     // Root is the top; every other level's parent record type is the one below it here.
     private static final Map<String, String> PARENT_RT_BY_CHILD = new Map<String, String>{
@@ -30,6 +51,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
 
     @IsTest
     static void twoDeepLeavesConvergeOnTheOneSharedRoot() {
+      System.runAs(RUNNING_USER) {
         // Arrange - register Root + Level1..Level8 as shared ancestors, each carrying its own parent
         configureSharedSpine();
         XFTY_DummySObjectProviderLookupIntf lookup = hierarchyLookup();
@@ -42,8 +64,8 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
         westLeaf = (XFTY_HierarchyNode__c) supplyLeaf(lookup);
         Test.stopTest();
 
-        // Assert - one node per shared level (Root..Level8) + one Level9 per leaf = 8 + 2
-        Assert.areEqual(10, [SELECT COUNT() FROM XFTY_HierarchyNode__c], 'one shared node per level, one Level9 per leaf');
+        // Assert - one shared node for Root + Level1..Level8 (9) + one Level9 per leaf (2) = 11
+        Assert.areEqual(11, [SELECT COUNT() FROM XFTY_HierarchyNode__c], 'one shared node per level, one Level9 per leaf');
         Assert.areEqual(eastLeaf.Parent__c, westLeaf.Parent__c, 'both Level9 leaves share the one Level8');
 
         Id rootId = XFTY_SharedAncestor.getId('Root');
@@ -64,10 +86,12 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
             Assert.areEqual(expectedParentRt, node.Parent__r.RecordType.DeveloperName,
                     node.RecordType.DeveloperName + ' parent record type');
         }
+      }
     }
 
     @IsTest
     static void aSecondRootCannotBeInserted() {
+      System.runAs(RUNNING_USER) {
         // Arrange
         configureSharedSpine();
         supplyLeaf(hierarchyLookup());   // builds the one Root
@@ -83,6 +107,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
         // Assert
         Assert.isNotNull(thrown, 'the singleton trigger rejects a second Root');
         Assert.isTrue(thrown.getMessage().contains('one'), thrown.getMessage());
+      }
     }
 
     // Fixture -----------------------------------------------------------------
