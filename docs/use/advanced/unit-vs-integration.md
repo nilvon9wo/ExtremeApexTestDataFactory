@@ -37,7 +37,7 @@ from unit to integration (or the reverse) without touching its setup.
 
 ## What "usually" is carrying
 
-The flip is free only when the graph can actually be inserted. Three things stop
+The flip is free only when the graph can actually be inserted. Four things stop
 that, and none of them are bugs XFTY can remove:
 
 1. **A Provider is only as correct as its author kept it.** `MOCK` never runs
@@ -59,6 +59,18 @@ that, and none of them are bugs XFTY can remove:
    no DML so it never surfaces; under `NOW` it throws `MIXED_DML_OPERATION`.
    Insert the setup records in a `System.runAs` block (or a separate step)
    before the rest of the graph.
+
+4. **Values the test forced in that a real `insert` cannot set.** A unit test
+   can reach past the SObject API — the well-known `JSON.serialize` /
+   `deserialize` round-trip (e.g. Nebula's `TestingUtils`) writes read-only
+   fields, system fields (`CreatedDate`, `LastModifiedById`), formula and
+   rollup-summary fields, or populates a parent relationship object in memory.
+   Under `MOCK` those stick and the assertions pass. Under `NOW` the same fields
+   come back to whatever a real `insert` (plus recalculation) produces — often
+   `null` or a different value — and the test fails in the *opposite* direction
+   from the cases above: the unit test is green, the integration test is red.
+   XFTY does not do this today; if a value only exists because the test forced
+   it, that test is inherently `MOCK`-only.
 
 The takeaway: default to `MOCK`, and treat a `NOW` run as its own thing that has
 to be *kept* green, not as a switch that is guaranteed to stay flipped.
