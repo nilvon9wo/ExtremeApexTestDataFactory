@@ -1,72 +1,166 @@
 /**
- * Shared ancestors at volume: the shared record must cost one insert no matter
- * how many children reference it, and the per-child wiring must stay cheap.
+ * Shared ancestors at volume: the shared record costs one insert however many
+ * children reference it, a deep shared chain stays a handful of statements, and
+ * many `supply*()` calls resolve it once.
  *
- * `test-support/` only. See docs/reference/volume-and-limits.md.
+ * `test-support/` only - the assertions assume a quiet org. See
+ * docs/reference/volume-and-limits.md.
  */
 @IsTest
 private class XFTY_SharedAncestorLoadTest {
-    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    /**
-     * 500 Contacts under one shared Account, NOW: one Account row, 500 Contact
-     * rows - and a small, constant number of DML *statements*, not one per child.
-     */
+    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+    private static final XFTY_LookupKeyIntf LEVEL1_KEY = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'level1');
+    private static final Integer FRUGAL_STATEMENT_CEILING = 4;
+
     @IsTest
     static void fiveHundredChildrenUnderOneSharedAncestorCostOneParentInsert() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
-        Integer stmtsBefore;
-        Integer stmtsAfter;
-        Integer rowsBefore;
-        Integer rowsAfter;
+        // Act
+        Usage used;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            stmtsBefore = Limits.getDmlStatements();
-            rowsBefore = Limits.getDmlRows();
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setQuantityPerTemplate(500)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .supplyList();
-            stmtsAfter = Limits.getDmlStatements();
-            rowsAfter = Limits.getDmlRows();
+            used = supplyMeasured(500, defaultContactsUnderHq());
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(1, [SELECT COUNT() FROM Account], 'one shared Account, not 500');
         Assert.areEqual(500, [SELECT COUNT() FROM Contact]);
-        Assert.areEqual(501, rowsAfter - rowsBefore, '1 Account row + 500 Contact rows');
-        Assert.isTrue(
-                stmtsAfter - stmtsBefore <= 4,
-                'a handful of DML statements for 500 shared-ancestor children, used ' + (stmtsAfter - stmtsBefore)
-        );
+        Assert.areEqual(501, used.rows, '1 Account row + 500 Contact rows');
+        Assert.isTrue(used.statements <= FRUGAL_STATEMENT_CEILING,
+                'a handful of DML statements for 500 shared-ancestor children, used ' + used.statements);
     }
 
-    /**
-     * The same shared ancestor referenced from three separate `supply*()` calls
-     * still resolves once - one Account row across all three.
-     */
     @IsTest
-    static void oneSharedAncestorAcrossManySupplyCallsResolvesOnce() {
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+    static void aDeepSharedChainStaysStatementFrugal() {
+        // Arrange - Contact -> shared level1 -> shared root, four leaves
+        XFTY_SharedAncestor.get('root').of(new Account(Name = 'Root'))
+                .withKey(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.get('level1').of(new Account(Name = 'Level 1'))
+                .withKey(LEVEL1_KEY);
 
+        // Act
+        Usage used;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            for (Integer call = 0; call < 3; call++) {
-                new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                        .setQuantityPerTemplate(100)
-                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                        .setInsertMode(XFTY_InsertModeEnum.NOW)
-                        .supplyList();
-            }
+            used = supplyMeasured(4, deepChainLookup());
             Test.stopTest();
         }
 
-        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
+        // Assert
+        Assert.areEqual(2, [SELECT COUNT() FROM Account], 'root + level1');
+        Assert.areEqual(4, [SELECT COUNT() FROM Contact]);
+        Assert.isTrue(used.statements <= FRUGAL_STATEMENT_CEILING,
+                'root + level1 + four Contacts should be a handful of statements, used ' + used.statements);
+    }
+
+    @IsTest
+    static void oneSharedAncestorAcrossManySupplyCallsResolvesOnce() {
+        // Arrange
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+
+        // Act - three separate supply calls
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            supplyContacts(100, defaultContactsUnderHq());
+            supplyContacts(100, defaultContactsUnderHq());
+            supplyContacts(100, defaultContactsUnderHq());
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, [SELECT COUNT() FROM Account], 'still one shared Account across all three calls');
         Assert.areEqual(300, [SELECT COUNT() FROM Contact]);
+    }
+
+    // Fixture ---------------------------------------------------------------
+
+    private static Usage supplyMeasured(Integer howMany, XFTY_DummySObjectProviderLookupIntf lookup) {
+        Usage used = new Usage();
+        supplyContacts(howMany, lookup);
+        used.recordEnd();
+        return used;
+    }
+
+    private static void supplyContacts(Integer howMany, XFTY_DummySObjectProviderLookupIntf lookup) {
+        new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                .setQuantityPerTemplate(howMany)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supplyList();
+    }
+
+    private static XFTY_DummySObjectProviderLookupIntf defaultContactsUnderHq() {
+        return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderShared('hq')
+        });
+    }
+
+    private static XFTY_DummySObjectProviderLookupIntf deepChainLookup() {
+        return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                LEVEL1_KEY => new AccountUnderShared('root'),
+                XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderShared('level1')
+        });
+    }
+
+    private class Usage {
+        private final Integer startStatements = Limits.getDmlStatements();
+        private final Integer startRows = Limits.getDmlRows();
+        private Integer statements;
+        private Integer rows;
+
+        private void recordEnd() {
+            this.statements = Limits.getDmlStatements() - this.startStatements;
+            this.rows = Limits.getDmlRows() - this.startRows;
+        }
+    }
+
+    private class ContactUnderShared implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template;
+
+        private ContactUnderShared(String sharedName) {
+            this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get(sharedName));
+        }
+
+        public SObjectField getPrimaryTargetField() {
+            return Contact.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
+    private class AccountUnderShared implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template;
+
+        private AccountUnderShared(String sharedParentName) {
+            this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Mid'))
+                    .putRequired(Account.ParentId, XFTY_SharedAncestor.get(sharedParentName));
+        }
+
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
     }
 }
