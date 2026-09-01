@@ -3,19 +3,20 @@
  * `XFTY_RecordTypeLookupKey`, and `XFTY_FlavouredLookupKey` - the ones that need
  * an actual record type to exist.
  *
- * Lives in `test-support/` (not the published package) because it uses the
- * built-in `PersonAccount` Account record type, which only exists when the org
- * has the Person Accounts feature. The feature-independent paths of the same
+ * Lives in `test-support/orgonly/` because it uses `XFTY_HierarchyNode__c` and
+ * its `Root` record type - real record-type metadata the local Apex runtime does
+ * not carry. Runs on a scratch org. The feature-independent paths of the same
  * classes are covered by `XFTY_RecordTypeMatchingTest` / `XFTY_LookupKeyTest` in
  * `force-app`.
  */
 @IsTest
 private class XFTY_RecordTypeRealRtTest {
 
-    private static final String REAL_RT = 'PersonAccount';
+    private static final SObjectType RT_OBJECT = XFTY_HierarchyNode__c.SObjectType;
+    private static final String REAL_RT = 'Root';
 
     private static Id realRtId() {
-        return Account.SObjectType.getDescribe()
+        return RT_OBJECT.getDescribe()
                 .getRecordTypeInfosByDeveloperName()
                 .get(REAL_RT)
                 .getRecordTypeId();
@@ -27,20 +28,20 @@ private class XFTY_RecordTypeRealRtTest {
     static void developerNameOfResolvesARealRecordType() {
         Assert.areEqual(
                 REAL_RT,
-                XFTY_RecordTypeMatching.developerNameOf(new Account(RecordTypeId = realRtId()))
+                XFTY_RecordTypeMatching.developerNameOf(new XFTY_HierarchyNode__c(RecordTypeId = realRtId()))
         );
     }
 
     @IsTest
     static void idForResolvesARealRecordTypeFromTheDescribe() {
-        Assert.areEqual(realRtId(), XFTY_RecordTypeMatching.idFor(Account.SObjectType, REAL_RT));
+        Assert.areEqual(realRtId(), XFTY_RecordTypeMatching.idFor(RT_OBJECT, REAL_RT));
     }
 
     @IsTest
     static void matchesARecordCarryingThatRecordType() {
         Assert.isTrue(
                 XFTY_RecordTypeMatching.matches(
-                        new Account(RecordTypeId = realRtId()), Account.SObjectType, REAL_RT
+                        new XFTY_HierarchyNode__c(RecordTypeId = realRtId()), RT_OBJECT, REAL_RT
                 )
         );
     }
@@ -53,7 +54,7 @@ private class XFTY_RecordTypeRealRtTest {
         Id staleRtId = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
         Assert.isFalse(
                 XFTY_RecordTypeMatching.matches(
-                        new Account(RecordTypeId = staleRtId), Account.SObjectType, REAL_RT
+                        new XFTY_HierarchyNode__c(RecordTypeId = staleRtId), RT_OBJECT, REAL_RT
                 )
         );
     }
@@ -64,19 +65,19 @@ private class XFTY_RecordTypeRealRtTest {
     static void recordTypeKeyResolvesItsRecordTypeId() {
         Assert.areEqual(
                 realRtId(),
-                XFTY_RecordTypeLookupKey.get(Account.SObjectType, REAL_RT).getRecordTypeId()
+                XFTY_RecordTypeLookupKey.get(RT_OBJECT, REAL_RT).getRecordTypeId()
         );
     }
 
     @IsTest
     static void flavouredKeyResolvesItsRecordTypeIdAndMatchesOnIt() {
-        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(Account.SObjectType, REAL_RT, 'vip')
-                .matching(XFTY_FieldPredicate.isNotNull(Account.LastName));
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(RT_OBJECT, REAL_RT, 'vip')
+                .matching(XFTY_FieldPredicate.isNotNull(XFTY_HierarchyNode__c.Name));
 
         Assert.areEqual('vip', key.getFlavour());
         Assert.areEqual(REAL_RT, key.getRecordTypeDeveloperName());
         Assert.areEqual(realRtId(), key.getRecordTypeId());
-        Assert.isTrue(key.isInstanceOf(new Account(RecordTypeId = realRtId(), LastName = 'Doe')));
-        Assert.isFalse(key.isInstanceOf(new Account(LastName = 'Doe')), 'wrong record type');
+        Assert.isTrue(key.isInstanceOf(new XFTY_HierarchyNode__c(RecordTypeId = realRtId(), Name = 'Doe')));
+        Assert.isFalse(key.isInstanceOf(new XFTY_HierarchyNode__c(Name = 'Doe')), 'wrong record type');
     }
 }

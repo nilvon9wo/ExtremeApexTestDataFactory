@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>test-support only. A self-parented node with a strict downward-narrowing record-type hierarchy (Root -&gt; Level1 -&gt; ... -&gt; Level9) and a singleton Root, for the Shared Ancestors deep-hierarchy acceptance test. Not part of the published package.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <label>XFTY Hierarchy Node</label>
+    <nameField>
+        <label>XFTY Hierarchy Node Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>XFTY Hierarchy Nodes</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

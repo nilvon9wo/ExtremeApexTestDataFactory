@@ -124,25 +124,9 @@ private class XFTY_DefaultDataProviderTest {
         Assert.isTrue(generated.Username.contains(XFTY_DefaultUserDataProvider.DEFAULT_USERNAME_PREFIX));
     }
 
-    @IsTest
-    static void profileIdForResolvesAndCaches() {
-        Integer before = Limits.getQueries();
-        Id adminId = XFTY_DefaultUserDataProvider.profileIdFor(XFTY_DefaultUserDataProvider.SYSTEM_ADMIN);
-        XFTY_DefaultUserDataProvider.profileIdFor(XFTY_DefaultUserDataProvider.SYSTEM_ADMIN); // cached
-        // The first call already ran during static init (TEST_ADMIN), so no new query here.
-        Assert.areEqual(before, Limits.getQueries(), 'resolution is cached across calls');
-        Assert.areEqual(TEST_ADMIN.ProfileId, adminId);
-    }
-
-    @IsTest
-    static void profileIdForThrowsForAnUnknownProfile() {
-        try {
-            XFTY_DefaultUserDataProvider.profileIdFor('No Such Profile Name');
-            Assert.fail('Expected an UnknownReferenceException');
-        } catch (XFTY_DefaultUserDataProvider.UnknownReferenceException ex) {
-            Assert.isTrue(ex.getMessage().contains('No Such Profile Name'), ex.getMessage());
-        }
-    }
+    // profileIdFor / roleIdFor "resolves" + "throws for unknown" paths that need a
+    // real org's Profile / UserRole tables are in XFTY_DefaultDataProviderOrgTest
+    // (test-support/orgonly) - the local Apex runtime fakes those queries.
 
     @IsTest
     static void roleIdForResolvesByDeveloperNameAndCaches() {
@@ -159,15 +143,6 @@ private class XFTY_DefaultDataProviderTest {
         Assert.areEqual(queriesAfterFirst, Limits.getQueries(), 'the second call does not re-query');
     }
 
-    @IsTest
-    static void roleIdForThrowsForAnUnknownRole() {
-        try {
-            XFTY_DefaultUserDataProvider.roleIdFor('XFTY_No_Such_Role');
-            Assert.fail('Expected an UnknownReferenceException');
-        } catch (XFTY_DefaultUserDataProvider.UnknownReferenceException ex) {
-            Assert.isTrue(ex.getMessage().contains('XFTY_No_Such_Role'), ex.getMessage());
-        }
-    }
 
     @IsTest
     static void aRoleCanBeAppliedViaAnOverrideTemplate() {

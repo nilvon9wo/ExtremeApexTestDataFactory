@@ -49,15 +49,23 @@ Known fidelity gaps on this project — confirm on a real org before declaring
 done:
 
 - `enum.equals(x)` is unimplemented (the code uses `==` instead).
-- PersonAccount record-type describe, SOQL query-caching counts, and
-  `UnknownReferenceException` on an invalid Profile/Role Id all differ from the
-  platform.
 - `new Set<SObjectField>(map.keySet())`, `map.keySet().clone()`, and
   `map.keySet().contains(f)` return `false` from `contains` — build the set with
   `.addAll(map.keySet())` instead (works on both).
+- Static-initialiser DML is not rolled back between test methods.
 
-The current baseline: `nimbus test "*"` → 243 tests, 232 pass, 11 known-gap
-fails.
+**`nimbus test "*"` is 100% green.** The tests that genuinely need a real org's
+schema — a custom object's record-type describe, real `Profile` / `UserRole`
+tables + query counting, Person Accounts — live in
+`test-support/main/default/classes/orgonly/` and are excluded from the local run
+(`nimbus.test.exclude`). Run them on a scratch org:
+
+```bash
+sf project deploy start -o <scratch> -d test-support
+sf apex run test -o <scratch> --tests XFTY_RecordTypeRealRtTest --tests XFTY_PersonAccountVariantTest \
+  --tests XFTY_DefaultDataProviderOrgTest --tests XFTY_RecordTypeDataProviderOrgTest \
+  --tests XFTY_SharedAncestorHierarchyAcceptanceTest
+```
 
 ---
 

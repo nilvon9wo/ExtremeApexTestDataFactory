@@ -16,18 +16,9 @@ private class XFTY_RecordTypeDataProviderTest {
         Assert.isNull(XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, null));
     }
 
-    @IsTest
-    static void queriesOnceForTheWholeTransactionAcrossManySObjectsAndNames() {
-        Integer before = Limits.getQueries();
-
-        XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, 'a');
-        XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, 'b');
-        XFTY_RecordTypeDataProvider.getFor(Contact.SObjectType, 'c');
-        XFTY_RecordTypeDataProvider.allFor(Opportunity.SObjectType);
-        XFTY_RecordTypeDataProvider.idFor(Case.SObjectType, 'd');
-
-        Assert.areEqual(1, Limits.getQueries() - before, 'Exactly one SOQL for the whole repository');
-    }
+    // "exactly one SOQL for the whole transaction" is asserted in
+    // XFTY_RecordTypeDataProviderOrgTest (test-support/orgonly) - the local Apex
+    // runtime resolves record types without a countable query.
 
     @IsTest
     static void allForReturnsAnEmptyMapForAnSObjectWithNoRecordTypes() {

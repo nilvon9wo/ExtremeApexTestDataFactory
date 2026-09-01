@@ -23,9 +23,10 @@ Nimbus is a **contributor convenience for the inner loop only**:
 Nimbus is **never the last word**. Anything that touches record types, Person
 Accounts, mixed DML, static-initialiser rollback, governor metering, or any
 other area where the two can diverge is confirmed on a real scratch org (and in
-CI, which runs against an org) before it is considered done. The eleven
-persistently "failing" tests in a local run are known Nimbus gaps, not product
-defects — they pass on an org.
+CI, which runs against an org) before it is considered done. The tests that
+genuinely depend on a real org's schema and query semantics live in
+`test-support/main/default/classes/orgonly/` and are excluded from the local
+run, which is 100% green.
 
 ## What this is not
 
