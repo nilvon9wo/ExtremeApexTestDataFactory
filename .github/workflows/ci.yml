@@ -65,8 +65,15 @@ jobs:
       - name: Deploy the source
         run: sf project deploy start --wait 20
 
-      - name: Run all local Apex tests
-        run: sf apex run test --test-level RunLocalTests --code-coverage --result-format human --wait 20
+      # Everything except XFTY_Load - the volume suite deliberately pushes
+      # generation toward the governor limits, and a shared CI runner does not
+      # have the CPU headroom for it. Run it by hand when the engine changes
+      # (docs/contribute/test-suites.md).
+      - name: Run the Apex test suites
+        run: >
+          sf apex run test
+          --suite-names XFTY_Unit,XFTY_Integration,XFTY_Examples,XFTY_OrgOnly,XFTY_PersonAccount
+          --code-coverage --result-format human --wait 20
 
       - name: Delete the scratch org
         if: always()

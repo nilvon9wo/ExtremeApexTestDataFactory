@@ -20,10 +20,14 @@ or `4.0-beta`.
 See [coverage-standards](coverage-standards.md).
 
 **`apex-tests`** — creates a scratch org, deploys `force-app` **and**
-`test-support`, runs every local test (`RunLocalTests` — so `XFTY_Unit`,
-`XFTY_Integration`, `XFTY_Load`, `XFTY_Examples`, `XFTY_OrgOnly`, and
-`XFTY_PersonAccount`), and deletes the scratch org. The scratch org enables
-`PersonAccounts` so the Person Account tests run.
+`test-support`, runs `XFTY_Unit`, `XFTY_Integration`, `XFTY_Examples`,
+`XFTY_OrgOnly`, and `XFTY_PersonAccount`, and deletes the scratch org. The
+scratch org enables `PersonAccounts` so the Person Account tests run.
+
+`XFTY_Load` is **not** in CI — it deliberately pushes generation toward the
+governor limits, and a shared runner does not have the CPU headroom (a 6 000-row
+`insert` alone can exhaust the 10 s limit there). Run it by hand against your own
+org when you change the engine.
 
 ---
 
