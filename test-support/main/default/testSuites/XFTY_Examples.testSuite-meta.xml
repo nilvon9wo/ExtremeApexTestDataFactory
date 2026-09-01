@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
     <!--
-      Runnable proofs for the fenced examples in docs/use/**. Every XFTY_Ex_*Test
-      method is one documentation example; a page's "▶ Runnable" line names its
-      class. test-support/ only. Run: sf apex run test --suite-names XFTY_Examples
+      Runnable proofs for the fenced examples in docs/use/** and docs/extend/**.
+      Every XFTY_Ex_*Test method is one documentation example; a page's
+      "▶ Runnable" line names its class. test-support/ only.
+      Run: sf apex run test --suite-names XFTY_Examples
     -->
     <testClassName>XFTY_Ex_Adv_DeepSetupChainsTest</testClassName>
+    <testClassName>XFTY_Ex_Adv_MatchingValuesTest</testClassName>
     <testClassName>XFTY_Ex_BundlesTest</testClassName>
+    <testClassName>XFTY_Ex_Extend_CustomValueStrategiesTest</testClassName>
     <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>
     <testClassName>XFTY_Ex_InsertModesTest</testClassName>
     <testClassName>XFTY_Ex_OverrideTemplatesTest</testClassName>

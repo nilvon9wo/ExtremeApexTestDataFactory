@@ -20,18 +20,43 @@ built in **ordered steps, inserted once**. The tool for it is a chain of helper
 methods plus the [`DEFERRED`](../deferred-insert.md) insert mode — build
 everything, `flush()` once.
 
-### Why not a `static` fixture here?
+### `DEFERRED` in a `static` fixture: use a `static {}` block
 
-`DEFERRED` only pays off if something calls `XFTY_DeferredInserter.flush()`, and a
-`static` initialiser has nowhere to put that call — the fixture would build the
-graph but never insert it. You would end up calling `flush()` at the top of every
-test method anyway, which is exactly the per-method helper-call this page
-describes. So:
+`DEFERRED` only pays off if something calls `XFTY_DeferredInserter.flush()`. A
+static **initialiser block**, placed *after* the fixture variables it depends on,
+is that place — it runs once per test method, after those variables are built:
 
-| Shared setup that… | Use |
-|---|---|
-| is a plain snapshot (`MOCK` / `NOW`), same for every method | a `static` fixture |
-| is built in ordered steps, or a later step needs an earlier record's real Id, or one insert phase for the whole graph matters | helper methods + `DEFERRED`, called per test method |
+```apex
+private static XFTY_DummySObjectBundle sharedAccounts;
+private static XFTY_DummySObjectBundle sharedContacts;
+
+static {
+    sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+        .setQuantityPerTemplate(3)
+        .supplyBundle();
+    sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+        .supplyBundle();
+    XFTY_DeferredInserter.flush();   // one insert phase for both, before any test method runs
+}
+```
+
+Order matters — the block runs in declaration order with everything else, so it
+must come *below* the variables. Two ordered steps with their own `flush()`
+between them go in the same block. `System.runAs(...)` belongs in the test
+methods, not the block.
+
+> **Verify this on your org.** Salesforce re-runs static initialisation for each
+> test method and rolls back all of a test method's DML (static init included),
+> which is what makes this work. Nimbus does **not** roll back static-initialiser
+> DML between test methods, so this specific form cannot be checked locally —
+> `XFTY_Ex_Adv_DeepSetupChainsTest` proves the helper form instead.
+
+Use the **per-method helper form below** when the setup order depends on the test
+method rather than being fixed — a method that flushes, reads an Id, then builds
+more, when a different method needs a different sequence.
 
 ---
 
