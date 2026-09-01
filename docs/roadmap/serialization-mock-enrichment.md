@@ -1,116 +1,115 @@
 # Roadmap: Serialization-Based Mock Enrichment
 
-Status: **📋 proposed, not built.** Three related asks that all need the one
-thing the SObject API cannot do in memory — write a field or relationship that
-`record.put(...)` rejects — via a `JSON.serialize` / `deserialize` round-trip
-(the technique in Nebula's `TestingUtils` / the `XAP_TEST_ReadOnlyHelper` the
-project has floated: `setReadOnlyField`, `setParentRelationships`,
-`setChildRelationships`).
+Status: **📋 proposed, not built.** A cluster of test conveniences that all need
+the one thing the SObject API cannot do in memory — write a field or
+relationship that `record.put(...)` rejects — via a `JSON.serialize` /
+`deserialize` round-trip (the technique in Nebula's `TestingUtils` / the
+`XAP_TEST_ReadOnlyHelper` the project has floated: `setReadOnlyField`,
+`setParentRelationships`, `setChildRelationships`).
 
-All three are opt-in test conveniences for `MOCK` / `NEVER` graphs. None is
-core, and the serialization cost is the reason they may stay proposed.
-
----
-
-## Idea A — force read-only field values
-
-A test wants a `MOCK` record to carry `CreatedDate`, a formula result, a
-rollup, `IsClosed`, `LastModifiedById`, etc. `record.put(field, value)` throws
-for these; the JSON round-trip works.
-
-### Why this is a post-generation utility, not a value interface
-
-- The round-trip **returns a new SObject instance**. XFTY's bundle model — and
-  `DEFERRED` in particular — relies on the generated instances being the ones
-  that get Ids back-filled and FKs wired. A value pass that reserialized
-  mid-generation would sever every reference the engine holds.
-- So it can only be a **terminal transform**: applied to the final records,
-  after all generation and Id assignment (and, under `DEFERRED`, after
-  `flush()`), re-pointing the bundle's lists to the new instances.
-- A terminal transform cannot feed [context-aware values](../use/context-aware-values.md)
-  — you cannot read a forced read-only value during generation. That is
-  acceptable: a read-only value on an uninserted record is fiction anyway.
-
-### Enforcing "tests only, never Providers"
-
-Not in the type system — by **surface**. The affordance lives only on the
-consumer builder (`XFTY_DummySObjectProvider`, e.g. a terminal
-`.overrideReadOnly(Map<SObjectField, Object>)`) or as a standalone
-`@IsTest` util (`XFTY_ForceValue.set(record, map)` / `set(List<SObject>, map)`).
-It is **not** on `XFTY_DummySObjectMasterTemplate` or `XFTY_SObjectChildProvider`,
-so a Provider has no way to emit a non-insertable record — the "Provider records
-are always insertable" rule holds by construction.
-
-Optional guard: throw if handed a record that already has a real Id (patching
-read-only fields on a genuinely inserted row is meaningless).
-
-### Cost
-
-One serialize + deserialize per record. Opt-in and visible at the call site; a
-batch form patches a whole list in one pass. Using it is itself the signal that
-the test is `MOCK`-only — see
-[unit-vs-integration.md](../use/advanced/unit-vs-integration.md) point 4.
+All of it is opt-in, for `MOCK` / `NEVER` graphs (or a `DEFERRED` graph after
+`flush()`). None is core, and the serialization cost is the reason it may stay
+proposed.
 
 ---
 
-## Idea B — populate parent relationship objects, not just the FK
+## The shape: one method on the bundle
 
-Code under test that navigates `contact.Account.Owner.Name` needs the parent
-*objects* on the record, which natively only a SOQL query provides — unavailable
-to a true unit test. XFTY already **has** every parent in the bundle, 1:1
-aligned; the transform is only to inject them where `put` cannot.
+Rather than several builder methods, hang the whole feature off the finished
+bundle:
 
-- For primary row `i`, for each relationship field, inject
-  `bundle.getList(relField)[i]` under `relField.getDescribe().getRelationshipName()`
-  (`AccountId` → `Account`, `WhatId` → `What`, `Foo__c` → `Foo__r`); recurse via
-  `getBundle(relField)` for grandparents.
-- Same instance-identity constraint as Idea A → terminal transform, `MOCK` /
-  `NEVER` (or `DEFERRED` post-`flush()`).
-- **Opt-in and path-scoped**, because the cost multiplies with depth × record
-  count: `.withParentsPopulated()` (all generated relationships) or
-  `.withParentsPopulated(List<List<SObjectField>> paths)` (only those paths).
+```apex
+XFTY_DummySObjectBundle enriched = bundle.getWithInjectedValues(config);
+```
 
-This is the higher-value of the three — a lot of real code receives records and
-reads through them. It does not help code that issues its own SOQL.
+- **Terminal by construction.** It operates on an already-generated graph and
+  returns a **new** bundle of new instances — the original bundle (and the
+  instances `DEFERRED` back-fills Ids onto) is untouched. This sidesteps the
+  instance-identity problem that rules out doing any of this as a value pass
+  during generation.
+- **The consumer describes exactly what to materialise.** A real SOQL query
+  returns a specific, bounded set of ancestor levels and child subqueries; the
+  config is the same idea — a declared list of relationship paths and forced
+  values. Nothing is injected that was not asked for, so "inject everything",
+  circular `a.Parent.Children[0].Parent…` structures, and unbounded cost are
+  all avoided by design.
 
----
+### `XFTY_InjectionConfig` (sketch)
 
-## Idea C — populate child relationship subqueries
+```apex
+XFTY_InjectionConfig config = new XFTY_InjectionConfig()
+    // materialise a parent object, any depth - mirrors Account, Account.Owner in a SELECT
+    .populate(new List<SObjectField>{ Contact.AccountId })
+    .populate(new List<SObjectField>{ Contact.AccountId, Account.OwnerId })
+    // materialise a child subquery at a point on the path
+    .populateChildren(new List<SObjectField>{ Contact.AccountId }, Case.AccountId)   // contact.Account.Cases
+    // force a read-only / system / formula value on the record at a path
+    .forceValue(new List<SObjectField>{}, Contact.CreatedDate, aDatetime)
+    .forceValue(new List<SObjectField>{ Contact.AccountId }, Account.LastModifiedById, aUserId);
+```
 
-The mirror of B, downward: code that reads `account.Contacts` (the child
-subquery) needs the `{ totalSize, done, records }` shape injected — the third
-method in the same serialization helper.
-
-- Only possible when the children **exist in the bundle** — i.e. the graph was
-  built with [`with` / `withChildren`](../use/child-records.md). Upward
-  generation never produces children, so there is nothing to inject.
-- The data is already there: `bundle.childRecordsOf(i, childField)` is the
-  record list for primary row `i`. The relationship *name* comes from the parent
-  side — walk `SObjectType.getDescribe().getChildRelationships()`, match on
-  `getField()`, take `getRelationshipName()` (`Contacts`, `Cases`, `Foo__r`).
-- Same instance-identity constraint → terminal transform, same modes, same
-  opt-in / path-scoping (`.withChildrenPopulated()` /
-  `.withChildrenPopulated(paths)`).
-- Extra caveat: the injected subquery is a snapshot. Code under test that
-  mutates children and expects re-query semantics will not see the change.
+Exact config API is an open question; the point is that it is one declarative
+object, not scattered flags.
 
 ---
 
-## If built, build them as one mechanism
+## What the bundle already knows
 
-All three are "JSON round-trip the final bundle to inject what `put` cannot."
-One internal `XFTY_BundleSerializationPass` (terminal, re-points lists, refuses
-real-Id records / non-`MOCK`-non-`NEVER` unless post-flush), three public entry
-points. A shipped version needs tests around the JSON quirks — datetime
-formatting, `Blob` fields, compound `Location` fields, the required
-`attributes.type` on deserialize, and the subquery envelope shape for C.
+The graph is all there — the enrichment pass only re-expresses it in the shape
+`put` cannot produce.
+
+| Injection | Source in the bundle |
+|---|---|
+| parent object (`contact.Account`, `contact.Account.Owner`) | `getList(relField)[i]`, recursed via `getBundle(relField)` |
+| forced read-only value | supplied in the config |
+| child subquery on a `withChildren` collection (`account.Contacts`) | `childRecordsOf(i, childField)` |
+| child subquery on a **generated ancestor** (`account.Contacts` where the Account was generated *because* a Contact asked for it) | the inverse of the 1:1 parent alignment — primary row `i`'s generated Account has child `[Contact i]`; a [shared ancestor](../use/shared-ancestors.md) has the several children that resolved to it |
+
+That last row corrects an earlier claim here: upward generation **does** give an
+ancestor children — every generated parent has at least the record that
+generated it. XFTY does not expose that inverse view as a clean accessor yet
+(only `childRecordsOf`, for `withChildren`); the enrichment pass would need one.
+
+The child-relationship *name* for a subquery comes from the parent side — walk
+`SObjectType.getDescribe().getChildRelationships()`, match on `getField()`, take
+`getRelationshipName()` (`Contacts`, `Cases`, `Foo__r`).
+
+---
+
+## Caveats (all of it)
+
+- **`MOCK` / `NEVER` only**, or a `DEFERRED` bundle after `flush()` — call it
+  before flush and the injected copies never get Ids.
+- **Not visible to generation.** A forced read-only value or injected
+  relationship cannot feed a [context-aware value](../use/context-aware-values.md);
+  the pass runs after generation is over. (A read-only value on an uninserted
+  record is fiction anyway.)
+- **Snapshot semantics.** An injected subquery / parent is a fixed copy. Code
+  under test that mutates it and expects re-query behaviour will not see the
+  change.
+- **Cost.** One serialize + deserialize per enriched record, multiplied by the
+  paths asked for. It is opt-in and the config bounds it, but a deep config over
+  a large graph is not cheap.
+- **Provider surface untouched.** `getWithInjectedValues` is on the bundle, not
+  on `XFTY_DummySObjectMasterTemplate` / `XFTY_SObjectChildProvider`, so a
+  Provider still cannot emit a non-insertable record — "Provider records are
+  always insertable" holds.
+- **Using it flags the test as `MOCK`-only** — see
+  [unit-vs-integration.md](../use/advanced/unit-vs-integration.md) point 4.
+- A shipped version needs tests around JSON quirks — datetime formatting,
+  `Blob` fields, compound `Location` fields, the required `attributes.type` on
+  deserialize, the `{ totalSize, done, records }` subquery envelope.
+
+---
 
 ## Open questions
 
-- Are B and C common enough to justify the surface, or do most consumers
-  navigate relationships rarely enough that "read it off the bundle" suffices?
-- Should `.overrideReadOnly(...)` / `.withParentsPopulated(...)` /
-  `.withChildrenPopulated(...)` be blocked (throw) under `NOW` / `RELATED_ONLY`,
-  or just no-op with a warning?
-- Does the terminal-transform restriction bite anyone who wants a forced
-  read-only value visible to a context-aware value? (No use case yet.)
+- The `XFTY_InjectionConfig` API shape — paths as `List<SObjectField>`? A small
+  builder? How are forced values scoped to a record on a path?
+- Does the enrichment pass need a first-class "children of a generated ancestor"
+  accessor on the bundle, and is that useful on its own (independent of
+  serialization)?
+- Is this common enough to justify the surface, or do most consumers navigate
+  relationships rarely enough that reading straight off the bundle suffices?
+- Block (throw) when called on a `NOW` / `RELATED_ONLY` bundle, or no-op with a
+  warning?
