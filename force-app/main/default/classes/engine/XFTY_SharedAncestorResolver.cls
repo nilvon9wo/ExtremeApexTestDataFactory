@@ -27,7 +27,7 @@ public class XFTY_SharedAncestorResolver {
     /**
      * Every shared ancestor configured this test method, resolved against the
      * triggering call's mode. A no-op while resolution is already running (a
-     * nested `supplyBundle()` from a `suppliedBy` Provider).
+     * nested `supplyBundle()` from a put-Provider).
      */
     public static void resolveAllConfigured(XFTY_DummySObjectProviderLookupIntf lookup, XFTY_InsertModeEnum callMode) {
         if (running) {

@@ -80,12 +80,12 @@ One line per public entry point. Follow the links for detail.
 
 | `XFTY_DummyDefaultRelationship(SObject template)` | generate a parent |
 | `XFTY_DummyDefaultRelationship(XFTY_LookupKeyIntf key, SObject template)` | …of a specific variant |
-| `XFTY_SharedAncestor.get(name)` | one shared parent for many children (flat or deep — auto-detected) |
-| `.of(SObject)` · `.withKey(key)` · `.copyingRelatedField(field)` | configure it (`of` + `withKey` may be combined) |
-| `.suppliedBy(XFTY_DummySObjectProvider)` | full generation API for the shared record — value strategies, its own ancestors, variant (excludes `of`/`withKey`) |
-| `XFTY_SharedAncestor.getOrElse(name, template)` / `getOrElse(name, lookupKey)` | `get(name)`, configuring only if not already configured |
-| `XFTY_SharedAncestor.put(name, record)` · `.getId(name)` | supply / read |
-| `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)` | resolve it (and fix its mode) before any `supply*()` call |
+| `XFTY_SharedAncestor.get(name)` | retrieve — the token for `putRequired`, the handle for `resolveNow` / `getId` |
+| `XFTY_SharedAncestor.put(name, SObject)` | register — Id present → fixed value, no Id → override template (logs; `putAsTemplate` / `putAsValue` force it) |
+| `XFTY_SharedAncestor.put(name, key)` · `.fromVariant(key)` · `.copyingRelatedField(field)` | pin the variant / chain a variant onto a template / copy a field instead of the Id |
+| `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider)` | full generation API for the shared record — value strategies, its own ancestors, variant (not with the template/key forms) |
+| `XFTY_SharedAncestor.putIfAbsent(name, template \| key)` | register only if `name` is not registered yet this test |
+| `XFTY_SharedAncestor.getId(name)` · `.get(name).resolveNow(lookup, mode)` | read the Id / resolve (and fix the mode) before any `supply*()` call |
 
 ---
 

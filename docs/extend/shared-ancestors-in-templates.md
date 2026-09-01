@@ -14,7 +14,7 @@ new XFTY_DummySObjectMasterTemplate(Contact.Id)
 project defines its [flavoured lookup keys](provider-variants.md):
 
 ```apex
-XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
+XFTY_SharedAncestor.put('primary-account', new Account(Name = 'Primary'));
 ```
 
 ### Flat vs deep — nothing to opt into
@@ -24,19 +24,18 @@ are the same however heavy the shared record is:
 
 ```apex
 // flat - a plain parent; resolves as a single shared record
-XFTY_SharedAncestor.get('primary-account').of(new Account(Name = 'Primary'));
+XFTY_SharedAncestor.put('primary-account', new Account(Name = 'Primary'));
 
 // deep - a record that pulls in ancestors of its own; resolves as a
 // depth-batched sub-graph, built once
-XFTY_SharedAncestor.get('root')
-    .of(new MyHierarchyObj__c())
-    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
+    .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 ```
 
 XFTY decides which by inspecting the ancestor's Provider's Master Template. A
 test that configures a shared ancestor it never references still resolves it, so
 document which shared ancestors a shipped Provider expects the test to configure
-(or have the Provider's own `*LookupKeys`-style setup call `getOrElse(...)`).
+(or have the Provider's own `*LookupKeys`-style setup call `putIfAbsent(...)`).
 
 ---
 

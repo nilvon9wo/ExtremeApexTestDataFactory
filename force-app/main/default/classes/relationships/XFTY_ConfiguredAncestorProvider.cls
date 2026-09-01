@@ -1,6 +1,6 @@
 /**
  * A shared ancestor described by a fully-configured `XFTY_DummySObjectProvider` -
- * `XFTY_SharedAncestor.get(name).suppliedBy(provider)`. The whole generation API
+ * `XFTY_SharedAncestor.put(name, provider)`. The whole generation API
  * (value strategies, relationship control, path values, a pinned variant) shapes
  * the one shared record; the Provider carries its own override template and
  * Provider Lookup.
@@ -12,7 +12,7 @@ public class XFTY_ConfiguredAncestorProvider implements XFTY_SharedAncestorProvi
 
     public XFTY_ConfiguredAncestorProvider(XFTY_DummySObjectProvider provider) {
         if (provider == null) {
-            throw new XFTY_DummySObjectFtyProviderException('suppliedBy(...) needs an XFTY_DummySObjectProvider.');
+            throw new XFTY_DummySObjectFtyProviderException('put(name, provider) needs an XFTY_DummySObjectProvider.');
         }
         this.provider = provider;
     }

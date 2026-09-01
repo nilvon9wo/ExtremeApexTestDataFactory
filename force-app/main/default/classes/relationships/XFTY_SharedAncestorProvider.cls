@@ -6,9 +6,9 @@
  * Two implementations:
  *
  * - {@link XFTY_KeyedAncestorProvider} - a lookup key and/or an override
- *   template (`XFTY_SharedAncestor.of(...)` / `.withKey(...)`).
+ *   template (`XFTY_SharedAncestor.putAsTemplate(...)` / `put(name, key)`).
  * - {@link XFTY_ConfiguredAncestorProvider} - a fully-configured
- *   `XFTY_DummySObjectProvider` (`XFTY_SharedAncestor.suppliedBy(...)`).
+ *   `XFTY_DummySObjectProvider` (`XFTY_SharedAncestor.put(name, provider)`).
  *
  * `lookup` is the Provider Lookup of the generation run that triggered
  * resolution; an implementation that carries its own lookup ignores it.

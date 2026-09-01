@@ -1,6 +1,7 @@
 /**
  * A shared ancestor described by a lookup key and/or an override template -
- * `XFTY_SharedAncestor.get(name).of(template)` / `.withKey(key)`. The record is
+ * `XFTY_SharedAncestor.putAsTemplate(name, template)` / `put(name, key)` /
+ * `.fromVariant(key)`. The record is
  * built by the Provider the key resolves to (or the key derived from the
  * template), exactly as an ordinary generated parent would be.
  */
@@ -71,7 +72,8 @@ public class XFTY_KeyedAncestorProvider implements XFTY_SharedAncestorProvider {
     private SObject requireTemplate() {
         if (this.overrideTemplate == null) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'Shared ancestor "' + this.ancestorName + '" needs of(template) or withKey(key) before it can resolve.'
+                    'Shared ancestor "' + this.ancestorName + '" needs putAsTemplate(name, template) '
+                            + 'or put(name, key) before it can resolve.'
             );
         }
         return this.overrideTemplate;

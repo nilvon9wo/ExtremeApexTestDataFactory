@@ -51,8 +51,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
     @IsTest
     static void aSharedAncestorPlusCopyingRelatedFieldPutsAParentValueOnEveryChild() {
         // Arrange - many Cases under one shared Account; each Case carries the Account's OwnerId
-        XFTY_SharedAncestor.get('hq')
-                .of(new Account(Name = 'HQ', OwnerId = TEST_ADMIN.Id))
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ', OwnerId = TEST_ADMIN.Id))
                 .copyingRelatedField(Account.OwnerId);
 
         // Act

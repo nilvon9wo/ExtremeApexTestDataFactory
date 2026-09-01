@@ -146,7 +146,7 @@ private class XFTY_PathValueTest {
 
     @IsTest
     static void aPathValueIntoASharedAncestorThrowsLoudly() {
-        XFTY_SharedAncestor.get('shared-acct').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('shared-acct', new Account(Name = 'Shared HQ'));
         try {
             new XFTY_DummySObjectProvider(Contact.SObjectType, new SharedParentLookup())
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)

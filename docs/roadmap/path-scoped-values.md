@@ -71,7 +71,7 @@ forced ancestor's own inclusivity to `REQUIRED` when the call asked for `NONE`.
   - `put(path, literal | strategy | contextAware)` or `putRequired(path, plainRel)`
     that would **set a value on** a shared ancestor **throws** — the shared
     record is resolved once and shared, so a per-call value has no well-defined
-    meaning. Configure it with `XFTY_SharedAncestor.get(name).of(...)`.
+    meaning. Configure it with `XFTY_SharedAncestor.put(name, ...)`.
   - `putRequired(path, XFTY_SharedAncestor.get(name))` — **wiring a shared
     ancestor in** as an ancestor's relationship value — is fine. On-demand needs
     no `require()`; a declared name still does.
