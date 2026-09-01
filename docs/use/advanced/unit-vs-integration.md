@@ -8,13 +8,13 @@ database integration tests. Only the [insert mode](../insert-modes.md) changes.
 ## The shared shape
 
 ```apex
-private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+private static final XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 ```
 
 A unit test:
 
 ```apex
-Contact generatedContact = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+Contact generatedContact = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
     .setInsertMode(XFTY_InsertModeEnum.MOCK)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
     .supply();

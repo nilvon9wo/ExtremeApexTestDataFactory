@@ -5,7 +5,7 @@
 @IsTest
 private class XFTY_Ex_BundlesTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     @IsTest
     static void aBundleExposesEveryGeneratedRecordWithoutSoql() {
@@ -15,7 +15,7 @@ private class XFTY_Ex_BundlesTest {
         // Act
         XFTY_DummySObjectBundle bundle;
         Test.startTest();
-        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .supplyBundle();
@@ -34,7 +34,7 @@ private class XFTY_Ex_BundlesTest {
         // Act
         XFTY_DummySObjectBundle bundle;
         Test.startTest();
-        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setQuantityPerTemplate(3)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
@@ -86,7 +86,7 @@ private class XFTY_Ex_BundlesTest {
     @IsTest
     static void getValueWalksAnAncestorPathWithoutHoldingTheIntermediateBundles() {
         // Arrange - a Contact with its generated parent Account
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .supplyBundle();
@@ -102,7 +102,7 @@ private class XFTY_Ex_BundlesTest {
     @IsTest
     static void getValueReturnsNullWhenAHopOfThePathWasNotGenerated() {
         // Arrange - NONE inclusivity, so the Account is never generated
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setInclusivity(XFTY_InsertInclusivityEnum.NONE)
                 .supplyBundle();
@@ -117,7 +117,7 @@ private class XFTY_Ex_BundlesTest {
     @IsTest
     static void aBundleExposesGeneratedChildrenByRelationshipField() {
         // Arrange - an Account with three Contacts hung below it
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .withChildren(Contact.AccountId, 3)
                 .supplyBundle();
@@ -134,7 +134,7 @@ private class XFTY_Ex_BundlesTest {
     @IsTest
     static void childRecordsOfKeepsEachPrimaryLinedUpWithItsOwnChildren() {
         // Arrange - two Accounts, three Contacts hung below each
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setQuantityPerTemplate(2)
                 .withChildren(Contact.AccountId, 3)

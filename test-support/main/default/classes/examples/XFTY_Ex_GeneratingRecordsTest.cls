@@ -115,12 +115,12 @@ private class XFTY_Ex_GeneratingRecordsTest {
     @IsTest
     static void theTemplateShorthandConstructorDerivesTheType() {
         // Arrange
-        Contact template = new Contact(FirstName = 'Alice');
+        // nothing to arrange - the single-template constructor is under test
 
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(template, LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(new Contact(FirstName = 'Alice'), LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -131,14 +131,31 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
+    static void theTemplateListShorthandConstructorDerivesTheTypeFromTheFirstTemplate() {
+        // Arrange
+        // nothing to arrange - the template-list constructor is under test
+
+        // Act
+        List<Contact> results;
+        Test.startTest();
+        results = (List<Contact>) new XFTY_DummySObjectProvider(new List<Contact>{ new Contact(), new Contact() }, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supplyList();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(2, results.size());
+    }
+
+    @IsTest
     static void theLookupKeyShorthandConstructorDerivesTheTypeAndPinsTheVariant() {
         // Arrange
-        XFTY_LookupKeyIntf contactKey = XFTY_LookupKey.get(Contact.SObjectType);
+        // nothing to arrange - the lookup-key constructor is under test
 
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(contactKey, LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();

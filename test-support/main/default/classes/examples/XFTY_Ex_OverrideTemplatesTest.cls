@@ -5,18 +5,18 @@
 @IsTest
 private class XFTY_Ex_OverrideTemplatesTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     @IsTest
     static void anOverrideTemplateReplacesOnlyTheFieldsItSets() {
         // Arrange
-        Contact template = new Contact(FirstName = 'Alice', LastName = 'Smith');
+        // nothing to arrange - the override template is inline, below
 
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
-                .setOverrideTemplate(template)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setOverrideTemplate(new Contact(FirstName = 'Alice', LastName = 'Smith'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -35,7 +35,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.FirstName, new XFTY_LiteralExpression('Generated'))
                 .setOverrideTemplate(new Contact(FirstName = 'Alice'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -54,7 +54,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .removeFromMasterTemplate(Contact.Email)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();

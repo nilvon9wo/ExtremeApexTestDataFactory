@@ -23,7 +23,8 @@ A single override template can go straight to the constructor, which derives the
 `SObjectType` (and any record-type variant) from it:
 
 ```apex
-new XFTY_DummySObjectProvider(new Contact(FirstName = 'Alice'), lookup).supply();
+new XFTY_DummySObjectProvider(new Contact(FirstName = 'Alice'), lookup)
+    .supply();
 ```
 
 See [generating-records → shorthand constructors](generating-records.md#shorthand-constructors).

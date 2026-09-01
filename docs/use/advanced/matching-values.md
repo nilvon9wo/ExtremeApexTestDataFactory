@@ -49,7 +49,7 @@ When many children must all carry a value that lives on their **one** shared
 parent:
 
 ```apex
-XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ', OwnerId = someUserId))
+XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ', OwnerId = TEST_ADMIN.Id))
     .copyingRelatedField(Account.OwnerId);   // children get the Account's OwnerId, not its Id
 
 new XFTY_DummySObjectMasterTemplate(Case.Id)

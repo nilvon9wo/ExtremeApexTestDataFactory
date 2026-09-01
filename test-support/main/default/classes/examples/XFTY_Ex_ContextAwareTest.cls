@@ -7,7 +7,7 @@
 @IsTest
 private class XFTY_Ex_ContextAwareTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup DEFAULT_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
@@ -18,7 +18,7 @@ private class XFTY_Ex_ContextAwareTest {
         // Act
         Account result;
         Test.startTest();
-        result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, DEFAULT_LOOKUP)
+        result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.ShippingCity, 'Berlin')
                 .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -84,7 +84,7 @@ private class XFTY_Ex_ContextAwareTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.Birthdate, Date.newInstance(2000, 1, 1))
                 .put(Contact.Description, new IsAdultFlag())
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -98,7 +98,7 @@ private class XFTY_Ex_ContextAwareTest {
     @IsTest
     static void readingALaterContextAwareValueThrowsNamingBothFields() {
         // Arrange - BillingCity reads ShippingCity, but ShippingCity is put AFTER it
-        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, DEFAULT_LOOKUP)
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
                 .put(Account.ShippingCity, new XFTY_CopyFromSiblingExpression(Account.Site))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);

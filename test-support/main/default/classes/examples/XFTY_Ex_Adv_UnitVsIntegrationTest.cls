@@ -7,7 +7,7 @@
 @IsTest
 private class XFTY_Ex_Adv_UnitVsIntegrationTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
@@ -44,7 +44,7 @@ private class XFTY_Ex_Adv_UnitVsIntegrationTest {
     // Fixture -------------------------------------------------------------
 
     private static XFTY_DummySObjectProvider providerFor(XFTY_InsertModeEnum mode) {
-        return new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setQuantityPerTemplate(2)
                 .setInsertMode(mode);

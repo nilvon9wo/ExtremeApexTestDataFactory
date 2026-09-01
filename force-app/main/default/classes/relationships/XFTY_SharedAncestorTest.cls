@@ -14,6 +14,29 @@ private class XFTY_SharedAncestorTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
+    static void fiftyChildrenUnderOneSharedAncestorCostOneAccountInsert() {
+        // Arrange
+        XFTY_SharedAncestor.put('acme-hq', new Account(Name = 'ACME HQ'));
+
+        // Act
+        List<Contact> contacts;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            contacts = (List<Contact>) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'))
+                    .setQuantityPerTemplate(50)
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .supplyList();
+            Test.stopTest();
+        }
+
+        // Assert - 50 Contacts, ONE generated Account, ONE Account insert
+        Assert.areEqual(50, contacts.size());
+        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
+    }
+
+    @IsTest
     static void manyChildrenShareOneGeneratedParent() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));

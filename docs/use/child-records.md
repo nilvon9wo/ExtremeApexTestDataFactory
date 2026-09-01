@@ -51,9 +51,9 @@ The relationship field must actually point at the Provider's type — hanging
 
 ```apex
 new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
-    .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department='Sales')).setQuantity(3))
-    .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department='Support')).setQuantity(2))  // additive
-    .with(new XFTY_SObjectChildProvider(Case.AccountId).setQuantity(4))                                        // another type
+    .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department = 'A')).setQuantity(3))
+    .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department = 'B')).setQuantity(2))  // additive
+    .with(new XFTY_SObjectChildProvider(Case.AccountId).setQuantity(2))                                    // another type
 ```
 
 ---

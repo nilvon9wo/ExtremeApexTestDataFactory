@@ -5,7 +5,7 @@
 @IsTest
 private class XFTY_Ex_InsertModesTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
@@ -16,7 +16,7 @@ private class XFTY_Ex_InsertModesTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.NEVER)
                 .supply();
         Test.stopTest();
@@ -34,7 +34,7 @@ private class XFTY_Ex_InsertModesTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -54,7 +54,7 @@ private class XFTY_Ex_InsertModesTest {
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.NOW)
                     .supply();
@@ -75,7 +75,7 @@ private class XFTY_Ex_InsertModesTest {
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY)
                     .supply();
@@ -98,11 +98,11 @@ private class XFTY_Ex_InsertModesTest {
         Contact fromNever;
         Contact fromMock;
         Test.startTest();
-        fromNever = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        fromNever = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setOverrideTemplate(template.clone(false, true, false, false))
                 .setInsertMode(XFTY_InsertModeEnum.NEVER)
                 .supply();
-        fromMock = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        fromMock = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setOverrideTemplate(template.clone(false, true, false, false))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();

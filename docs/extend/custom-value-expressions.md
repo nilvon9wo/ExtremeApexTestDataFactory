@@ -23,7 +23,7 @@ One no-argument method:
 
 ```apex
 @IsTest
-public class NextBusinessDay implements XFTY_ValueExpressionIntf {
+public class NextWeekday implements XFTY_ValueExpressionIntf {
     public Object get() {
         Date candidate = Date.today().addDays(1);
         while (isWeekend(candidate)) {
@@ -40,7 +40,7 @@ public class NextBusinessDay implements XFTY_ValueExpressionIntf {
 ```
 
 ```apex
-.put(Task.ActivityDate, new NextBusinessDay())
+.put(Task.ActivityDate, new NextWeekday())
 ```
 
 Stateful expressions (incrementing, unique) are fine and common — see

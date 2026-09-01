@@ -71,7 +71,7 @@ new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
          new XFTY_UniqueStringExpression('Acct'))
 
     // a context-aware value - evaluated against that ancestor
-    .put(new List<SObjectField>{ Contact.AccountId, Account.Description },
+    .put(new List<SObjectField>{ Contact.AccountId, Account.Site },
          new XFTY_CopyFromSiblingExpression(Account.Name))
 
     // a relationship - give the ancestor its own generated parent

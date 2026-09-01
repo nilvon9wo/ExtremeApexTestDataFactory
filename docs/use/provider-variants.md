@@ -8,6 +8,7 @@ Account, or arbitrary "flavours" a project defines. This page is about
 A variant is identified by a **lookup key** the project exposes, usually as a
 constant:
 
+<!-- sketch -->
 ```apex
 MyProjectLookupKeys.PERSON_ACCOUNT   // an XFTY_LookupKeyIntf
 ```
@@ -18,6 +19,7 @@ MyProjectLookupKeys.PERSON_ACCOUNT   // an XFTY_LookupKeyIntf
 
 ### `withVariant(key)`
 
+<!-- sketch -->
 ```apex
 new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
     .withVariant(MyProjectLookupKeys.PERSON_ACCOUNT)
@@ -29,6 +31,7 @@ the resolved Provider (it throws otherwise).
 
 ### The lookup-key constructor
 
+<!-- sketch -->
 ```apex
 new XFTY_DummySObjectProvider(MyProjectLookupKeys.PERSON_ACCOUNT, lookup)
     .supply();
@@ -38,6 +41,7 @@ Same effect as `withVariant`, and takes the `SObjectType` from the key.
 
 ### An override template that carries a record type
 
+<!-- sketch -->
 ```apex
 new XFTY_DummySObjectProvider(new Account(RecordTypeId = personRtId), lookup)
     .supply();
@@ -54,6 +58,7 @@ automatically.
 When a relationship should generate a specific variant of its parent, pin it on
 the relationship:
 
+<!-- sketch -->
 ```apex
 .putRequired(Case.AccountId, new XFTY_DummyDefaultRelationship(
         MyProjectLookupKeys.PERSON_ACCOUNT, new Account()))

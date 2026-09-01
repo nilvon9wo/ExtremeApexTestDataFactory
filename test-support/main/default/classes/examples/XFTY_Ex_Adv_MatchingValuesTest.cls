@@ -6,7 +6,7 @@
 @IsTest
 private class XFTY_Ex_Adv_MatchingValuesTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
@@ -17,7 +17,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
         // Act
         Account result;
         Test.startTest();
-        result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+        result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.ShippingCountry, 'Germany')
                 .put(Account.BillingCountry, new XFTY_CopyFromSiblingExpression(Account.ShippingCountry))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -37,7 +37,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.MailingCountry, 'Germany')
                 .put(Contact.Description, new SiblingCountryLabel())
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)

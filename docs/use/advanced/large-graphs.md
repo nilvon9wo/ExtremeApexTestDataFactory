@@ -21,7 +21,7 @@ One `NOW` call normally runs one `insert` per Provider. `.depthBatched()`
 collapses that to one `insert` per dependency depth:
 
 ```apex
-new XFTY_DummySObjectProvider(Task.SObjectType, LOOKUP)
+new XFTY_DummySObjectProvider(Case.SObjectType, lookup)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
     .setInsertMode(XFTY_InsertModeEnum.NOW)
     .depthBatched()

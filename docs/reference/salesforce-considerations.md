@@ -70,9 +70,9 @@ Instead of using `@TestSetup`, prefer creating shared test fixtures using `stati
 For example:
 
 ```apex
-private static final XFTY_DummySObjectProviderLookupIntf PROVIDER_LOOKUP = new TEST_DummySObjectFactoryOutletLookup();
+private static final XFTY_DummySObjectProviderLookupIntf lookup = new TEST_DummySObjectFactoryOutletLookup();
 
-private static final List<Account> TEST_ACCOUNT_LIST = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+private static final List<Account> TEST_ACCOUNT_LIST = new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
             .setInsertMode(XFTY_InsertModeEnum.MOCK)
             .supplyList();
 

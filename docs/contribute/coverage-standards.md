@@ -42,3 +42,23 @@ every line.
 Scenarios still worth explicit tests as the engine grows: many-level graphs,
 circular relationships beyond `PREVENT_CASCADE`, and the open items in
 [../reference/known-issues.md](../reference/known-issues.md).
+
+---
+
+## Every doc example is a runnable test, mechanically enforced
+
+Line and branch coverage are about the framework's own code. A separate,
+equally real risk is the **docs drifting from the code they describe** — an
+example that reads correctly but no longer compiles, or asserts something that
+stopped being true.
+
+`scripts/verify-doc-examples.py` closes that gap: it extracts every significant
+call from every ```apex``` block on a page carrying a `Runnable:` line, and
+fails if that exact call (whitespace- and case-normalised) is not present in
+the test class(es) the page names. It runs in CI on every push and PR — a doc
+example and its test cannot drift apart without breaking the build.
+
+A fence marked `<!-- sketch -->` immediately above it is exempt — reserved for
+illustrative project-specific code (a consumer's own `SObjectType`s, lookup-key
+classes) that cannot run against the bundled `Account` / `Contact` / `User`
+Providers. Everything else tagged ```apex``` is a promise: copy it, and it runs.

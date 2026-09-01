@@ -64,6 +64,7 @@ List<Contact> contacts = (List<Contact>) new XFTY_DummySObjectProvider(Contact.S
 
 Nothing extra to do — configure the rungs and reference the leaf:
 
+<!-- sketch -->
 ```apex
 // once, centrally
 XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
@@ -73,6 +74,7 @@ XFTY_SharedAncestor.put('level1', new MyHierarchyObj__c())
 // level1's Provider does putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'))
 ```
 
+<!-- sketch -->
 ```apex
 MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
         XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9'), lookup)
@@ -121,6 +123,7 @@ When a bare template / key is not enough — value expressions on the shared
 record, or its *own* ancestors — chain the same `put` API a generated parent
 takes straight onto `put(name, …)`:
 
+<!-- sketch -->
 ```apex
 XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ Ltd'))
     .fromVariant(enterpriseKey)
@@ -157,6 +160,7 @@ consumer already depends on.
 
 The quick form: pass them alongside the Provider map.
 
+<!-- sketch -->
 ```apex
 XFTY_ProviderLookups.of(
     new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -170,6 +174,7 @@ XFTY_ProviderLookups.of(
 A hand-written lookup implements the companion interface
 **`XFTY_SharedAncestorDefaultsIntf`** — one method:
 
+<!-- sketch -->
 ```apex
 public class MyProjectLookup implements XFTY_DummySObjectProviderLookupIntf, XFTY_SharedAncestorDefaultsIntf {
     // ... the usual get / keysFor ...
@@ -191,6 +196,7 @@ implement the interface.
 
 ## Supplying your own record, and reading the Id
 
+<!-- sketch -->
 ```apex
 Account root = /* the test inserts its own singleton root */;
 XFTY_SharedAncestor.put('root', root);   // from here, get('root') resolves to this
@@ -201,6 +207,7 @@ Id hqId = XFTY_SharedAncestor.getId('acme-hq');  // after it has resolved
 `getId(name)` throws if the ancestor has not been resolved yet this test method.
 To read it **before** any `supply*()` call, resolve it explicitly:
 
+<!-- sketch -->
 ```apex
 XFTY_SharedAncestor.get('root').resolveNow(lookup, XFTY_InsertModeEnum.NOW);
 Id rootId = XFTY_SharedAncestor.getId('root');
@@ -242,11 +249,15 @@ knobs (both reset per test method) hand control back to the test:
 | `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)` | resolve one (and its chain) up front |
 | `XFTY_SharedAncestor.resolveNow(lookup, mode, List<String> names)` | resolve a named set up front, one depth-batched pass |
 
+<!-- sketch -->
 ```apex
 XFTY_SharedAncestor.manualResolutionOnly();
 XFTY_SharedAncestor.resolveNow(lookup, XFTY_InsertModeEnum.NOW, new List<String>{ 'division', 'region' });
 // the package's other 6 shared-ancestor defaults are never built
 ```
+
+The batch form is proven with a real chain in
+`XFTY_SharedAncestorHierarchyTest.batchResolveNowResolvesTheNamedSetInOnePass`.
 
 ---
 

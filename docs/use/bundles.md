@@ -70,13 +70,8 @@ When you only want one field several hops up, `getValue` walks the path so you
 don't have to hold every intermediate bundle and list:
 
 ```apex
-Object siteFromParentAccount =
-    bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Site });
-
-// deeper - each leading field is a hop down, the last field is what to read
-Object nameFromGrandparent = bundle.getValue(new List<SObjectField>{
-    Contact.AccountId, Account.ParentId, Account.Name
-});
+Object parentAccountName =
+    bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
 ```
 
 The path is one or more **relationship fields** then the **field to read**. A

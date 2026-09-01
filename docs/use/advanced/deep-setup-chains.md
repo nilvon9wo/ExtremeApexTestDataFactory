@@ -7,9 +7,9 @@ fixture is built fresh per method, declared once, and visible right next to the
 tests:
 
 ```apex
-private static final XFTY_DummySObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+private static final XFTY_DummySObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-private static final List<Account> SHARED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+private static final List<Account> SHARED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
     .setInsertMode(XFTY_InsertModeEnum.MOCK)
     .setQuantityPerTemplate(3)
     .supplyList();
@@ -27,12 +27,12 @@ the bundles as ordinary `static` initialisers (no DML), then add **one trailing
 `static {}` block** whose only job is the flush:
 
 ```apex
-private static XFTY_DummySObjectBundle sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+private static XFTY_DummySObjectBundle sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
     .setQuantityPerTemplate(3)
     .supplyBundle();
 
-private static XFTY_DummySObjectBundle sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+private static XFTY_DummySObjectBundle sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
     .supplyBundle();
@@ -77,14 +77,14 @@ off it — no `SELECT` to re-fetch what XFTY just built:
 
 ```apex
 private static XFTY_DummySObjectBundle seedAccounts() {
-    return new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+    return new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
         .setQuantityPerTemplate(3)
         .supplyBundle();
 }
 
 private static XFTY_DummySObjectBundle seedContacts() {
-    return new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+    return new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
         .setQuantityPerTemplate(9)
@@ -129,14 +129,14 @@ XFTY_DeferredInserter.flush();                                  // Accounts now 
 Id firstSeededAccountId = seededAccounts.getList(Account.Id)[0].Id;
 
 // a later step that needs that Id as a value - still DEFERRED, flush again
-XFTY_DummySObjectBundle seededContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+XFTY_DummySObjectBundle laterContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
     .setOverrideTemplate(new Contact(AccountId = firstSeededAccountId))
     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
     .setQuantityPerTemplate(4)
     .supplyBundle();
 XFTY_DeferredInserter.flush();
 
-Assert.areEqual(firstSeededAccountId, seededContacts.getList(Contact.Id)[0].AccountId);
+Assert.areEqual(firstSeededAccountId, laterContacts.getList(Contact.Id)[0].get(Contact.AccountId));
 ```
 
 ▶ Runnable: `XFTY_Ex_Adv_DeepSetupChainsTest`

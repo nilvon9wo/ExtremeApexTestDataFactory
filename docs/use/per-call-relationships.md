@@ -10,10 +10,9 @@ relationship on the `XFTY_DummySObjectProvider` instance.
 ## The simplest case
 
 ```apex
-new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
-    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .includeOptional(Opportunity.Pricebook2Id)   // generate this optional one too
-    .excludeRelationship(Opportunity.OwnerId);    // do not generate this one
+new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .includeOptional(Contact.OwnerId)          // generate this optional one too
+    .excludeRelationship(Contact.AccountId);   // do not generate this one, even though it is required
 ```
 
 - **`includeOptional(field)`** generates one named relationship for this call,
@@ -41,13 +40,13 @@ call `excludeRelationship` before any `put(...)` (same ordering rule as
 step for this call only:
 
 ```apex
-new XFTY_DummySObjectProvider(Opportunity.SObjectType, lookup)
-    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .includeOptional(new List<SObjectField>{ Opportunity.Pricebook2Id, Pricebook2.OwnerId });
+new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .includeOptional(new List<SObjectField>{ Contact.AccountId, Account.ParentId })
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
 ```
 
-generates the Opportunity's Pricebook (optional) **and** that Pricebook's Owner
-(optional), leaving everything else at `REQUIRED`. Each step must be a
+generates the Contact's Account (required anyway) **and** that Account's own
+parent Account (optional), leaving everything else at `REQUIRED`. Each step must be a
 relationship on the Provider it resolves to; an unknown step throws during
 generation. Whether a step is a plain relationship or a
 [shared ancestor](shared-ancestors.md) makes no difference.

@@ -13,14 +13,14 @@
 @IsTest
 private class XFTY_Ex_Adv_StaticDeferredFixtureTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
-    private static XFTY_DummySObjectBundle sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+    private static XFTY_DummySObjectBundle sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
             .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
             .setQuantityPerTemplate(3)
             .supplyBundle();
 
-    private static XFTY_DummySObjectBundle sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+    private static XFTY_DummySObjectBundle sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
             .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
             .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
             .setQuantityPerTemplate(2)

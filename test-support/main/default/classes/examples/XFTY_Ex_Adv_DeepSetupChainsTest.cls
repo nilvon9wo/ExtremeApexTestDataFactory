@@ -14,11 +14,11 @@
 @IsTest
 private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     // The plain-snapshot form: a MOCK static fixture, rebuilt per test method.
-    private static final List<Account> MOCKED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+    private static final List<Account> MOCKED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
             .setInsertMode(XFTY_InsertModeEnum.MOCK)
             .setQuantityPerTemplate(3)
             .supplyList();
@@ -29,7 +29,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
         // nothing to arrange - MOCKED_ACCOUNTS is the static fixture, built for this method
 
         // Act - use the fixture, e.g. as a parent for more records
-        List<Contact> contactsOnTheFixture = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        List<Contact> contactsOnTheFixture = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setOverrideTemplate(new Contact(AccountId = MOCKED_ACCOUNTS[0].Id))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setQuantityPerTemplate(2)
@@ -61,9 +61,9 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
         List<Account> accountRecords = seededAccounts.getList(Account.Id);
         List<Contact> contactRecords = seededContacts.getList(Contact.Id);
         Assert.areEqual(3, accountRecords.size());
-        Assert.areEqual(9, contactRecords.size());
         Assert.isNotNull(accountRecords[0].Id, 'flush() back-filled the Ids onto the bundle instances');
         Assert.isNotNull(contactRecords[0].Id);
+        Assert.areEqual(9, seededContacts.getList(Contact.Id).size());
         Assert.areEqual(3 + 9, [SELECT COUNT() FROM Account], 'one insert phase: 3 seeded + one generated per Contact');
     }
 
@@ -80,7 +80,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
             // Act - a later step that needs that Id as a value
             Test.startTest();
-            laterContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+            laterContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .setOverrideTemplate(new Contact(AccountId = firstSeededAccountId))
                     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                     .setQuantityPerTemplate(4)
@@ -91,6 +91,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
         // Assert
         Assert.isNotNull(firstSeededAccountId);
+        Assert.areEqual(firstSeededAccountId, laterContacts.getList(Contact.Id)[0].get(Contact.AccountId));
         for (Contact contactRecord : (List<Contact>) laterContacts.getList(Contact.Id)) {
             Assert.areEqual(firstSeededAccountId, contactRecord.AccountId, 'every later Contact points at the flushed Account');
         }
@@ -100,14 +101,14 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
     // Helpers from the page ---------------------------------------------
 
     private static XFTY_DummySObjectBundle seedAccounts() {
-        return new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+        return new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                 .setQuantityPerTemplate(3)
                 .supplyBundle();
     }
 
     private static XFTY_DummySObjectBundle seedContacts() {
-        return new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                 .setQuantityPerTemplate(9)

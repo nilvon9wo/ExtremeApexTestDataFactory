@@ -46,7 +46,7 @@ If a later call needs the real Id of a record an earlier call produced,
 XFTY_DummySObjectBundle parents = parentProvider.setInsertMode(XFTY_InsertModeEnum.DEFERRED).supplyBundle();
 XFTY_DeferredInserter.flush();                                    // parents now have Ids
 
-Id parentId = ((Account) parents.getList(Account.Id)[0]).Id;
+Id parentId = parents.getList(Account.Id)[0].Id;
 childProvider.setOverrideTemplate(new Contact(AccountId = parentId))
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED).supplyBundle();
 XFTY_DeferredInserter.flush();

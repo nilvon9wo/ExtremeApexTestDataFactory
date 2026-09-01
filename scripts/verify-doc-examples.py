@@ -28,7 +28,10 @@ TEST_DIRS = [
 
 RUNNABLE_RE = re.compile(r"Runnable:\s*(.+)$", re.M)
 CLASS_RE = re.compile(r"`(XFTY_[A-Za-z0-9_]+)(?:\.[A-Za-z0-9_]+)?`")
-APEX_BLOCK_RE = re.compile(r"```apex\n(.*?)\n```", re.S)
+# A fence immediately preceded by `<!-- sketch -->` is illustrative project code
+# (a consumer's own SObjects / lookup-key classes) and is exempt - it cannot run
+# against the bundled Account / Contact / User Providers.
+APEX_BLOCK_RE = re.compile(r"(?:^|\n)(<!-- sketch -->\n)?```apex\n(.*?)\n```", re.S)
 SIGNIFICANT_RE = re.compile(
     r"(\.\w+\([^\n]*\)"          # .method(...)
     r"|new\s+XFTY_\w+\([^\n]*\)"  # new XFTY_...(...)
@@ -38,7 +41,10 @@ SIGNIFICANT_RE = re.compile(
 
 
 def norm(s: str) -> str:
-    return re.sub(r"\s+", "", s)
+    # whitespace-insensitive and case-insensitive: docs write the lookup
+    # placeholder as `lookup`, the example tests as the `LOOKUP` constant - same
+    # thing. Full-fragment matching keeps this from producing false positives.
+    return re.sub(r"\s+", "", s).lower()
 
 
 def load_test_sources():
@@ -60,16 +66,18 @@ def main() -> int:
     for d in DOC_DIRS:
         for page in sorted(d.rglob("*.md")):
             text = page.read_text(encoding="utf-8")
-            m = RUNNABLE_RE.search(text)
-            if not m:
+            runnable_lines = RUNNABLE_RE.findall(text)
+            if not runnable_lines:
                 continue
             checked_pages += 1
-            named = CLASS_RE.findall(m.group(1))
+            named = [c for line in runnable_lines for c in CLASS_RE.findall(line)]
             # the union of every named test class's source, plus a fallback to
             # the whole test corpus (a doc line may legitimately be proven by a
             # shared helper class)
             scope = "".join(tests.get(n, "") for n in named) or all_tests_blob
-            for block in APEX_BLOCK_RE.findall(text):
+            for sketch_marker, block in APEX_BLOCK_RE.findall(text):
+                if sketch_marker:
+                    continue
                 for line in block.splitlines():
                     line = line.strip()
                     if not line or line.startswith("//"):

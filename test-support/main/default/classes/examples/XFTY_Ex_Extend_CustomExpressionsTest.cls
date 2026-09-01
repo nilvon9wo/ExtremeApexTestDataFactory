@@ -7,7 +7,7 @@
 @IsTest
 private class XFTY_Ex_Extend_CustomExpressionsTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     // --- Plain: XFTY_ValueExpressionIntf --------------------------------
@@ -43,7 +43,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
         // Act
         Contact result;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.MailingCountry, 'Germany')
                 .put(Contact.Description, new SiblingCountryLabel())
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -66,7 +66,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
         for (XFTY_InsertModeEnum mode : new List<XFTY_InsertModeEnum>{
                 XFTY_InsertModeEnum.NEVER, XFTY_InsertModeEnum.MOCK
         }) {
-            Contact generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+            Contact generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .put(Contact.Description, new AncestorAccountCountry())
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(mode)
@@ -117,7 +117,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
         // Arrange - DEFERRED: the ancestor has no Id until flush(), which is after the strategy
         Contact generated;
         System.runAs(TEST_ADMIN) {
-            generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+            generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .put(Contact.Description, new AncestorAccountIdAsText())
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
@@ -136,10 +136,81 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
                 'an ancestor-Id context-aware read cannot work under DEFERRED - the strategy runs before flush');
     }
 
+    // --- Descendant: XFTY_DeferredExpressionIntf -----------------------------
+
+    @IsTest
+    static void aDeferredExpressionReadsUpFromTheChildrenDeferredBuilds() {
+        // Arrange - one Account with two Cases, one still open
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => new AccountFlaggingOpenChildCases(),
+                        XFTY_LookupKey.get(Case.SObjectType) => new CaseProvider()
+                }
+        );
+
+        // Act
+        Account generated;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
+                    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                    .with(new XFTY_SObjectChildProvider(Case.AccountId).setQuantity(1).put(Case.Status, 'Closed'))
+                    .with(new XFTY_SObjectChildProvider(Case.AccountId).setQuantity(1).put(Case.Status, 'New'))
+                    .supply();
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+        }
+        generated = [SELECT Description FROM Account];
+
+        // Assert
+        Assert.areEqual('true', generated.Description, 'HasAnyOpenChildCase saw the still-open Case');
+    }
+
+    private class AccountFlaggingOpenChildCases implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Descendant Read Acct'))
+                .put(Account.Description, new HasAnyOpenChildCase());
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
+    /** From the page: an up-flowing value needs its own interface and runs during flush(). */
+    private class HasAnyOpenChildCase implements XFTY_DeferredExpressionIntf {
+        public Object get(XFTY_DeferredGraph graph, Integer recordIndex) {
+            for (SObject child : graph.childrenOf(recordIndex, Case.AccountId)) {
+                if (((Case) child).IsClosed == false) {
+                    return 'true';
+                }
+            }
+            return 'false';
+        }
+    }
+
+    private class CaseProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Case.Id)
+                .put(Case.Subject, new XFTY_IncrementingStringExpression('Descendant Read Case'));
+        public SObjectField getPrimaryTargetField() {
+            return Case.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
     // Fixture - strategies from the page --------------------------------
 
     private static String descriptionFromAncestorId(XFTY_InsertModeEnum mode) {
-        Contact generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+        Contact generated = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.Description, new AncestorAccountIdAsText())
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setInsertMode(mode)
