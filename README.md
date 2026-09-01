@@ -6,10 +6,23 @@ Instead of manually constructing complete `SObject` graphs for every test, you d
 
 By centralizing test data definitions, XFTY dramatically reduces boilerplate and makes tests more resilient to changing validation rules, required fields, and evolving business logic.
 
-> **XFTY 4.0 is in development.** The `xfty-4.0-beta` branch adds context-aware
-> values, shared ancestors, finer per-call relationship control, and more - along
-> with some breaking API changes. Try it out and send feedback: check out
-> [`xfty-4.0-beta`](../../tree/xfty-4.0-beta) and open an issue with your thoughts.
+> ## 🚧 XFTY 4.0 is in beta
+>
+> The next major version is feature-complete and open for testing on the
+> [`4.0-beta`](../../tree/4.0-beta) branch (also published as the
+> [`v4.0.0-beta.1`](../../releases) pre-release). Highlights:
+>
+> - **Context-aware values** — a field derived from a sibling, an ancestor, or (deferred) a child
+> - **Shared ancestors** — many children under one generated parent; flat or deep record-type hierarchies
+> - **Downward generation** — `with(...)` generates the records *below* a primary, nested
+> - **Per-call relationship control** — force or skip one relationship for a single call
+> - **Deferred & depth-batched insert** — far fewer DML statements for large graphs
+> - **Verified** — 100% line coverage on an org, and every documentation example backed by a runnable test
+>
+> It also carries **breaking API changes** (mostly mechanical renames) — the
+> [4.0 migration guide](../../blob/4.0-beta/docs/reference/migration.md) has the
+> exact before/after, and [CHANGELOG.md](CHANGELOG.md) the full list. Feedback →
+> [open an issue](../../issues). APIs may still shift before 4.0 final.
 
 ---
 
