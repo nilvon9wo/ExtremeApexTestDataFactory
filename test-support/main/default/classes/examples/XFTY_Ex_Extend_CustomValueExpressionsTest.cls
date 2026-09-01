@@ -1,16 +1,16 @@
 /**
- * Runnable proof for docs/extend/custom-value-strategies.md - implementing each
+ * Runnable proof for docs/extend/custom-value-expressions.md - implementing each
  * of the three value interfaces, and the limits documented for each.
  *
  * Every `@IsTest` method is one example or one stated limitation from that page.
  */
 @IsTest
-private class XFTY_Ex_Extend_CustomValueStrategiesTest {
+private class XFTY_Ex_Extend_CustomValueExpressionsTest {
 
     private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    // --- Plain: XFTY_DummyDefaultValueIntf --------------------------------
+    // --- Plain: XFTY_ValueExpressionIntf --------------------------------
 
     @IsTest
     static void aPlainStrategySeesNothingButItself() {
@@ -33,7 +33,7 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
                 'not a weekend: ' + result.ActivityDate);
     }
 
-    // --- Sibling: XFTY_ContextAwareValueIntf ----------------------------
+    // --- Sibling: XFTY_ContextAwareExpressionIntf ----------------------------
 
     @IsTest
     static void aContextAwareStrategyReadsASiblingFieldAsAValue() {
@@ -54,7 +54,7 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
         Assert.areEqual('Billing: Germany', result.Description);
     }
 
-    // --- Ancestor: XFTY_ContextAwareValueIntf, non-Id field -------------
+    // --- Ancestor: XFTY_ContextAwareExpressionIntf, non-Id field -------------
 
     @IsTest
     static void anAncestorReadOfANonIdFieldIsReliableInEveryMode() {
@@ -86,7 +86,7 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
         );
     }
 
-    // --- Ancestor: XFTY_ContextAwareValueIntf, the ancestor's Id --------
+    // --- Ancestor: XFTY_ContextAwareExpressionIntf, the ancestor's Id --------
 
     @IsTest
     static void anAncestorIdReadIsOnlyRealUnderNow() {
@@ -153,7 +153,7 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
         });
     }
 
-    private class NextWeekday implements XFTY_DummyDefaultValueIntf {
+    private class NextWeekday implements XFTY_ValueExpressionIntf {
         public Object get() {
             Date candidate = Date.today().addDays(1);
             while (isWeekend(candidate)) {
@@ -167,20 +167,20 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
         }
     }
 
-    private class SiblingCountryLabel implements XFTY_ContextAwareValueIntf {
+    private class SiblingCountryLabel implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             return 'Billing: ' + (String) context.siblingValue(Contact.MailingCountry);
         }
     }
 
-    private class AncestorAccountCountry implements XFTY_ContextAwareValueIntf {
+    private class AncestorAccountCountry implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             Account parentAccount = ancestorAccount(context);
             return (parentAccount == null) ? null : parentAccount.ShippingCountry;
         }
     }
 
-    private class AncestorAccountIdAsText implements XFTY_ContextAwareValueIntf {
+    private class AncestorAccountIdAsText implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             Account parentAccount = ancestorAccount(context);
             return (parentAccount == null || parentAccount.Id == null) ? null : String.valueOf(parentAccount.Id);
@@ -200,7 +200,7 @@ private class XFTY_Ex_Extend_CustomValueStrategiesTest {
 
     private class BareTaskProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Task.Id)
-                .put(Task.Subject, new XFTY_DummyDefaultValueIncrementingString('Task'));
+                .put(Task.Subject, new XFTY_IncrementingStringExpression('Task'));
         public SObjectField getPrimaryTargetField() {
             return Task.Id;
         }

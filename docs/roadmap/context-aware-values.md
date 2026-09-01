@@ -2,7 +2,7 @@
 
 Status: **all three directions shipped** — sibling + ancestor reads (with a loud
 ordering guard — [use/context-aware-values.md](../use/context-aware-values.md)),
-and descendant (up-flowing) reads via `XFTY_CopyFromDescendant`
+and descendant (up-flowing) reads via `XFTY_CopyFromDescendantExpression`
 ([descendant-value-reads.md](descendant-value-reads.md), option B). This page is
 the design record. Builds on `XFTY_GenerationContext`
 ([architecture.md - The Generation Context](../contribute/architecture.md#the-generation-context)).
@@ -11,7 +11,7 @@ the design record. Builds on `XFTY_GenerationContext`
 
 ## The need
 
-A value strategy today implements `XFTY_DummyDefaultValueIntf.get()` - no
+A value strategy today implements `XFTY_ValueExpressionIntf.get()` - no
 arguments, no knowledge of anything around it. Real data models routinely need
 more:
 
@@ -38,13 +38,13 @@ differ in **timing**:
 
 ## Decision 1 - how a strategy receives the context — *resolved: B*
 
-**`XFTY_ContextAwareValueIntf` is a separate interface** (one method,
+**`XFTY_ContextAwareExpressionIntf` is a separate interface** (one method,
 `Object get(XFTY_GenerationContext context)`), *not* a subtype of
-`XFTY_DummyDefaultValueIntf`.
+`XFTY_ValueExpressionIntf`.
 
-Rejected **A** (extend `XFTY_DummyDefaultValueIntf`, no-arg `get()` throws): that
+Rejected **A** (extend `XFTY_ValueExpressionIntf`, no-arg `get()` throws): that
 is a Liskov violation - a context-aware value handed to code expecting a plain
-one blows up. Rejected **C** (change `XFTY_DummyDefaultValueIntf.get()` itself):
+one blows up. Rejected **C** (change `XFTY_ValueExpressionIntf.get()` itself):
 breaks every existing strategy for no gain.
 
 The Master Template keeps its typed `defaultBySObjectFieldMap` and gains a second
@@ -108,7 +108,7 @@ dependency was `put(...)` first. Revisit **B**/**C** if that bites.
 
 **Shipped as A, with a loud guard.** The value pass threads the set of
 context-aware fields it has *not* reached yet ({@link XFTY_ValueFieldPass}) into
-the context. `context.siblingValue(field)` - which `XFTY_CopyFromSibling` and any
+the context. `context.siblingValue(field)` - which `XFTY_CopyFromSiblingExpression` and any
 custom strategy should use instead of `recordBeingBuilt.get(field)` - throws a
 clear `XFTY_DummySObjectFtyProviderException` (naming both fields and the `put`
 order to fix it) when `field` is still in that set. A wrong order, or a circular
@@ -157,15 +157,15 @@ work lands, since they share the machinery.
 
 ## Built-ins to ship
 
-- `XFTY_CopyFromSibling(SObjectField field)` - `get(ctx)` returns
+- `XFTY_CopyFromSiblingExpression(SObjectField field)` - `get(ctx)` returns
   `ctx.siblingValue(field)` (guarded; see decision 3).
-- `XFTY_CopyFromAncestor(SObjectField relationshipField, SObjectField sourceField)`
+- `XFTY_CopyFromAncestorExpression(SObjectField relationshipField, SObjectField sourceField)`
   - returns `ctx.bundleSoFar.getList(relationshipField)[rowIndex].get(sourceField)`.
   A deeper path (`Opportunity -> Account -> Owner.Name`) is a v2 concern - it needs
   the row index threaded and the sub-bundle walked.
 
 Anything with actual logic (`isOver18`) is a three-line consumer
-`XFTY_ContextAwareValueIntf` implementation - XFTY ships the plumbing, not a
+`XFTY_ContextAwareExpressionIntf` implementation - XFTY ships the plumbing, not a
 mini-expression-language.
 
 ---
@@ -174,13 +174,13 @@ mini-expression-language.
 
 ### Increment 1 - sibling + ancestor (done)
 
-1. `XFTY_ContextAwareValueIntf` (separate interface, decision 1: B);
+1. `XFTY_ContextAwareExpressionIntf` (separate interface, decision 1: B);
    `XFTY_DummySObjectMasterTemplate.contextAwareBySObjectFieldMap` + a routing
    `put(field, Object)`; `XFTY_GenerationContext.forRecord(record, bundleSoFar,
    rowIndex)`.
 2. `XFTY_DummySObjectFactory`: `cloneAndCompletePlainValues` (pass 1, plain map)
    + `completeContextAwareValues` (pass 2, context-aware map, after wiring).
-3. `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor` (single + multi-hop) + tests.
+3. `XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression` (single + multi-hop) + tests.
 4. Docs: [use/context-aware-values.md](../use/context-aware-values.md),
    [contribute/architecture.md](../contribute/architecture.md) value-passes detail.
 
@@ -198,14 +198,14 @@ Topological / lazy sibling resolution if the insertion-order limitation bites
 
 ## Resolved decisions
 
-- **1** - **B**: `XFTY_ContextAwareValueIntf` is a separate interface, second map
+- **1** - **B**: `XFTY_ContextAwareExpressionIntf` is a separate interface, second map
   on the Master Template. No LSP violation, no throwing no-arg `get()`.
 - **3** - two-pass, insertion order, shipped, **with a loud guard**
   (`context.siblingValue(field)` throws on a not-yet-generated / circular
   context-aware sibling instead of returning a silent `null`). Full lazy
   resolution (option C) is still worth doing later if arbitrary chains are needed;
   only option B (declared deps + topological sort) is rejected as hard to consume.
-- `XFTY_CopyFromAncestor` ships single- and multi-hop.
+- `XFTY_CopyFromAncestorExpression` ships single- and multi-hop.
 
 ## Open
 

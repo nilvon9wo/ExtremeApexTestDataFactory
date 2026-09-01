@@ -7,9 +7,9 @@ public class XFTY_PendingDeferredValue {
 
     public final Integer recordIndex;
     public final SObjectField field;
-    public final XFTY_DeferredValueIntf strategy;
+    public final XFTY_DeferredExpressionIntf strategy;
 
-    public XFTY_PendingDeferredValue(Integer recordIndex, SObjectField field, XFTY_DeferredValueIntf strategy) {
+    public XFTY_PendingDeferredValue(Integer recordIndex, SObjectField field, XFTY_DeferredExpressionIntf strategy) {
         this.recordIndex = recordIndex;
         this.field = field;
         this.strategy = strategy;

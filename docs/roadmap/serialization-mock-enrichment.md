@@ -49,7 +49,7 @@ overload that takes no path.
 ```apex
 XFTY_InjectionConfig config = new XFTY_InjectionConfig()
     // values - the value arg is anything that can feed a master template
-    //           (an exact value, an XFTY_DummyDefaultValueIntf, ...)
+    //           (an exact value, an XFTY_ValueExpressionIntf, ...)
     .injectValue(Contact.CreatedDate, aDatetime)                                        // on the primary
     .injectValue(new List<SObjectField>{ Contact.AccountId }, Account.LastModifiedById, new SomeUserIdProvider())
 

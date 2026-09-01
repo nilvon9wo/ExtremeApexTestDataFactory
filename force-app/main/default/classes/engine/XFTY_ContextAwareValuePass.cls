@@ -42,7 +42,7 @@ public class XFTY_ContextAwareValuePass {
     }
 
     private void completeField(SObject record, XFTY_GenerationContext scoped, SObjectField field) {
-        XFTY_ContextAwareValueIntf strategy = this.template.contextAwareBySObjectFieldMap.get(field);
+        XFTY_ContextAwareExpressionIntf strategy = this.template.contextAwareBySObjectFieldMap.get(field);
         Boolean nothingToFill = strategy == null
                 || record.get(field) != null;
         if (nothingToFill) {

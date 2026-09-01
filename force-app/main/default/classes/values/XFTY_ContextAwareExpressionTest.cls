@@ -1,16 +1,16 @@
 /**
  * Coverage for context-aware value generation: the second value pass in
- * `XFTY_DummySObjectFactory`, `XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, and
- * a custom `XFTY_ContextAwareValueIntf` implementation.
+ * `XFTY_DummySObjectFactory`, `XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression`, and
+ * a custom `XFTY_ContextAwareExpressionIntf` implementation.
  *
  * See docs/roadmap/context-aware-values.md.
  */
 @IsTest
-private class XFTY_ContextAwareValueTest {
+private class XFTY_ContextAwareExpressionTest {
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    // --- XFTY_CopyFromSibling ------------------------------------------------
+    // --- XFTY_CopyFromSiblingExpression ------------------------------------------------
 
     @IsTest
     static void copyFromSiblingTakesAPlainSiblingValue() {
@@ -18,7 +18,7 @@ private class XFTY_ContextAwareValueTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.ShippingCity, 'Berlin')
-                .put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
+                .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -35,8 +35,8 @@ private class XFTY_ContextAwareValueTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.ShippingCity, 'Munich')
-                .put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
-                .put(Account.BillingStreet, new XFTY_CopyFromSibling(Account.BillingCity))
+                .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
+                .put(Account.BillingStreet, new XFTY_CopyFromSiblingExpression(Account.BillingCity))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -51,7 +51,7 @@ private class XFTY_ContextAwareValueTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.ShippingCity, 'Hamburg')
-                .put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
+                .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
                 .setOverrideTemplate(new Account(BillingCity = 'Explicit'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
@@ -63,7 +63,7 @@ private class XFTY_ContextAwareValueTest {
     @IsTest
     static void copyFromSiblingRejectsANullField() {
         try {
-            new XFTY_CopyFromSibling(null);
+            new XFTY_CopyFromSiblingExpression(null);
             Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
             Assert.isTrue(ex.getMessage().contains('source field'), ex.getMessage());
@@ -72,11 +72,11 @@ private class XFTY_ContextAwareValueTest {
 
     @IsTest
     static void aContextAwareStrategyIsNotAPlainValueStrategy() {
-        // B, not A: XFTY_ContextAwareValueIntf does not extend XFTY_DummyDefaultValueIntf,
+        // B, not A: XFTY_ContextAwareExpressionIntf does not extend XFTY_ValueExpressionIntf,
         // so there is no misleading no-arg get() to call.
-        Object strategy = new XFTY_CopyFromSibling(Account.Name);
-        Assert.isFalse(strategy instanceof XFTY_DummyDefaultValueIntf);
-        Assert.isTrue(strategy instanceof XFTY_ContextAwareValueIntf);
+        Object strategy = new XFTY_CopyFromSiblingExpression(Account.Name);
+        Assert.isFalse(strategy instanceof XFTY_ValueExpressionIntf);
+        Assert.isTrue(strategy instanceof XFTY_ContextAwareExpressionIntf);
     }
 
     @IsTest
@@ -84,8 +84,8 @@ private class XFTY_ContextAwareValueTest {
         // Description (reader) is put before Site (a context-aware value it reads).
         try {
             new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-                    .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
-                    .put(Account.Site, new XFTY_CopyFromSibling(Account.AccountNumber))
+                    .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Site))
+                    .put(Account.Site, new XFTY_CopyFromSiblingExpression(Account.AccountNumber))
                     .put(Account.AccountNumber, 'seed')
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supply();
@@ -101,8 +101,8 @@ private class XFTY_ContextAwareValueTest {
     static void copyFromSiblingRejectsACircularSiblingReference() {
         try {
             new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-                    .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
-                    .put(Account.Site, new XFTY_CopyFromSibling(Account.Description))
+                    .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Site))
+                    .put(Account.Site, new XFTY_CopyFromSiblingExpression(Account.Description))
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supply();
             Assert.fail('Expected an exception - Description and Site copy from each other');
@@ -119,7 +119,7 @@ private class XFTY_ContextAwareValueTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.Site, new AlwaysNull())
-                .put(Account.Description, new XFTY_CopyFromSibling(Account.Site))
+                .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Site))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -131,7 +131,7 @@ private class XFTY_ContextAwareValueTest {
     @IsTest
     static void copyFromSiblingCanOnlyRunInsideTheValuePass() {
         try {
-            new XFTY_CopyFromSibling(Account.Name).get(
+            new XFTY_CopyFromSiblingExpression(Account.Name).get(
                     new XFTY_GenerationContext(LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE)
             );
             Assert.fail('Expected an exception - there is no record being built');
@@ -141,13 +141,13 @@ private class XFTY_ContextAwareValueTest {
     }
 
     /** A context-aware strategy whose generated value is legitimately null. */
-    private class AlwaysNull implements XFTY_ContextAwareValueIntf {
+    private class AlwaysNull implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             return null;
         }
     }
 
-    // --- XFTY_CopyFromAncestor ---------------------------------------------
+    // --- XFTY_CopyFromAncestorExpression ---------------------------------------------
 
     @IsTest
     static void copyFromAncestorTakesAFieldFromTheGeneratedParent() {
@@ -156,7 +156,7 @@ private class XFTY_ContextAwareValueTest {
             Test.startTest();
             result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(Name = 'Wired Parent')))
-                    .put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name))
+                    .put(Contact.Department, new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Name))
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supply();
@@ -173,7 +173,7 @@ private class XFTY_ContextAwareValueTest {
             Test.startTest();
             result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .removeFromMasterTemplate(Contact.AccountId)
-                    .put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name))
+                    .put(Contact.Department, new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Name))
                     .setInclusivity(XFTY_InsertInclusivityEnum.NONE)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supply();
@@ -190,7 +190,7 @@ private class XFTY_ContextAwareValueTest {
             Test.startTest();
             results = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     // the bundled Account Provider gives each generated Account an incrementing Name
-                    .put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name))
+                    .put(Contact.Department, new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Name))
                     .setQuantityPerTemplate(3)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
@@ -208,7 +208,7 @@ private class XFTY_ContextAwareValueTest {
     @IsTest
     static void copyFromAncestorIsNullWhenHandedAContextWithNoAncestors() {
         // a base context (not scoped to a record) has no ancestor bundle
-        Object value = new XFTY_CopyFromAncestor(Contact.AccountId, Account.Name)
+        Object value = new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Name)
                 .get(new XFTY_GenerationContext(LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE));
 
         Assert.isNull(value);
@@ -217,7 +217,7 @@ private class XFTY_ContextAwareValueTest {
     @IsTest
     static void copyFromAncestorRejectsANullPathStep() {
         try {
-            new XFTY_CopyFromAncestor(null, Account.Name);
+            new XFTY_CopyFromAncestorExpression(null, Account.Name);
             Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
             Assert.isTrue(ex.getMessage().contains('cannot be null'), ex.getMessage());
@@ -227,7 +227,7 @@ private class XFTY_ContextAwareValueTest {
     @IsTest
     static void copyFromAncestorRejectsATooShortPath() {
         try {
-            new XFTY_CopyFromAncestor(new List<SObjectField>{ Account.Name });
+            new XFTY_CopyFromAncestorExpression(new List<SObjectField>{ Account.Name });
             Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
             Assert.isTrue(ex.getMessage().contains('at least one relationship field'), ex.getMessage());
@@ -249,7 +249,7 @@ private class XFTY_ContextAwareValueTest {
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
-                    .put(Contact.Department, new XFTY_CopyFromAncestor(new List<SObjectField>{
+                    .put(Contact.Department, new XFTY_CopyFromAncestorExpression(new List<SObjectField>{
                             Contact.AccountId, Account.OwnerId, User.Alias
                     }))
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
@@ -264,7 +264,7 @@ private class XFTY_ContextAwareValueTest {
     /** An Account Provider that generates an Owner, so multi-hop tests have a second level. */
     private class AccountWithOwnerProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'))
                 .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         public SObjectField getPrimaryTargetField() {
             return Account.Id;
@@ -294,7 +294,7 @@ private class XFTY_ContextAwareValueTest {
     }
 
     /** Derives a MINOR / ADULT flag from a Date sibling - the kind of logic XFTY leaves to consumers. */
-    private class IsMinorFlag implements XFTY_ContextAwareValueIntf {
+    private class IsMinorFlag implements XFTY_ContextAwareExpressionIntf {
         private final SObjectField birthdateField;
         private IsMinorFlag(SObjectField birthdateField) {
             this.birthdateField = birthdateField;
@@ -327,7 +327,7 @@ private class XFTY_ContextAwareValueTest {
     }
 
     /** Reads the whole batch of sibling primary records out of `bundleSoFar`. */
-    private class SiblingCountLabel implements XFTY_ContextAwareValueIntf {
+    private class SiblingCountLabel implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             Integer siblingCount = context.bundleSoFar.getList(Account.Id).size();
             return (context.rowIndex + 1) + ' of ' + siblingCount;

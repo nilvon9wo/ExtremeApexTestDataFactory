@@ -34,7 +34,7 @@ handed back are the same instances, their `Id` fields are now populated.
 - `flush()` clears the registry — generation after a `flush()` starts fresh.
 - Not supported with `@TestSetup` (it resets statics).
 - [Shared ancestors](shared-ancestors.md) work — each is resolved up front.
-- `flush()` also resolves any [`XFTY_CopyFromDescendant`](context-aware-values.md#reading-up-from-a-child)
+- `flush()` also resolves any [`XFTY_CopyFromDescendantExpression`](context-aware-values.md#reading-up-from-a-child)
   value (a parent field read up from a generated child).
 
 ### It does not give you an Id mid-generation
@@ -74,7 +74,7 @@ exact DML count, or depends on the order its triggers fire during generation,
 should leave it off.
 
 - Only affects `NOW` (other modes do no framework DML).
-- Shared ancestors and `XFTY_CopyFromDescendant` values both work under
+- Shared ancestors and `XFTY_CopyFromDescendantExpression` values both work under
   `.depthBatched()` — the whole graph exists before the batched insert.
 - A lookup cycle (A → B, B → A) cannot be one `insert` order and throws
   `XFTY_DepthBatchedInserter.CyclicGraphException`.

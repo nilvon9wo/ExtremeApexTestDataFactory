@@ -126,7 +126,7 @@ XFTY_SharedAncestor.put('hq',
     new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
         .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
         .withVariant(enterpriseKey)
-        .put(Account.Rating, new XFTY_DummyDefaultValueExact('Hot'))
+        .put(Account.Rating, new XFTY_LiteralExpression('Hot'))
         .put(Account.Site, 'Berlin')
         .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'Global HQ')))
         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)

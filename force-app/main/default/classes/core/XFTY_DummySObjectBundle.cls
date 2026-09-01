@@ -114,9 +114,9 @@ public class XFTY_DummySObjectBundle {
     public class DeferredValue {
         public final Integer primaryRow;
         public final SObjectField field;
-        public final XFTY_DeferredValueIntf strategy;
+        public final XFTY_DeferredExpressionIntf strategy;
 
-        public DeferredValue(Integer primaryRow, SObjectField field, XFTY_DeferredValueIntf strategy) {
+        public DeferredValue(Integer primaryRow, SObjectField field, XFTY_DeferredExpressionIntf strategy) {
             this.primaryRow = primaryRow;
             this.field = field;
             this.strategy = strategy;
@@ -124,7 +124,7 @@ public class XFTY_DummySObjectBundle {
     }
 
     /** Record that each primary row's `byField` entries are still to be resolved up from descendants. */
-    public void deferValues(Map<SObjectField, XFTY_DeferredValueIntf> byField) {
+    public void deferValues(Map<SObjectField, XFTY_DeferredExpressionIntf> byField) {
         List<SObject> primaries = this.primaryRecords();
         for (Integer row = 0; row < primaries.size(); row++) {
             for (SObjectField field : byField.keySet()) {

@@ -5,7 +5,7 @@ and child — must match, or one must be **derived** from the other. XFTY define
 the relationship **once**, in the Provider or on the call.
 
 The `XFTY_CopyFrom*` classes below are just the bundled, straight-copy
-implementations of [`XFTY_ContextAwareValueIntf` / `XFTY_DeferredValueIntf`](../../extend/custom-value-strategies.md).
+implementations of [`XFTY_ContextAwareExpressionIntf` / `XFTY_DeferredExpressionIntf`](../../extend/custom-value-expressions.md).
 When the second field is a *transformation* — a boolean from a date, a code
 concatenated from a parent's fields, a status mirrored from a child's stage —
 write your own small class against the same interface.
@@ -16,7 +16,7 @@ write your own small class against the same interface.
 
 ```apex
 .put(Account.ShippingCountry, 'Germany')
-.put(Account.BillingCountry, new XFTY_CopyFromSibling(Account.ShippingCountry))
+.put(Account.BillingCountry, new XFTY_CopyFromSiblingExpression(Account.ShippingCountry))
 ```
 
 Set `ShippingCountry` in one place (Provider default or override template);
@@ -31,7 +31,7 @@ Set `ShippingCountry` in one place (Provider default or override template);
 
 ```apex
 @IsTest
-public class SiblingCountryLabel implements XFTY_ContextAwareValueIntf {
+public class SiblingCountryLabel implements XFTY_ContextAwareExpressionIntf {
     public Object get(XFTY_GenerationContext context) {
         String country = (String) context.siblingValue(Contact.MailingCountry);
         return 'Billing: ' + country;
@@ -39,7 +39,7 @@ public class SiblingCountryLabel implements XFTY_ContextAwareValueIntf {
 }
 ```
 
-Writing and shipping one: [extend/custom-value-strategies](../../extend/custom-value-strategies.md).
+Writing and shipping one: [extend/custom-value-strategies](../../extend/custom-value-expressions.md).
 
 ---
 
@@ -63,13 +63,13 @@ Every `Case` now carries the shared Account's `OwnerId`. See
 
 ## Child value up onto a parent
 
-`XFTY_CopyFromDescendant(childLookupField, sourceField)` copies a value *up* from
+`XFTY_CopyFromDescendantExpression(childLookupField, sourceField)` copies a value *up* from
 a generated child — under `DEFERRED` (or `.depthBatched()`), resolved at
 `flush()`:
 
 ```apex
 // on the Account Provider
-.put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department))
+.put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department))
 ```
 
 Any other insert mode throws — the whole graph has to exist first. See

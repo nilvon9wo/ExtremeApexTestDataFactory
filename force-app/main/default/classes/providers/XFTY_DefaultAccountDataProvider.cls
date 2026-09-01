@@ -20,12 +20,12 @@ public class XFTY_DefaultAccountDataProvider implements XFTY_DummySobjectProvide
 
 	private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
 			= new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-					.put(Account.Name, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_NAME_PREFIX))
-					.put(Account.Industry, new XFTY_DummyDefaultValueExact(DEFAULT_INDUSTRY))
-					.put(Account.ShippingStreet, new XFTY_DummyDefaultValueExact(DEFAULT_SHIPPING_STREET))
-					.put(Account.ShippingCity, new XFTY_DummyDefaultValueExact(DEFAULT_SHIPPING_CITY))
-					.put(Account.ShippingCountry, new XFTY_DummyDefaultValueExact(DEFAULT_SHIPPING_COUNTRY))
-					.put(Account.Type, new XFTY_DummyDefaultValueExact(DEFAULT_TYPE));
+					.put(Account.Name, new XFTY_IncrementingStringExpression(DEFAULT_NAME_PREFIX))
+					.put(Account.Industry, new XFTY_LiteralExpression(DEFAULT_INDUSTRY))
+					.put(Account.ShippingStreet, new XFTY_LiteralExpression(DEFAULT_SHIPPING_STREET))
+					.put(Account.ShippingCity, new XFTY_LiteralExpression(DEFAULT_SHIPPING_CITY))
+					.put(Account.ShippingCountry, new XFTY_LiteralExpression(DEFAULT_SHIPPING_COUNTRY))
+					.put(Account.Type, new XFTY_LiteralExpression(DEFAULT_TYPE));
 
 	public SObjectField getPrimaryTargetField() {
 		return PRIMARY_TARGET_FIELD;

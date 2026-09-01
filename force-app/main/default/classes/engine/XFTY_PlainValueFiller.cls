@@ -30,7 +30,7 @@ public class XFTY_PlainValueFiller {
             SObject record,
             SObjectField field
     ) {
-        XFTY_DummyDefaultValueIntf strategy = template.defaultBySObjectFieldMap.get(field);
+        XFTY_ValueExpressionIntf strategy = template.defaultBySObjectFieldMap.get(field);
         Boolean nothingToFill = strategy == null
                 || record.get(field) != null;
         if (nothingToFill) {

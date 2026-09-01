@@ -1,11 +1,11 @@
 # Context-Aware Values
 
-Most [value strategies](value-strategies.md) generate a field in isolation. A
+Most [value strategies](value-expressions.md) generate a field in isolation. A
 **context-aware** value sees the rest of the record — a field copied from a
 sibling, from a generated parent, or (under `DEFERRED`) from a generated child.
 
-`XFTY_ContextAwareValueIntf` is a separate interface from
-`XFTY_DummyDefaultValueIntf` (a context-aware value has no meaningful no-argument
+`XFTY_ContextAwareExpressionIntf` is a separate interface from
+`XFTY_ValueExpressionIntf` (a context-aware value has no meaningful no-argument
 `get()`), but `put(...)` accepts it directly.
 
 ---
@@ -14,7 +14,7 @@ sibling, from a generated parent, or (under `DEFERRED`) from a generated child.
 
 ```apex
 .put(Account.ShippingCity, 'Berlin')
-.put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
+.put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
 ```
 
 `BillingCity` is filled from whatever `ShippingCity` ends up being.
@@ -27,28 +27,28 @@ One hop — a relationship field then the field to read:
 
 ```apex
 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
-.put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Site))
+.put(Contact.Department, new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Site))
 ```
 
 Several hops — a path of relationship fields ending in the field to read:
 
 ```apex
-.put(OpportunityLineItem.Description, new XFTY_CopyFromAncestor(new List<SObjectField>{
+.put(OpportunityLineItem.Description, new XFTY_CopyFromAncestorExpression(new List<SObjectField>{
         OpportunityLineItem.OpportunityId, Opportunity.AccountId, Account.Name
 }))
 ```
 
-`XFTY_CopyFromAncestor` returns `null` if any hop of the relationship was not
+`XFTY_CopyFromAncestorExpression` returns `null` if any hop of the relationship was not
 generated (e.g. an optional one skipped by the current inclusivity).
 
 ---
 
 ## Your own logic
 
-Implement `XFTY_ContextAwareValueIntf` — one method:
+Implement `XFTY_ContextAwareExpressionIntf` — one method:
 
 ```apex
-public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
+public class IsAdultFlag implements XFTY_ContextAwareExpressionIntf {
     public Object get(XFTY_GenerationContext context) {
         Date birthdate = (Date) context.siblingValue(Contact.Birthdate);
         return birthdate != null && birthdate.addYears(18) <= Date.today();
@@ -87,8 +87,8 @@ a not-yet-generated one throws.)
 
 ```apex
 // wrong — BillingCity reads ShippingCity, but ShippingCity is put after it
-.put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
-.put(Account.ShippingCity, new XFTY_CopyFromSibling(Account.Site))   // throws at generation
+.put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
+.put(Account.ShippingCity, new XFTY_CopyFromSiblingExpression(Account.Site))   // throws at generation
 ```
 
 An override-template value still wins over a context-aware strategy.
@@ -97,12 +97,12 @@ An override-template value still wins over a context-aware strategy.
 
 ## Reading up from a child
 
-`XFTY_CopyFromDescendant` copies a field from a generated **child** — the record
+`XFTY_CopyFromDescendantExpression` copies a field from a generated **child** — the record
 that references this one through the given lookup field:
 
 ```apex
 // on an Account Provider, so a validation rule comparing the two passes
-.put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department))
+.put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department))
 ```
 
 The child does not exist when the parent is built, so this needs the whole graph
@@ -129,6 +129,6 @@ children are not built — see
 
 Design rationale: [roadmap/context-aware-values.md](../roadmap/context-aware-values.md).
 Writing custom strategies as a distributable extension:
-[extend/custom-value-strategies.md](../extend/custom-value-strategies.md).
+[extend/custom-value-expressions.md](../extend/custom-value-expressions.md).
 
 ▶ Runnable: `XFTY_Ex_ContextAwareTest`

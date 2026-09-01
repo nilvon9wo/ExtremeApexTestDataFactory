@@ -149,7 +149,7 @@ They differ only in which Master Template map they land in. Merging to a single
 - is a **breaking change**: `new XFTY_DummyDefaultRelationshipRequired(x)` →
   `XFTY_DummyDefaultRelationship.required(x)` (or similar)
 
-The `put(...)` overloads keep working either way — `XFTY_DummyDefaultValueIntf`
+The `put(...)` overloads keep working either way — `XFTY_ValueExpressionIntf`
 and `XFTY_DummyDefaultRelationship` are distinct types, so overload resolution is
 unambiguous even alongside the new `put(SObjectField, Object)`. Explicit
 `putValue` / `putRelationship` names are a readability choice, not a necessity.

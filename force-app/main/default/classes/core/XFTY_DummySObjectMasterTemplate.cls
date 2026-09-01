@@ -1,9 +1,9 @@
 @IsTest
 public class XFTY_DummySObjectMasterTemplate {
     public SObjectField primaryTargetField { get; private set; }
-    public Map<SObjectField, XFTY_DummyDefaultValueIntf> defaultBySObjectFieldMap { get; private set; }
-    public Map<SObjectField, XFTY_ContextAwareValueIntf> contextAwareBySObjectFieldMap { get; private set; }
-    public Map<SObjectField, XFTY_DeferredValueIntf> deferredValueBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_ValueExpressionIntf> defaultBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_ContextAwareExpressionIntf> contextAwareBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_DeferredExpressionIntf> deferredValueBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap { get; private set; }
 
@@ -15,14 +15,14 @@ public class XFTY_DummySObjectMasterTemplate {
 
     public XFTY_DummySObjectMasterTemplate(
             SObjectField primaryTargetField,
-            Map<SObjectField, XFTY_DummyDefaultValueIntf> defaultBySObjectFieldMap,
+            Map<SObjectField, XFTY_ValueExpressionIntf> defaultBySObjectFieldMap,
             Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap,
             Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap
     ) {
         this.primaryTargetField = primaryTargetField;
         this.defaultBySObjectFieldMap = defaultBySObjectFieldMap;
-        this.contextAwareBySObjectFieldMap = new Map<SObjectField, XFTY_ContextAwareValueIntf>();
-        this.deferredValueBySObjectFieldMap = new Map<SObjectField, XFTY_DeferredValueIntf>();
+        this.contextAwareBySObjectFieldMap = new Map<SObjectField, XFTY_ContextAwareExpressionIntf>();
+        this.deferredValueBySObjectFieldMap = new Map<SObjectField, XFTY_DeferredExpressionIntf>();
         this.requiredRelationshipBySObjectFieldMap = requiredRelationshipBySObjectFieldMap;
         this.optionalRelationshipBySObjectFieldMap = optionalRelationshipBySObjectFieldMap;
         this.valueFieldOrder = new List<SObjectField>(defaultBySObjectFieldMap.keySet());
@@ -31,13 +31,13 @@ public class XFTY_DummySObjectMasterTemplate {
     public XFTY_DummySObjectMasterTemplate(SObjectField primaryFieldTarget) {
         this(
                 primaryFieldTarget,
-                new Map<SObjectField, XFTY_DummyDefaultValueIntf>(),
+                new Map<SObjectField, XFTY_ValueExpressionIntf>(),
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(),
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>()
         );
     }
 
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DummyDefaultValueIntf valueTemplate) {
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ValueExpressionIntf valueTemplate) {
         this.trackFieldOrder(sObjectField);
         this.contextAwareBySObjectFieldMap.remove(sObjectField);
         this.deferredValueBySObjectFieldMap.remove(sObjectField);
@@ -45,7 +45,7 @@ public class XFTY_DummySObjectMasterTemplate {
         return this;
     }
 
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ContextAwareValueIntf contextAwareValue) {
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareValue) {
         this.trackFieldOrder(sObjectField);
         this.defaultBySObjectFieldMap.remove(sObjectField);
         this.deferredValueBySObjectFieldMap.remove(sObjectField);
@@ -53,8 +53,8 @@ public class XFTY_DummySObjectMasterTemplate {
         return this;
     }
 
-    /** An up-flowing value ({@link XFTY_CopyFromDescendant}) - resolved during the DEFERRED flush. */
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DeferredValueIntf deferredValue) {
+    /** An up-flowing value ({@link XFTY_CopyFromDescendantExpression}) - resolved during the DEFERRED flush. */
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_DeferredExpressionIntf deferredValue) {
         this.trackFieldOrder(sObjectField);
         this.defaultBySObjectFieldMap.remove(sObjectField);
         this.contextAwareBySObjectFieldMap.remove(sObjectField);
@@ -74,29 +74,29 @@ public class XFTY_DummySObjectMasterTemplate {
 
     /**
      * Convenience overload. Routed by type:
-     * - `XFTY_ContextAwareValueIntf` -> the context-aware slot;
-     * - `XFTY_DummyDefaultValueIntf` -> the plain value slot;
+     * - `XFTY_ContextAwareExpressionIntf` -> the context-aware slot;
+     * - `XFTY_ValueExpressionIntf` -> the plain value slot;
      * - a relationship -> rejected (its requiredness has to be stated, so use
      *   `putRequired(...)` / `putOptional(...)`);
      * - anything else -> treated as an exact literal, so a Provider can write
      *   `.put(Account.Type, 'Customer')`.
      */
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, Object value) {
-        if (value instanceof XFTY_DeferredValueIntf) {
-            return this.put(sObjectField, (XFTY_DeferredValueIntf) value);
+        if (value instanceof XFTY_DeferredExpressionIntf) {
+            return this.put(sObjectField, (XFTY_DeferredExpressionIntf) value);
         }
-        if (value instanceof XFTY_ContextAwareValueIntf) {
-            return this.put(sObjectField, (XFTY_ContextAwareValueIntf) value);
+        if (value instanceof XFTY_ContextAwareExpressionIntf) {
+            return this.put(sObjectField, (XFTY_ContextAwareExpressionIntf) value);
         }
-        if (value instanceof XFTY_DummyDefaultValueIntf) {
-            return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
+        if (value instanceof XFTY_ValueExpressionIntf) {
+            return this.put(sObjectField, (XFTY_ValueExpressionIntf) value);
         }
         if (value instanceof XFTY_DummyDefaultRelationshipIntf) {
             throw new XFTY_DummySObjectFtyProviderException(
                     'Relationships must be added with putRequired(...) or putOptional(...), not put(...).'
             );
         }
-        return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
+        return this.put(sObjectField, new XFTY_LiteralExpression(value));
     }
 
     /** Every value field (plain + context-aware) in the order it was `put`. */
@@ -119,7 +119,7 @@ public class XFTY_DummySObjectMasterTemplate {
     public XFTY_DummySObjectMasterTemplate copy() {
         XFTY_DummySObjectMasterTemplate theCopy = new XFTY_DummySObjectMasterTemplate(
                 this.primaryTargetField,
-                new Map<SObjectField, XFTY_DummyDefaultValueIntf>(this.defaultBySObjectFieldMap),
+                new Map<SObjectField, XFTY_ValueExpressionIntf>(this.defaultBySObjectFieldMap),
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.requiredRelationshipBySObjectFieldMap),
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.optionalRelationshipBySObjectFieldMap)
         );

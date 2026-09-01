@@ -2,7 +2,7 @@
  * Runnable proof for docs/use/per-call-relationships.md - includeOptional(field),
  * includeOptional(path), and excludeRelationship(field), each acting on the one
  * Provider instance for one call. (put(path, value) is proven separately by
- * XFTY_PathValueTest - see docs/use/value-strategies.md.)
+ * XFTY_PathValueTest - see docs/use/value-expressions.md.)
  */
 @IsTest
 private class XFTY_Ex_PerCallRelationshipsTest {
@@ -103,7 +103,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     private class ContactProvider extends BaseProvider {
         private ContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('PerCall'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('PerCall'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
                     .putOptional(Contact.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
@@ -112,7 +112,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     private class AccountProvider extends BaseProvider {
         private AccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('PerCall Acct'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('PerCall Acct'))
                     .putOptional(Account.ParentId, new XFTY_DummyDefaultRelationship(TOP_ACCOUNT, new Account()));
         }
     }
@@ -120,7 +120,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     private class TopAccountProvider extends BaseProvider {
         private TopAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('PerCall Top'));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('PerCall Top'));
         }
     }
 }

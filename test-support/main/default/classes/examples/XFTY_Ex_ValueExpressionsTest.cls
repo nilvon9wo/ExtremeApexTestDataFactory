@@ -1,9 +1,9 @@
 /**
- * Runnable proof for docs/use/value-strategies.md - every `@IsTest` method is
+ * Runnable proof for docs/use/value-expressions.md - every `@IsTest` method is
  * one fenced example from that page.
  */
 @IsTest
-private class XFTY_Ex_ValueStrategiesTest {
+private class XFTY_Ex_ValueExpressionsTest {
 
     private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
@@ -16,7 +16,7 @@ private class XFTY_Ex_ValueStrategiesTest {
         List<Contact> results;
         Test.startTest();
         results = (List<Contact>) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
-                .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Test Contact'))
+                .put(Contact.FirstName, new XFTY_IncrementingStringExpression('Test Contact'))
                 .setQuantityPerTemplate(3)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supplyList();
@@ -60,7 +60,7 @@ private class XFTY_Ex_ValueStrategiesTest {
         List<Contact> results;
         Test.startTest();
         results = (List<Contact>) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
-                .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail('team.member'))
+                .put(Contact.Email, new XFTY_UniqueEmailExpression('team.member'))
                 .setQuantityPerTemplate(5)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supplyList();

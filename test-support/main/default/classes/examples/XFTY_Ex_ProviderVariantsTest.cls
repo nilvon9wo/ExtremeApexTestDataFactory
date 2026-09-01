@@ -95,7 +95,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     private class StandardAccountProvider extends BaseProvider {
         private StandardAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Standard Acct'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Standard Acct'))
                     .put(Account.Type, 'Customer');
         }
     }
@@ -103,7 +103,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     private class PartnerAccountProvider extends BaseProvider {
         private PartnerAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Partner Acct'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Partner Acct'))
                     .put(Account.Type, 'Partner');
         }
     }

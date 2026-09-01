@@ -19,7 +19,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
                 .put(Account.ShippingCountry, 'Germany')
-                .put(Account.BillingCountry, new XFTY_CopyFromSibling(Account.ShippingCountry))
+                .put(Account.BillingCountry, new XFTY_CopyFromSiblingExpression(Account.ShippingCountry))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -106,7 +106,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
         });
     }
 
-    private class SiblingCountryLabel implements XFTY_ContextAwareValueIntf {
+    private class SiblingCountryLabel implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             return 'Billing: ' + (String) context.siblingValue(Contact.MailingCountry);
         }
@@ -128,8 +128,8 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
 
     private class AccountReadingChildDepartment implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
-                .put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department));
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'))
+                .put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department));
         public SObjectField getPrimaryTargetField() {
             return Account.Id;
         }
@@ -143,7 +143,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
 
     private class ContactUnderReadingAccount implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Leaf'))
                 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         public SObjectField getPrimaryTargetField() {
             return Contact.Id;

@@ -14,7 +14,7 @@
  * anchor and does not re-insert it.
  *
  * Just before the insert, the up-flow value pass ({@link XFTY_DescendantValuePass})
- * fills any {@link XFTY_CopyFromDescendant} field from its now-generated children.
+ * fills any {@link XFTY_CopyFromDescendantExpression} field from its now-generated children.
  */
 @IsTest
 public class XFTY_DeferredInsertBuffer {
@@ -49,7 +49,7 @@ public class XFTY_DeferredInsertBuffer {
         XFTY_DepthBatchedInserter.resolveAll(this.pendingRecords, this.pendingLinks, mode);
     }
 
-    /** Fill every {@link XFTY_CopyFromDescendant} value from its now-generated descendants. */
+    /** Fill every {@link XFTY_CopyFromDescendantExpression} value from its now-generated descendants. */
     private void resolveUpFlowValues() {
         new XFTY_DescendantValuePass(this.pendingRecords, this.pendingLinks, this.pendingDeferredValues)
                 .complete();

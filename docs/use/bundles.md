@@ -85,7 +85,7 @@ second argument picks the row when the bundle has more than one primary
 not generated — an optional relationship the current inclusivity skipped — makes
 the whole call return `null` rather than throw. It only follows generated
 **ancestors**; for children use `getChildBundle(field)` and navigate from there.
-`XFTY_CopyFromAncestor` is this same walk wrapped as a context-aware value.
+`XFTY_CopyFromAncestorExpression` is this same walk wrapped as a context-aware value.
 
 ---
 

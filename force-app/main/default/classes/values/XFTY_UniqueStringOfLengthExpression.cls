@@ -1,11 +1,11 @@
 @IsTest
-public class XFTY_DummyDefaultValueUniqueStringLength implements XFTY_DummyDefaultValueIntf {
+public class XFTY_UniqueStringOfLengthExpression implements XFTY_ValueExpressionIntf {
 	private static final Map<Integer, Integer> LENGTH_TO_COUNTER = new Map<Integer, Integer>();
 	private static final Integer A_ASCII_CODE = 65;
 	private static final Integer ALPHABET_LENGTH = 26;
 	private final Integer length;
 
-	public XFTY_DummyDefaultValueUniqueStringLength(Integer length) {
+	public XFTY_UniqueStringOfLengthExpression(Integer length) {
 		this.length = length;
 		if (!LENGTH_TO_COUNTER.containsKey(this.length)) {
 			LENGTH_TO_COUNTER.put(this.length, 0);

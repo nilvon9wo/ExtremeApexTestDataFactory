@@ -26,7 +26,7 @@ private class XFTY_PathValueTest {
                 .setQuantityPerTemplate(3)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .put(new List<SObjectField>{ Contact.AccountId, Account.Name },
-                        new XFTY_DummyDefaultValueIncrementingString('Path Account'))
+                        new XFTY_IncrementingStringExpression('Path Account'))
                 .supplyBundle();
 
         List<SObject> accounts = bundle.getBundle(Contact.AccountId).primaryRecords();
@@ -47,7 +47,7 @@ private class XFTY_PathValueTest {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .put(new List<SObjectField>{ Contact.AccountId, Account.Site }, new XFTY_CopyFromSibling(Account.Name))
+                .put(new List<SObjectField>{ Contact.AccountId, Account.Site }, new XFTY_CopyFromSiblingExpression(Account.Name))
                 .supplyBundle();
 
         Account generatedAccount = (Account) bundle.getBundle(Contact.AccountId).primaryRecords()[0];
@@ -205,8 +205,8 @@ private class XFTY_PathValueTest {
 
     private class ContactWithOptionalManagerProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Contact'))
-                .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail('test.contact'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Contact'))
+                .put(Contact.Email, new XFTY_UniqueEmailExpression('test.contact'))
                 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
                 .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
 
@@ -240,7 +240,7 @@ private class XFTY_PathValueTest {
 
     private class ContactUnderSharedAccountProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Contact'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Contact'))
                 .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('shared-acct'));
         public SObjectField getPrimaryTargetField() {
             return Contact.Id;
@@ -255,7 +255,7 @@ private class XFTY_PathValueTest {
 
     private class CaseProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Case.Id)
-                .put(Case.Subject, new XFTY_DummyDefaultValueIncrementingString('Case'))
+                .put(Case.Subject, new XFTY_IncrementingStringExpression('Case'))
                 .putRequired(Case.ContactId, new XFTY_DummyDefaultRelationship(new Contact()));
 
         public SObjectField getPrimaryTargetField() {
@@ -328,14 +328,14 @@ private class XFTY_PathValueTest {
 
     private static XFTY_DummySObjectMasterTemplate leafUserTemplate() {
         return new XFTY_DummySObjectMasterTemplate(User.Id)
-                .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString('User'))
-                .put(User.Alias, new XFTY_DummyDefaultValueIncrementingString('a'))
-                .put(User.Email, new XFTY_DummyDefaultValueUniqueEmail('test.user'))
-                .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail('test.user.name'))
-                .put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact('ISO-8859-1'))
-                .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact('en_US'))
-                .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact('en_US'))
-                .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact('GMT'))
-                .put(User.ProfileId, new XFTY_DummyDefaultValueExact(XFTY_DefaultUserDataProvider.profileIdFor('System Administrator')));
+                .put(User.LastName, new XFTY_IncrementingStringExpression('User'))
+                .put(User.Alias, new XFTY_IncrementingStringExpression('a'))
+                .put(User.Email, new XFTY_UniqueEmailExpression('test.user'))
+                .put(User.Username, new XFTY_UniqueEmailExpression('test.user.name'))
+                .put(User.EmailEncodingKey, new XFTY_LiteralExpression('ISO-8859-1'))
+                .put(User.LanguageLocaleKey, new XFTY_LiteralExpression('en_US'))
+                .put(User.LocaleSidKey, new XFTY_LiteralExpression('en_US'))
+                .put(User.TimeZoneSidKey, new XFTY_LiteralExpression('GMT'))
+                .put(User.ProfileId, new XFTY_LiteralExpression(XFTY_DefaultUserDataProvider.profileIdFor('System Administrator')));
     }
 }

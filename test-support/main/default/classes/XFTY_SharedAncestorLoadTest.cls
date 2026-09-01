@@ -125,7 +125,7 @@ private class XFTY_SharedAncestorLoadTest {
 
         private ContactUnderShared(String sharedName) {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Leaf'))
                     .putRequired(Contact.AccountId, XFTY_SharedAncestor.get(sharedName));
         }
 
@@ -147,7 +147,7 @@ private class XFTY_SharedAncestorLoadTest {
 
         private AccountUnderShared(String sharedParentName) {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Mid'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Mid'))
                     .putRequired(Account.ParentId, XFTY_SharedAncestor.get(sharedParentName));
         }
 

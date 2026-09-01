@@ -59,22 +59,22 @@ One line per public entry point. Follow the links for detail.
 
 ## Value strategies (`put(field, …)`)
 
-| `XFTY_DummyDefaultValueExact(value)` | constant (also the implicit wrapper for a bare literal) |
-| `XFTY_DummyDefaultValueIncrementingString(prefix)` | `prefix 1`, `prefix 2`, … |
-| `XFTY_DummyDefaultValueUniqueString(prefix)` | unique strings |
-| `XFTY_DummyDefaultValueUniqueStringLength(prefix, length)` | unique, fixed length |
-| `XFTY_DummyDefaultValueUniqueEmail(prefix)` | unique emails |
-| `XFTY_DummyDefaultIncrementingDecimal(start, step)` | incrementing decimals |
-| implement `XFTY_DummyDefaultValueIntf` | `Object get()` — your own ([docs](../extend/custom-value-strategies.md)) |
+| `XFTY_LiteralExpression(value)` | constant (also the implicit wrapper for a bare literal) |
+| `XFTY_IncrementingStringExpression(prefix)` | `prefix 1`, `prefix 2`, … |
+| `XFTY_UniqueStringExpression(prefix)` | unique strings |
+| `XFTY_UniqueStringOfLengthExpression(prefix, length)` | unique, fixed length |
+| `XFTY_UniqueEmailExpression(prefix)` | unique emails |
+| `XFTY_IncrementingDecimalExpression(start, step)` | incrementing decimals |
+| implement `XFTY_ValueExpressionIntf` | `Object get()` — your own ([docs](../extend/custom-value-expressions.md)) |
 
 ## Context-aware values
 
-| `XFTY_CopyFromSibling(SObjectField source)` | copy another field on the same record |
-| `XFTY_CopyFromAncestor(SObjectField rel, SObjectField source)` | copy from a generated parent |
-| `XFTY_CopyFromAncestor(List<SObjectField> path)` | multi-hop |
-| `XFTY_CopyFromDescendant(SObjectField childLookupField, SObjectField source)` | copy **up** from a generated child — `DEFERRED` / `.depthBatched()` only, resolved at `flush()` |
-| implement `XFTY_ContextAwareValueIntf` | `Object get(XFTY_GenerationContext)`; read siblings via `context.siblingValue(field)` |
-| implement `XFTY_DeferredValueIntf` | `Object get(XFTY_DeferredGraph, Integer recordIndex)` — an up-flow value; `graph.childrenOf(index, field)` |
+| `XFTY_CopyFromSiblingExpression(SObjectField source)` | copy another field on the same record |
+| `XFTY_CopyFromAncestorExpression(SObjectField rel, SObjectField source)` | copy from a generated parent |
+| `XFTY_CopyFromAncestorExpression(List<SObjectField> path)` | multi-hop |
+| `XFTY_CopyFromDescendantExpression(SObjectField childLookupField, SObjectField source)` | copy **up** from a generated child — `DEFERRED` / `.depthBatched()` only, resolved at `flush()` |
+| implement `XFTY_ContextAwareExpressionIntf` | `Object get(XFTY_GenerationContext)`; read siblings via `context.siblingValue(field)` |
+| implement `XFTY_DeferredExpressionIntf` | `Object get(XFTY_DeferredGraph, Integer recordIndex)` — an up-flow value; `graph.childrenOf(index, field)` |
 
 ## Relationships
 

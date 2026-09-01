@@ -271,7 +271,7 @@ If your test needs to inspect related records, use `supplyBundle()`.
 Now that you understand the basic workflow, each feature has its own page — see
 the [feature matrix](README.md).
 
-- [override-templates](override-templates.md) · [value-strategies](value-strategies.md) · [context-aware-values](context-aware-values.md) — customizing generated data
+- [override-templates](override-templates.md) · [value-expressions](value-expressions.md) · [context-aware-values](context-aware-values.md) — customizing generated data
 - [relationships](relationships.md) · [per-call-relationships](per-call-relationships.md) · [shared-ancestors](shared-ancestors.md) · [bundles](bundles.md) — object graphs
 - [insert-modes](insert-modes.md) · [deferred-insert](deferred-insert.md) — persistence
 - [advanced/](advanced/) — combining features

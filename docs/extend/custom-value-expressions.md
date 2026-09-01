@@ -1,9 +1,8 @@
 # Custom Value Strategies
 
-XFTY ships the [plumbing, not a mini-expression-language](../use/value-strategies.md).
+XFTY ships the [plumbing, not a mini-expression-language](../use/value-expressions.md).
 Anything with real logic is a small class you write. The bundled
-`XFTY_DummyDefaultValue*` strategies and the `XFTY_CopyFrom*` context-aware
-values are just implementations of the same two interfaces — a boolean derived
+`XFTY_*Expression` classes are just implementations of the same two interfaces — a boolean derived
 from a birthdate, a code built by concatenating a parent's Id fragment, a status
 that mirrors a child's stage: all of it is an ordinary class.
 
@@ -12,19 +11,19 @@ need to see":
 
 | Interface | The value depends on | Runs |
 |---|---|---|
-| `XFTY_DummyDefaultValueIntf` | nothing but itself | first value pass |
-| `XFTY_ContextAwareValueIntf` | other fields on the same record (**siblings**), or a generated **ancestor** | second value pass, per record |
-| `XFTY_DeferredValueIntf` | a generated **child / descendant** | during `XFTY_DeferredInserter.flush()` |
+| `XFTY_ValueExpressionIntf` | nothing but itself | first value pass |
+| `XFTY_ContextAwareExpressionIntf` | other fields on the same record (**siblings**), or a generated **ancestor** | second value pass, per record |
+| `XFTY_DeferredExpressionIntf` | a generated **child / descendant** | during `XFTY_DeferredInserter.flush()` |
 
 ---
 
-## A plain value strategy — `XFTY_DummyDefaultValueIntf`
+## A plain value strategy — `XFTY_ValueExpressionIntf`
 
 One no-argument method:
 
 ```apex
 @IsTest
-public class NextBusinessDay implements XFTY_DummyDefaultValueIntf {
+public class NextBusinessDay implements XFTY_ValueExpressionIntf {
     public Object get() {
         Date candidate = Date.today().addDays(1);
         while (isWeekend(candidate)) {
@@ -53,14 +52,14 @@ field, it is a context-aware value, not this.
 
 ---
 
-## Reading a sibling — `XFTY_ContextAwareValueIntf`
+## Reading a sibling — `XFTY_ContextAwareExpressionIntf`
 
 A **separate** interface (a context-aware value genuinely cannot produce anything
 without a context, so it does not pretend to satisfy the no-argument contract):
 
 ```apex
 @IsTest
-public class IsAdultFlag implements XFTY_ContextAwareValueIntf {
+public class IsAdultFlag implements XFTY_ContextAwareExpressionIntf {
     public Object get(XFTY_GenerationContext context) {
         Date birthdate = (Date) context.siblingValue(Contact.Birthdate);
         return birthdate != null && birthdate.addYears(18) <= Date.today();
@@ -84,7 +83,7 @@ than returning a misleading `null`.
 
 ---
 
-## Reading a generated ancestor — `XFTY_ContextAwareValueIntf`
+## Reading a generated ancestor — `XFTY_ContextAwareExpressionIntf`
 
 The context carries the graph generated so far. `context.bundleSoFar.getList(relationshipField)`
 is the parent for each primary, aligned 1:1 — pick this record's with
@@ -92,7 +91,7 @@ is the parent for each primary, aligned 1:1 — pick this record's with
 
 ```apex
 @IsTest
-public class AccountNamePlusRegion implements XFTY_ContextAwareValueIntf {
+public class AccountNamePlusRegion implements XFTY_ContextAwareExpressionIntf {
     public Object get(XFTY_GenerationContext context) {
         Account parentAccount = ancestorAccount(context);
         return (parentAccount == null)
@@ -115,7 +114,7 @@ public class AccountNamePlusRegion implements XFTY_ContextAwareValueIntf {
 `context.bundleSoFar.getValue(new List<SObjectField>{ Contact.AccountId, Account.ShippingCountry }, context.rowIndex)`
 does the same walk in one call — use it instead of the hand-written
 `ancestorAccount` helper when you only need a field, not the whole record.
-`XFTY_CopyFromAncestor` is that walk wrapped as a ready-made context-aware value
+`XFTY_CopyFromAncestorExpression` is that walk wrapped as a ready-made context-aware value
 (multi-hop: each leading field is a `getBundle(...)` down, the last is the field
 to read). Reach for it first; write your own only when the value is a
 transformation, not a straight copy.
@@ -133,11 +132,11 @@ transformation, not a straight copy.
   before `flush()`. If a child needs the parent's real Id under `DEFERRED`, put
   it in the **lookup field** (normal relationship generation — the depth-batched
   insert wires it); a context-aware value into any other field cannot get it.
-  This is proven in `XFTY_Ex_Extend_CustomValueStrategiesTest`.
+  This is proven in `XFTY_Ex_Extend_CustomValueExpressionsTest`.
 
 ---
 
-## Reading a generated child / descendant — `XFTY_DeferredValueIntf`
+## Reading a generated child / descendant — `XFTY_DeferredExpressionIntf`
 
 A child does not exist when its parent is built, so an up-flowing value cannot
 run in either in-line pass. It gets its own interface and runs during
@@ -145,7 +144,7 @@ run in either in-line pass. It gets its own interface and runs during
 
 ```apex
 @IsTest
-public class HasAnyOpenChildCase implements XFTY_DeferredValueIntf {
+public class HasAnyOpenChildCase implements XFTY_DeferredExpressionIntf {
     public Object get(XFTY_DeferredGraph graph, Integer recordIndex) {
         for (SObject child : graph.childrenOf(recordIndex, Case.AccountId)) {
             if (((Case) child).IsClosed == false) {
@@ -164,7 +163,7 @@ public class HasAnyOpenChildCase implements XFTY_DeferredValueIntf {
 `graph.childrenOf(recordIndex, childLookupField)` returns every generated record
 that references this one through `childLookupField` — whether it is the child
 that *requested* this parent, or a row from a `withChildren(...)` collection.
-`XFTY_CopyFromDescendant` is the straight-copy case of this.
+`XFTY_CopyFromDescendantExpression` is the straight-copy case of this.
 
 **Limitations:**
 
@@ -182,9 +181,9 @@ that *requested* this parent, or a row from a `withChildren(...)` collection.
 A custom strategy earns a test the same way a [Provider](providers.md) does —
 generate with it, assert the value. The models:
 
-- `XFTY_DefaultValueStrategyTest` — plain strategies.
-- `XFTY_ContextAwareValueTest` — sibling + ancestor reads.
-- `XFTY_CopyFromDescendantTest` — up-flow reads under `DEFERRED`.
+- `XFTY_ValueExpressionTest` — plain strategies.
+- `XFTY_ContextAwareExpressionTest` — sibling + ancestor reads.
+- `XFTY_CopyFromDescendantExpressionExpressionTest` — up-flow reads under `DEFERRED`.
 - `XFTY_Ex_Adv_MatchingValuesTest` — a worked custom strategy end to end.
 
-▶ Runnable: `XFTY_Ex_Extend_CustomValueStrategiesTest`
+▶ Runnable: `XFTY_Ex_Extend_CustomValueExpressionsTest`

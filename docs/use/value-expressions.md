@@ -1,16 +1,16 @@
-# Value Strategies
+# Value Expressions
 
 An [override template](override-templates.md) replaces a generated *value*. A
-**value strategy** changes *how a value is generated* — for every record the
+**value expression** changes *how a value is generated* — for every record the
 Provider produces.
 
 ---
 
-## `put(...)` a strategy
+## `put(...)` an expression
 
 ```apex
 new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
-    .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Test Contact'))
+    .put(Contact.FirstName, new XFTY_IncrementingStringExpression('Test Contact'))
     .supplyBundle();
 // -> "Test Contact 1", "Test Contact 2", "Test Contact 3", ...
 ```
@@ -19,8 +19,7 @@ new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
 
 ## Implicit exact values
 
-`put(...)` also accepts a bare value — anything that is not already a strategy or
-a relationship is wrapped in `XFTY_DummyDefaultValueExact` automatically.
+`put(...)` also accepts a bare value — anything that is not already an expression or a relationship is wrapped in `XFTY_LiteralExpression` automatically.
 
 ```apex
 .put(Account.Type, 'Customer')
@@ -30,24 +29,24 @@ a relationship is wrapped in `XFTY_DummyDefaultValueExact` automatically.
 is exactly
 
 ```apex
-.put(Account.Type, new XFTY_DummyDefaultValueExact('Customer'))
-.put(Account.NumberOfEmployees, new XFTY_DummyDefaultValueExact(500))
+.put(Account.Type, new XFTY_LiteralExpression('Customer'))
+.put(Account.NumberOfEmployees, new XFTY_LiteralExpression(500))
 ```
 
 This works both on Provider Master Templates and on `XFTY_DummySObjectProvider`.
 
 ---
 
-## The bundled strategies
+## The bundled expressions
 
-| Strategy | Produces |
+| Expression | Produces |
 |----------|----------|
-| `XFTY_DummyDefaultValueExact` | the same value every time |
-| `XFTY_DummyDefaultValueIncrementingString` | `prefix` + an incrementing suffix |
-| `XFTY_DummyDefaultValueUniqueString` | guaranteed-unique strings |
-| `XFTY_DummyDefaultValueUniqueStringLength` | unique strings of a fixed length |
-| `XFTY_DummyDefaultValueUniqueEmail` | unique email addresses |
-| `XFTY_DummyDefaultIncrementingDecimal` | incrementing decimals |
+| `XFTY_LiteralExpression` | the same value every time |
+| `XFTY_IncrementingStringExpression` | `prefix` + an incrementing suffix |
+| `XFTY_UniqueStringExpression` | guaranteed-unique strings |
+| `XFTY_UniqueStringOfLengthExpression` | unique strings of a fixed length |
+| `XFTY_UniqueEmailExpression` | unique email addresses |
+| `XFTY_IncrementingDecimalExpression` | incrementing decimals |
 
 ---
 
@@ -69,11 +68,11 @@ new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
 
     // a strategy - the generated Account gets a unique name
     .put(new List<SObjectField>{ Contact.AccountId, Account.Name },
-         new XFTY_DummyDefaultValueUniqueString('Acct'))
+         new XFTY_UniqueStringExpression('Acct'))
 
     // a context-aware value - evaluated against that ancestor
     .put(new List<SObjectField>{ Contact.AccountId, Account.Description },
-         new XFTY_CopyFromSibling(Account.Name))
+         new XFTY_CopyFromSiblingExpression(Account.Name))
 
     // a relationship - give the ancestor its own generated parent
     .putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId },
@@ -104,7 +103,7 @@ Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md
 | Use an [override template](override-templates.md) when… | Use `put(...)` when… |
 |---------------------------------------------------------|----------------------|
 | customizing one or two records | every generated record should differ |
-| supplying an exact value | replacing the generation strategy |
+| supplying an exact value | replacing the generation expression |
 | making one test more readable | generating unique values, or customizing relationships |
 
 Override templates describe **data**; `put(...)` describes **generation**.
@@ -119,13 +118,13 @@ values that will never be used. Most tests should prefer readability.
 
 ---
 
-## Custom strategies
+## Custom expressions
 
-Anything with real logic is a small `XFTY_ContextAwareValueIntf` (reads other
+Anything with real logic is a small `XFTY_ContextAwareExpressionIntf` (reads other
 fields — see [context-aware-values](context-aware-values.md)) or a plain
-`XFTY_DummyDefaultValueIntf`. Shipping one as a reusable extension:
-[extend/custom-value-strategies.md](../extend/custom-value-strategies.md).
+`XFTY_ValueExpressionIntf`. Shipping one as a reusable extension:
+[extend/custom-value-expressions.md](../extend/custom-value-expressions.md).
 
-▶ Runnable: `XFTY_Ex_ValueStrategiesTest` · `XFTY_PathValueTest`
+▶ Runnable: `XFTY_Ex_ValueExpressionsTest` · `XFTY_PathValueTest`
 
 See also: [override-templates](override-templates.md) · [context-aware-values](context-aware-values.md) · [per-call-relationships](per-call-relationships.md)

@@ -61,7 +61,7 @@ The same path walk also sets **how a field on an ancestor is generated** —
 `put(path, value)`, where the value is an exact value, a strategy, a
 context-aware value, or a relationship. That is a value concern, so it lives
 with the other `put` forms:
-[value-strategies → setting a value on a generated ancestor](value-strategies.md#setting-a-value-on-a-generated-ancestor).
+[value-expressions → setting a value on a generated ancestor](value-expressions.md#setting-a-value-on-a-generated-ancestor).
 
 ▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` · `XFTY_PathValueTest`
 

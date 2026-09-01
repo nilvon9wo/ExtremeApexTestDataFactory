@@ -8,7 +8,7 @@ imperatively build records.
 Related: [provider-lookups](provider-lookups.md) (registering Providers) ·
 [provider-variants](provider-variants.md) (more than one Provider per type) ·
 [bundled-providers](bundled-providers.md) (the three shipped Providers) ·
-[custom-value-strategies](custom-value-strategies.md).
+[custom-value-expressions](custom-value-expressions.md).
 
 ---
 
@@ -28,9 +28,9 @@ public class MyContactProvider implements XFTY_DummySobjectProviderIntf {
             new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(
                             new Account(Description = DEFAULT_ACCOUNT_DESCRIPTION)))
-                    .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
-                    .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString('Contact First Name'))
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Contact Last Name'));
+                    .put(Contact.Email, new XFTY_UniqueEmailExpression(DEFAULT_EMAIL_PREFIX))
+                    .put(Contact.FirstName, new XFTY_IncrementingStringExpression('Contact First Name'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Contact Last Name'));
 
     public SObjectField getPrimaryTargetField() {
         return PRIMARY_TARGET_FIELD;
@@ -59,7 +59,7 @@ values, required relationships, optional relationships. Fluent builders:
 
 | Method | Adds |
 |--------|------|
-| `put(field, strategy)` / `put(field, literal)` | a [value strategy](../use/value-strategies.md) (a bare value is wrapped as `XFTY_DummyDefaultValueExact`) |
+| `put(field, strategy)` / `put(field, literal)` | a [value strategy](../use/value-expressions.md) (a bare value is wrapped as `XFTY_LiteralExpression`) |
 | `put(field, contextAwareStrategy)` | a [context-aware value](../use/context-aware-values.md) |
 | `putRequired(field, relationship)` | a required [relationship](../use/relationships.md) |
 | `putOptional(field, relationship)` | an optional relationship |

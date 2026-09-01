@@ -1,9 +1,9 @@
 @IsTest
-public class XFTY_DummyDefaultValueUniqueEmail implements XFTY_DummyDefaultValueIntf {
+public class XFTY_UniqueEmailExpression implements XFTY_ValueExpressionIntf {
     private final String prefix;
     private static Integer counter = 1;
 
-    public XFTY_DummyDefaultValueUniqueEmail(String prefix) {
+    public XFTY_UniqueEmailExpression(String prefix) {
         this.prefix = prefix;
     }
 
