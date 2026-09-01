@@ -67,10 +67,13 @@ sf apex run test -o <scratch> --suite-names XFTY_PersonAccount     # only a Pers
 ```
 
 `XFTY_SharedAncestorDeepHierarchyTest` inserts records that carry a custom
-record type; admins don't get those by default, so it assigns the
-`XFTY_HierarchyNodeRecordTypes` permission set in `@TestSetup` and runs inside
-`System.runAs` (a permission-set assignment made in a test only takes effect in
-a later `runAs` block). Deploy `test-support/permissionsets/` for it to work.
+record type; admins don't get those by default, so each method assigns the
+`XFTY_HierarchyNodeRecordTypes` permission set (before its `System.runAs` block,
+so the `runAs` boundary keeps the setup-object DML clear of the framework's) and
+runs inside `System.runAs` — a permission-set assignment made in a test only
+takes effect in a later `runAs`. No `@TestSetup`: it would perturb the static
+counters XFTY's value expressions depend on. Deploy `test-support/permissionsets/`
+for it to work.
 
 **Nimbus is the fast loop, not the last word.** `@IsTest` on an interface,
 identifiers over 40 characters, iterating `bundle.getList(...)` with a concrete
