@@ -61,11 +61,22 @@ tables + query counting, Person Accounts — live in
 (`nimbus.test.exclude`). Run them on a scratch org:
 
 ```bash
-sf project deploy start -o <scratch> -d test-support
-sf apex run test -o <scratch> --tests XFTY_RecordTypeRealRtTest --tests XFTY_PersonAccountVariantTest \
-  --tests XFTY_DefaultDataProviderOrgTest --tests XFTY_RecordTypeDataProviderOrgTest \
-  --tests XFTY_SharedAncestorDeepHierarchyTest
+sf project deploy start -o <scratch> -d force-app -d test-support
+sf apex run test -o <scratch> --suite-names XFTY_OrgOnly           # any Developer Edition / scratch org
+sf apex run test -o <scratch> --suite-names XFTY_PersonAccount     # only a Person-Account org
 ```
+
+`XFTY_SharedAncestorDeepHierarchyTest` inserts records that carry a custom
+record type; admins don't get those by default, so it assigns the
+`XFTY_HierarchyNodeRecordTypes` permission set in `@TestSetup` and runs inside
+`System.runAs` (a permission-set assignment made in a test only takes effect in
+a later `runAs` block). Deploy `test-support/permissionsets/` for it to work.
+
+**Nimbus is the fast loop, not the last word.** `@IsTest` on an interface,
+identifiers over 40 characters, iterating `bundle.getList(...)` with a concrete
+loop variable, `--` inside an XML comment, and static fields that read a
+not-yet-initialised sibling all compile locally and fail on a real org. Do a
+scratch-org `RunLocalTests` after any rename, new type, or engine change.
 
 ---
 
