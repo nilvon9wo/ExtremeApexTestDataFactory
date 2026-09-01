@@ -61,6 +61,8 @@ guard; re-run it against your own org.
 | `MOCK`, 5-level chain × 100 primaries (600 records) | well under every limit — MOCK does no DML |
 | `NEVER`, 5,000 primaries + a parent each, held in memory | under the 6 MB heap limit |
 | `NOW`, 3,000 primaries + a parent each (6,000 DML rows) | passes; ~50 s wall time (trigger-bound), CPU under budget |
+| `NOW` + `.depthBatched()`, 15 parents → 150 children → 300 grandchildren (465 records, 3 levels) | ≤ 8 DML statements — downward fan-out multiplies *rows*, not *statements*; CPU well under budget |
+| `MOCK`, 3,000 primaries with two context-aware value expressions each (sibling copy + custom `XFTY_ContextAwareExpressionIntf`) | 0 DML; CPU well under budget — the value pass stays cheap at volume |
 | `NOW`, 500 children under **one shared ancestor** | 1 Account row, ≤ 4 DML statements — the shared record does not multiply |
 | `NOW`, 12 **independent** shared ancestors, 10 children each | ≤ 24 DML statements, CPU well under budget — but see the note below |
 | `NOW`, a **10-level** all-shared chain, 5 leaves | 10 Account rows, ≤ 12 DML statements — the chain depth-batches, one `insert` per level |

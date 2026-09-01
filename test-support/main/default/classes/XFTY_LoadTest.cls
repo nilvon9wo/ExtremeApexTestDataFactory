@@ -136,6 +136,66 @@ private class XFTY_LoadTest {
         );
     }
 
+    @IsTest
+    static void downwardGenerationMultipliesRowsButNotStatements() {
+        // Arrange - 15 Accounts, 10 Contacts each, 2 Cases per Contact: 15 + 150 + 300 = 465 records
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, XFTY_LoadProviders.lookup())
+                .setQuantityPerTemplate(15)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .depthBatched()
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(10)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(2))
+                );
+
+        // Act
+        Usage used;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            used = generateBundlePrimaries(provider);
+            Test.stopTest();
+        }
+
+        // Assert - the row count multiplies, the statement count does not
+        Assert.areEqual(15, [SELECT COUNT() FROM Account]);
+        Assert.areEqual(150, [SELECT COUNT() FROM Contact]);
+        Assert.areEqual(300, [SELECT COUNT() FROM Case]);
+        Assert.isTrue(used.dmlStatements <= 8,
+                'depth-batched downward generation is a handful of inserts, not one per level per parent, used ' + used.dmlStatements);
+        Assert.isTrue(used.cpuTime < Limits.getLimitCpuTime() * SAFE_FRACTION_OF_LIMIT,
+                '465 records across three levels stays well under the CPU limit, used ' + used.cpuTime);
+    }
+
+    @IsTest
+    static void theContextAwareValuePassStaysCheapAtVolume() {
+        // Arrange - 3 000 Contacts, each with a sibling copy and a custom context-aware expression.
+        // MOCK isolates the value-pass cost from DML.
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setQuantityPerTemplate(3000)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .put(Contact.MailingCity, new XFTY_IncrementingStringExpression('City'))
+                .put(Contact.MailingState, new XFTY_CopyFromSiblingExpression(Contact.MailingCity))
+                .put(Contact.Description, new CityLabel());
+
+        // Act
+        Usage used;
+        Test.startTest();
+        used = generate(provider);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(3000, used.records.size());
+        Assert.areEqual(0, used.dmlStatements, 'MOCK - the value pass alone');
+        Assert.isTrue(used.cpuTime < Limits.getLimitCpuTime() * SAFE_FRACTION_OF_LIMIT,
+                'two context-aware expressions per record over 3 000 records stays under 75% of the CPU limit, used ' + used.cpuTime);
+    }
+
+    private class CityLabel implements XFTY_ContextAwareExpressionIntf {
+        public Object get(XFTY_GenerationContext context) {
+            return 'in ' + (String) context.siblingValue(Contact.MailingCity);
+        }
+    }
+
     // Fixture -------------------------------------------------------------
 
     private static Usage generate(XFTY_DummySObjectProvider provider) {
