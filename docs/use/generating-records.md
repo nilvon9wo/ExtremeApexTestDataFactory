@@ -84,6 +84,6 @@ They are exactly equivalent to the `(SObjectType, lookup)` constructor followed
 by `setOverrideTemplate(...)` / `setOverrideTemplateList(...)` /
 `withVariant(...)`. Lookup keys and variants: [provider-variants](provider-variants.md).
 
-▶ Runnable: `XFTY_Ex_GeneratingRecordsTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_GeneratingRecordsTest`
 
 See also: [override-templates](override-templates.md) · [insert-modes](insert-modes.md) · [bundles](bundles.md)

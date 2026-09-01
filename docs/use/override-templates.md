@@ -76,6 +76,6 @@ This removes the field's generation entirely, rather than replacing it with
 another value. For relationships, use
 [`excludeRelationship(...)`](per-call-relationships.md) instead.
 
-▶ Runnable: `XFTY_Ex_OverrideTemplatesTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_OverrideTemplatesTest`
 
 See also: [generating-records](generating-records.md) · [value-strategies](value-strategies.md)

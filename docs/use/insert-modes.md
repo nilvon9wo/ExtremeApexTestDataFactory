@@ -71,6 +71,6 @@ valid required data, compact graphs. Switching a test from unit to integration i
 then a one-line change to `NOW`. See
 [advanced/unit-vs-integration](advanced/unit-vs-integration.md).
 
-▶ Runnable: `XFTY_Ex_InsertModesTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_InsertModesTest`
 
 See also: [deferred-insert](deferred-insert.md) · [relationships](relationships.md) · [bundles](bundles.md)

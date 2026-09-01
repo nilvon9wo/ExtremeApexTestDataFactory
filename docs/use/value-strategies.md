@@ -78,6 +78,6 @@ fields — see [context-aware-values](context-aware-values.md)) or a plain
 `XFTY_DummyDefaultValueIntf`. Shipping one as a reusable extension:
 [extend/custom-value-strategies.md](../extend/custom-value-strategies.md).
 
-▶ Runnable: `XFTY_Ex_ValueStrategiesTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_ValueStrategiesTest`
 
 See also: [override-templates](override-templates.md) · [context-aware-values](context-aware-values.md)

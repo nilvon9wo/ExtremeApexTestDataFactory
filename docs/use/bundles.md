@@ -40,18 +40,21 @@ List<Account> accounts = (List<Account>) bundle.getList(Contact.AccountId);
 
 ## Navigating nested Bundles
 
-A Bundle may itself contain child Bundles, one per generated relationship.
+A Bundle contains a child Bundle per generated relationship, and those nest as
+deep as the graph does. If the Contact's Account is itself generated with a
+parent Account:
 
 ```apex
-XFTY_DummySObjectBundle opportunityBundle = bundle.getBundle(OpportunityLineItem.OpportunityId);
-List<Account> accounts = (List<Account>) opportunityBundle.getList(Opportunity.AccountId);
+XFTY_DummySObjectBundle accountBundle = bundle.getBundle(Contact.AccountId);
+XFTY_DummySObjectBundle parentAccountBundle = accountBundle.getBundle(Account.ParentId);
+Account parentAccount = (Account) parentAccountBundle.getList(Account.Id)[0];
 ```
 
 ```text
 Bundle
-├── OpportunityLineItem
-└── Opportunity
-     └── Account
+└── Contact
+     └── Account (Contact.AccountId)
+          └── Account (Account.ParentId)
 ```
 
 Use `getList(field)` for the related records themselves; `getBundle(field)` for
@@ -59,6 +62,6 @@ the entire subgraph beneath them. Both are populated for a
 [shared ancestor](shared-ancestors.md), whether it was generated or supplied
 with `XFTY_SharedAncestor.put(...)`.
 
-▶ Runnable: `XFTY_Ex_BundlesTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_BundlesTest`
 
 See also: [relationships](relationships.md) · [generating-records](generating-records.md)

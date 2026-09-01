@@ -8,8 +8,32 @@
 @IsTest
 private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
-    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+
+    // The primary @TestSetup replacement: a static fixture, rebuilt per test method.
+    private static final List<Account> SHARED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+            .setInsertMode(XFTY_InsertModeEnum.MOCK)
+            .setQuantityPerTemplate(3)
+            .supplyList();
+
+    @IsTest
+    static void aStaticFixtureIsBuiltFreshAndReusableAcrossASingleTest() {
+        // Arrange
+        // nothing to arrange - SHARED_ACCOUNTS is the static fixture, built for this method
+
+        // Act - a test uses the fixture directly, e.g. as a parent for more records
+        List<Contact> contactsOnTheFixture = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+                .setOverrideTemplate(new Contact(AccountId = SHARED_ACCOUNTS[0].Id))
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setQuantityPerTemplate(2)
+                .supplyList();
+
+        // Assert
+        Assert.areEqual(3, SHARED_ACCOUNTS.size(), 'MOCK built the fixture with no DML');
+        Assert.isNotNull(SHARED_ACCOUNTS[0].Id, 'and realistic Ids');
+        Assert.areEqual(SHARED_ACCOUNTS[0].Id, contactsOnTheFixture[0].AccountId, 'reused straight from the fixture');
+    }
 
     @IsTest
     static void helpersBuildTheGraphAcrossStepsAndFlushInsertsItOnce() {
@@ -49,7 +73,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
             // Act - a later step that needs that Id as a value
             Test.startTest();
-            seededContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+            seededContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
                     .setOverrideTemplate(new Contact(AccountId = firstSeededAccountId))
                     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                     .setQuantityPerTemplate(4)
@@ -69,14 +93,14 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
     // Helpers from the page ---------------------------------------------
 
     private static XFTY_DummySObjectBundle seedAccounts() {
-        return new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+        return new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                 .setQuantityPerTemplate(3)
                 .supplyBundle();
     }
 
     private static XFTY_DummySObjectBundle seedContacts() {
-        return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+        return new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
                 .setQuantityPerTemplate(9)

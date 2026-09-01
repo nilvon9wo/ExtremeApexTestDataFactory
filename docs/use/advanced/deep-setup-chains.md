@@ -1,9 +1,37 @@
 # Building Data Across Helper Methods
 
-XFTY discourages `@TestSetup`
-([why](../../reference/salesforce-considerations.md)). The replacement for
-"shared setup built in several steps" is a chain of helper methods plus the
-[`DEFERRED`](../deferred-insert.md) insert mode — build everything, insert once.
+The primary replacement for `@TestSetup`
+([why](../../reference/salesforce-considerations.md)) is a **`static` fixture on
+the test class** — Apex re-runs static initialisers for each test method, so the
+fixture is built fresh per method, declared once, and visible right next to the
+tests:
+
+```apex
+private static final XFTY_DummySObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+
+private static final List<Account> SHARED_ACCOUNTS = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+    .setInsertMode(XFTY_InsertModeEnum.MOCK)
+    .setQuantityPerTemplate(3)
+    .supplyList();
+```
+
+This page is for the narrower case a `static` fixture cannot cover: shared setup
+built in **ordered steps, inserted once**. The tool for it is a chain of helper
+methods plus the [`DEFERRED`](../deferred-insert.md) insert mode — build
+everything, `flush()` once.
+
+### Why not a `static` fixture here?
+
+`DEFERRED` only pays off if something calls `XFTY_DeferredInserter.flush()`, and a
+`static` initialiser has nowhere to put that call — the fixture would build the
+graph but never insert it. You would end up calling `flush()` at the top of every
+test method anyway, which is exactly the per-method helper-call this page
+describes. So:
+
+| Shared setup that… | Use |
+|---|---|
+| is a plain snapshot (`MOCK` / `NOW`), same for every method | a `static` fixture |
+| is built in ordered steps, or a later step needs an earlier record's real Id, or one insert phase for the whole graph matters | helper methods + `DEFERRED`, called per test method |
 
 ---
 
@@ -14,14 +42,14 @@ off it — no `SELECT` to re-fetch what XFTY just built:
 
 ```apex
 private static XFTY_DummySObjectBundle seedAccounts() {
-    return new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+    return new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
         .setQuantityPerTemplate(3)
         .supplyBundle();
 }
 
 private static XFTY_DummySObjectBundle seedContacts() {
-    return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+    return new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
         .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
         .setQuantityPerTemplate(9)
@@ -66,7 +94,7 @@ XFTY_DeferredInserter.flush();                                  // Accounts now 
 Id firstSeededAccountId = seededAccounts.getList(Account.Id)[0].Id;
 
 // a later step that needs that Id as a value - still DEFERRED, flush again
-XFTY_DummySObjectBundle seededContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+XFTY_DummySObjectBundle seededContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
     .setOverrideTemplate(new Contact(AccountId = firstSeededAccountId))
     .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
     .setQuantityPerTemplate(4)

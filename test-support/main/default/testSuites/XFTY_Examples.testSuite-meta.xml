@@ -6,4 +6,9 @@
       class. test-support/ only. Run: sf apex run test --suite-names XFTY_Examples
     -->
     <testClassName>XFTY_Ex_Adv_DeepSetupChainsTest</testClassName>
+    <testClassName>XFTY_Ex_BundlesTest</testClassName>
+    <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>
+    <testClassName>XFTY_Ex_InsertModesTest</testClassName>
+    <testClassName>XFTY_Ex_OverrideTemplatesTest</testClassName>
+    <testClassName>XFTY_Ex_ValueStrategiesTest</testClassName>
 </ApexTestSuite>

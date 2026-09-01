@@ -38,13 +38,13 @@ examples compile and behave as documented.
 
 | Feature | Page | Runnable test |
 |---------|------|---------------|
-| `supply` / `supplyList` / `supplyBundle` | [generating-records](generating-records.md) | _(pending)_ |
-| `setQuantityPerTemplate`, `setOverrideTemplateList` | [generating-records](generating-records.md) | _(pending)_ |
-| shorthand constructors (template / list / key) | [generating-records](generating-records.md) | _(pending)_ |
-| `setOverrideTemplate`, precedence | [override-templates](override-templates.md) | _(pending)_ |
-| `removeFromMasterTemplate` | [override-templates](override-templates.md) | _(pending)_ |
-| `put(field, strategy)`, implicit literal | [value-strategies](value-strategies.md) | _(pending)_ |
-| the 6 bundled `XFTY_DummyDefaultValue*` strategies | [value-strategies](value-strategies.md) | _(pending)_ |
+| `supply` / `supplyList` / `supplyBundle` | [generating-records](generating-records.md) | `XFTY_Ex_GeneratingRecordsTest` |
+| `setQuantityPerTemplate`, `setOverrideTemplateList` | [generating-records](generating-records.md) | `XFTY_Ex_GeneratingRecordsTest` |
+| shorthand constructors (template / list / key) | [generating-records](generating-records.md) | `XFTY_Ex_GeneratingRecordsTest` |
+| `setOverrideTemplate`, precedence | [override-templates](override-templates.md) | `XFTY_Ex_OverrideTemplatesTest` |
+| `removeFromMasterTemplate` | [override-templates](override-templates.md) | `XFTY_Ex_OverrideTemplatesTest` |
+| `put(field, strategy)`, implicit literal | [value-strategies](value-strategies.md) | `XFTY_Ex_ValueStrategiesTest` |
+| the 6 bundled `XFTY_DummyDefaultValue*` strategies | [value-strategies](value-strategies.md) | `XFTY_Ex_ValueStrategiesTest` |
 | `XFTY_CopyFromSibling` / `XFTY_CopyFromAncestor` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
 | `XFTY_CopyFromDescendant` — up-flow, `DEFERRED` only | [context-aware-values](context-aware-values.md) | `XFTY_CopyFromDescendantTest` |
 | custom `XFTY_ContextAwareValueIntf` + `context.siblingValue` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
@@ -55,8 +55,8 @@ examples compile and behave as documented.
 | `put(List<SObjectField>, value)` — path-scoped ancestor values | [per-call-relationships](per-call-relationships.md) | `XFTY_PathValueTest` |
 | `XFTY_SharedAncestor` — `get` / `of` / `getOrElse` / `put` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
-| `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | _(pending)_ |
-| insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | _(pending)_ |
+| `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
+| insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
 | `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | _(pending)_ |
 | `withVariant` / lookup-key ctor / record-type template | [provider-variants](provider-variants.md) | _(pending)_ |
 | `TEST_ADMIN_USER` / `profileIdFor` / `roleIdFor` | [test-user-helpers](test-user-helpers.md) | _(pending)_ |

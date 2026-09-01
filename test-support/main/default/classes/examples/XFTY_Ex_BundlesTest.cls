@@ -1,0 +1,119 @@
+/**
+ * Runnable proof for docs/use/bundles.md - every `@IsTest` method is one fenced
+ * example from that page.
+ */
+@IsTest
+private class XFTY_Ex_BundlesTest {
+
+    private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+
+    @IsTest
+    static void aBundleExposesEveryGeneratedRecordWithoutSoql() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(1, bundle.getList(Contact.Id).size());
+        Assert.areEqual(1, bundle.getList(Contact.AccountId).size(), 'the generated Account, no SOQL');
+    }
+
+    @IsTest
+    static void getListStaysAlignedOneToOneWithThePrimaryRecords() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+                .setQuantityPerTemplate(3)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+        Test.stopTest();
+
+        // Assert - entry i of getList(AccountId) is the Account for entry i of getList(Id)
+        List<Contact> contacts = (List<Contact>) bundle.getList(Contact.Id);
+        List<Account> accounts = (List<Account>) bundle.getList(Contact.AccountId);
+        Assert.areEqual(3, contacts.size());
+        Assert.areEqual(3, accounts.size());
+        for (Integer row = 0; row < contacts.size(); row++) {
+            Assert.areEqual(accounts[row].Id, contacts[row].AccountId, 'row ' + row + ' aligns');
+        }
+    }
+
+    private static final XFTY_LookupKeyIntf MID_ACCOUNT_KEY = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'mid');
+
+    @IsTest
+    static void getBundleNavigatesTheGraphAsDeepAsItNests() {
+        // Arrange - a Contact whose Account is generated with a (flat) parent Account of its own
+        XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderNestedAccount(),
+                        MID_ACCOUNT_KEY => new AccountWithParent(),
+                        XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider()
+                }
+        );
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        Test.startTest();
+        bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        XFTY_DummySObjectBundle accountBundle = bundle.getBundle(Contact.AccountId);
+        XFTY_DummySObjectBundle parentAccountBundle = accountBundle.getBundle(Account.ParentId);
+        Assert.isNotNull(accountBundle, 'the Account sub-bundle');
+        Assert.isNotNull(parentAccountBundle, 'and its parent Account sub-bundle');
+        Account childAccount = (Account) accountBundle.getList(Account.Id)[0];
+        Account parentAccount = (Account) parentAccountBundle.getList(Account.Id)[0];
+        Assert.areEqual(parentAccount.Id, childAccount.ParentId, 'the nested Account is wired to its parent');
+    }
+
+    // Fixture ---------------------------------------------------------------
+
+    private class ContactUnderNestedAccount implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
+                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(MID_ACCOUNT_KEY, new Account()));
+
+        public SObjectField getPrimaryTargetField() {
+            return Contact.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+
+    private class AccountWithParent implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
+                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
+                .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account()));
+
+        public SObjectField getPrimaryTargetField() {
+            return Account.Id;
+        }
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
+    }
+}
