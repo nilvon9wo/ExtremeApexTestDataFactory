@@ -3,7 +3,8 @@
 `.github/workflows/ci.yml` runs two jobs on every push and PR against `master`
 or `4.0-beta`.
 
-**`static-checks`** — no org, no secret, a few seconds. Three Python scripts:
+**`doc-examples`**, **`doc-links`**, **`apex-style`** — three fast jobs, no org,
+no secret, a few seconds each, run in parallel:
 
 - **`verify-doc-examples.py`** — every significant call in every ```apex``` block
   on a page with a `Runnable:` line must appear, verbatim, in the test class(es)

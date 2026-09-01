@@ -13,22 +13,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  static-checks:
-    name: Docs and style
+  doc-examples:
+    name: Doc examples
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Doc examples are backed by a runnable test
+      - uses: actions/checkout@v4
+      - name: Every documented apex example is backed by a runnable test
         run: python3 scripts/verify-doc-examples.py
 
-      - name: Every doc link resolves
+  doc-links:
+    name: Doc links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every relative link and anchor in docs/ resolves
         run: python3 scripts/verify-doc-links.py
 
-      - name: Apex style (whole-tree safety + changed-file rules)
+  apex-style:
+    name: Apex style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whole-tree safety + changed-file style rules
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
@@ -43,8 +51,7 @@ jobs:
     env:
       DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install the Salesforce CLI
         run: npm install --global @salesforce/cli@latest
