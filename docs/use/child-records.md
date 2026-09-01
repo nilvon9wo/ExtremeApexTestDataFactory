@@ -79,7 +79,7 @@ For two primaries `P0, P1`, config A (quantity 2) then config B (quantity 1):
 A/P0  A/P0  A/P1  A/P1   B/P0  B/P1
 ```
 
-### Brian's worked example
+### Working example
 
 ```apex
 new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
@@ -91,6 +91,8 @@ new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
     .supplyBundle();
 // 8 primaries × 3 → 24 department-A Contacts ; 8 × 2 → 16 department-B ; 40 total
 ```
+
+Proven by `XFTY_ChildGenerationTest.twoConfigsOnTheSameFieldAreAdditiveAndMultiplyWithTemplateQuantity`.
 
 ---
 

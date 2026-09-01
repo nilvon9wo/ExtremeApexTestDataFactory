@@ -73,8 +73,8 @@ only Id lookups are pending). Then `XFTY_DepthBatchedInserter.insertAll`.
 walk needs no master templates. `XFTY_GenerationContext` gained
 `batchedInsertPending` purely so `wireSharedAncestor` can refuse it.
 
-**Opt-in, settled** (Brian, repeatedly): never always-on. It changes `insert`
-order and the order triggers fire mid-generation, which many tests depend on.
+**Opt-in, settled**: never always-on. It changes `insert` order and the order
+triggers fire mid-generation, which many tests depend on.
 
 Before merge (not decisions — work): a `XFTY_Load` measurement of the
 bundle-walk cost at volume (`O(records + links)`), and shared-ancestor support
@@ -85,7 +85,7 @@ places).
 
 ## 2. A reference-preserving insert mode
 
-The need (Brian's words): *"a mode where a test or its helpers can invoke the
+The need: *"a mode where a test or its helpers can invoke the
 framework multiple times, yielding exactly the same result as if `NEVER` was set,
 but then leverage object references so that we can retroactively fill the Ids
 later before they actually start needing/using these values."*

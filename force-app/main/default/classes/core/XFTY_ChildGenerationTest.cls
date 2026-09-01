@@ -58,27 +58,33 @@ private class XFTY_ChildGenerationTest {
 
     @IsTest
     static void twoConfigsOnTheSameFieldAreAdditiveAndMultiplyWithTemplateQuantity() {
-        // Brian's worked example: 2 templates x setQuantityPerTemplate(4) = 8 primaries.
+        // Arrange - the child-records.md worked example: 2 templates x setQuantityPerTemplate(4) = 8 primaries;
         // config A: 3 per primary -> 24 ; config B: 2 per primary -> 16 ; total 40.
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .setOverrideTemplateList(new List<Account>{ new Account(), new Account() })
                 .setQuantityPerTemplate(4)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department = 'A')).setQuantity(3))
-                .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department = 'B')).setQuantity(2))
-                .supplyBundle();
+                .with(new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Department = 'B')).setQuantity(2));
 
-        System.assertEquals(8, bundle.primaryRecords().size());
-        List<SObject> contacts = bundle.getChildList(Contact.AccountId);
-        System.assertEquals(40, contacts.size());
+        // Act
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
 
-        Integer a = 0;
-        Integer b = 0;
-        for (SObject c : contacts) {
-            if (((Contact) c).Department == 'A') { a++; } else { b++; }
+        // Assert
+        List<SObject> childContacts = bundle.getChildList(Contact.AccountId);
+        Integer departmentACount = 0;
+        Integer departmentBCount = 0;
+        for (SObject childContact : childContacts) {
+            if (((Contact) childContact).Department == 'A') {
+                departmentACount++;
+            } else {
+                departmentBCount++;
+            }
         }
-        System.assertEquals(24, a);
-        System.assertEquals(16, b);
+        Assert.areEqual(8, bundle.primaryRecords().size());
+        Assert.areEqual(40, childContacts.size());
+        Assert.areEqual(24, departmentACount);
+        Assert.areEqual(16, departmentBCount);
     }
 
     @IsTest

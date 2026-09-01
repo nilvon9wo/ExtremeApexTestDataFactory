@@ -1,7 +1,7 @@
 # Path-Scoped Value Overrides
 
 Status: **✅ built** (`XFTY_PathValue`, `put(List<SObjectField>, value)` on
-`XFTY_DummySObjectProvider`). Brian's idea, 2026-08-31.
+`XFTY_DummySObjectProvider`). Proposed 2026-08-31.
 
 `includeOptional(List<SObjectField>)` walks a path of relationship fields into the
 generated ancestors to force each step required, for one call. `put(path, value)`
