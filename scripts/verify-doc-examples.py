@@ -20,7 +20,13 @@ import sys
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# Only the audience-facing feature docs promise runnable examples. Everything
+# else is explicitly out of scope - notably docs/articles/, which holds the
+# author's essays: their code snippets are illustrative prose, not framework API,
+# and must never be checked against the test suite.
 DOC_DIRS = [ROOT / "docs" / "use", ROOT / "docs" / "extend"]
+EXCLUDE_DIRS = [ROOT / "docs" / "articles"]
 TEST_DIRS = [
     ROOT / "test-support" / "main" / "default" / "classes",
     ROOT / "force-app" / "main" / "default" / "classes",
@@ -65,6 +71,8 @@ def main() -> int:
 
     for d in DOC_DIRS:
         for page in sorted(d.rglob("*.md")):
+            if any(ex in page.parents for ex in EXCLUDE_DIRS):
+                continue
             text = page.read_text(encoding="utf-8")
             runnable_lines = RUNNABLE_RE.findall(text)
             if not runnable_lines:
