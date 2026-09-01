@@ -107,51 +107,39 @@ MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
 | `XFTY_SharedAncestor.putAsTemplate(name, SObject template)` | always an override template (generated in the pre-phase; also sets the type) |
 | `XFTY_SharedAncestor.putAsValue(name, SObject record)` | always used as-is |
 | `XFTY_SharedAncestor.put(name, XFTY_LookupKeyIntf key)` | register just the Provider variant that generates it ([provider-variants](provider-variants.md)) |
-| `.fromVariant(XFTY_LookupKeyIntf key)` | chained off `putAsTemplate` / `put(name, record)` — pin the variant *and* keep the template |
-| `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider provider)` | build it from a fully-configured Provider — see below. Not combined with the template / key forms |
+| `.fromVariant(XFTY_LookupKeyIntf key)` | chained off `put(name, …)` — pin the variant *and* keep the template |
+| `.put(field, …)` · `.putRequired(field, rel)` · `.putOptional(…)` · `.includeOptional(…)` · `.put(path, …)` · `.setInclusivity(…)` | chained onto `put(name, …)` — shape the shared record's own generation, exactly the API a generated parent takes (see below) |
 | `.copyingRelatedField(SObjectField f)` | copy `f` from the shared record into the child's field instead of its Id |
 | `XFTY_SharedAncestor.putIfAbsent(name, template)` | `putAsTemplate`, only if `name` is not registered yet this test — for a shared setup helper that may run more than once, or that registers more ancestors than one test uses |
 | `XFTY_SharedAncestor.putIfAbsent(name, lookupKey)` | as above, pinning the Provider variant instead of a template |
 
 Re-registering a shared ancestor after it has resolved throws.
 
-### `put(name, provider)` — the whole generation API for one shared record
+### Shaping the shared record's own generation
 
-When a template / key is not enough — you need value expressions on the shared
-record, or want to shape *its* own ancestors — hand `put(name, provider)` a
-fully-configured `XFTY_DummySObjectProvider`:
+When a bare template / key is not enough — value expressions on the shared
+record, or its *own* ancestors — chain the same `put` API a generated parent
+takes straight onto `put(name, …)`:
 
 ```apex
-XFTY_SharedAncestor.put('hq', 
-    new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
-        .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
-        .withVariant(enterpriseKey)
-        .put(Account.Rating, new XFTY_LiteralExpression('Hot'))
-        .put(Account.Site, 'Berlin')
-        .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'Global HQ')))
-        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-        .includeOptional(Account.OwnerId)
-        .put(new List<SObjectField>{ Account.ParentId, Account.Site }, 'Global')
-);
+XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ Ltd'))
+    .fromVariant(enterpriseKey)
+    .put(Account.Rating, new XFTY_LiteralExpression('Hot'))
+    .put(Account.Site, 'Berlin')
+    .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'Global HQ')))
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .includeOptional(Account.OwnerId)
+    .put(new List<SObjectField>{ Account.ParentId, Account.Site }, 'Global');
 ```
 
-Anything that shapes a single record applies. The Provider carries its own
-override template, variant, **and lookup** (so the shared ancestor's Provider can
-come from your project's full lookup even when the test itself uses a minimal
-one). Persistence still follows the call that references it (or
-`resolveNow(lookup, mode)`).
+Only the methods that make sense for **one record** are on it — there is no
+`setQuantityPerTemplate`, no template list, no `setInsertMode` (persistence
+follows the referencing call, or `resolveNow(lookup, mode)`), no `.depthBatched()`
+(the resolver already depth-batches the sub-graph), no child collections. Nothing
+to reject at runtime; those knobs simply are not there.
 
-The knobs that describe **more than one record** are rejected with a clear error,
-because a shared ancestor is exactly one: `setQuantityPerTemplate(n > 1)`, a
-multi-element `setOverrideTemplateList([...])`, `setInsertMode(...)` (persistence
-follows the referencing call), `.depthBatched()` (the resolver already
-depth-batches), and child collections (`with(...)` / `withChildren(...)`).
-
-`put(name, provider)` and the template / key forms cannot both be set — the
-Provider already says everything they would.
-
-**The shared record's own field values go on the template / provider** — it is
-one record for every child, so there is no per-call place to set them. A
+**The shared record's own field values go on this chain** — it is one record for
+every child, so there is no per-call place to set them. A
 `put(new List<SObjectField>{ theSharedRelationshipField, deeperField }, value)`
 that would *set a value on* a shared ancestor
 ([per-call ancestor values](per-call-relationships.md)) **throws**. Wiring a
@@ -263,7 +251,7 @@ Putting an `XFTY_SharedAncestor` in a Provider you distribute (rather than on a
 [extend/shared-ancestors-in-templates.md](../extend/shared-ancestors-in-templates.md).
 
 ▶ Runnable: `XFTY_SharedAncestorTest` (the basics) ·
-`XFTY_SharedAncestorHierarchyTest` (deep chains, `suppliedBy`, cross-SObject, a
+`XFTY_SharedAncestorHierarchyTest` (deep chains, per-record config, cross-SObject, a
 full three-level all-shared spine end to end) · `XFTY_SharedAncestorLoadTest`
 (500 children, one parent insert)
 

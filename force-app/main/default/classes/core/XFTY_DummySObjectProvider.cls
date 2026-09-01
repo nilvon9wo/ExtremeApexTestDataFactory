@@ -607,56 +607,6 @@ public class XFTY_DummySObjectProvider {
         return this.supplyList()[0];
     }
 
-    // Shared-ancestor support -------------------------------------------------------------
-    // XFTY_ConfiguredAncestorProvider reads this Provider back as the recipe for one
-    // shared record: build the graph with no persistence, take row 0.
-
-    /** The SObjectType this Provider produces. */
-    public SObjectType targetSObjectType() {
-        return this.sObjectType;
-    }
-
-    /** The primary target field of the resolved Provider variant (the record's `Id` field). */
-    public SObjectField primaryTargetField() {
-        return this.factoryOutlet.getPrimaryTargetField();
-    }
-
-    /** This Provider's Master Template with every `put(...)` customization applied. */
-    public XFTY_DummySObjectMasterTemplate effectiveMasterTemplate() {
-        return this.masterTemplate;
-    }
-
-    /** Generate this Provider's whole graph with no persistence and hand back the bundle. */
-    public XFTY_DummySObjectBundle buildStructurally() {
-        XFTY_InsertModeEnum callerMode = this.insertMode;
-        this.insertMode = XFTY_InsertModeEnum.NEVER;
-        try {
-            return this.supplyBundle();
-        } finally {
-            this.insertMode = callerMode;
-        }
-    }
-
-    /** Reject the knobs that describe more than one record - a shared ancestor is exactly one. */
-    public void assertUsableAsSharedAncestorSource() {
-        rejectForSharedAncestor(this.quantityPerListedTemplate > 1, 'drop setQuantityPerTemplate(...)');
-        rejectForSharedAncestor(
-                this.overrideTemplateList != null && this.overrideTemplateList.size() > 1,
-                'pass a single override template, not a list');
-        rejectForSharedAncestor(this.insertMode != XFTY_InsertModeEnum.NEVER,
-                'drop setInsertMode(...) - persistence follows the referencing call (or resolveNow)');
-        rejectForSharedAncestor(this.depthBatched,
-                'drop .depthBatched() - the resolver already depth-batches the sub-graph');
-        rejectForSharedAncestor(!this.childProviders.isEmpty(),
-                'child collections (with / withChildren) are not supported here');
-    }
-
-    private static void rejectForSharedAncestor(Boolean offending, String fix) {
-        if (offending) {
-            throw new SanityException('put(name, provider): a shared ancestor is one record - ' + fix + '.');
-        }
-    }
-
     // Consistency checks ----------------------------------------------------------------
 
     private void assertNoSObjectTypeConflict(List<SObject> overrideTemplateList) {

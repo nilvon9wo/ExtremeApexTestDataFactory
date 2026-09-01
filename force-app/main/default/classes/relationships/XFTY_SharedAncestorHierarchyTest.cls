@@ -1,7 +1,8 @@
 /**
  * Shared ancestors that have hierarchies of their own: automatic deep-vs-flat
  * resolution, the depth-batched pre-phase, nested shared ancestors, cycle
- * detection, `resolveNow(...)`, `putIfAbsent(...)`, `put(name, provider)`, and the
+ * detection, `resolveNow(...)`, `putIfAbsent(...)`, chained per-record config
+ * (`.put(...)` / `.putRequired(...)` on the shared record), and the
  * `.depthBatched()` / `DEFERRED` main build. Also the end-to-end proof: a
  * three-level all-shared spine, built once, wired everywhere.
  *
@@ -307,17 +308,14 @@ private class XFTY_SharedAncestorHierarchyTest {
         }
     }
 
-    // put(name, provider) - the full generation API for one shared record --------
+    // Shaping the shared record's own generation, chained onto put(...) --------
 
     @IsTest
-    static void putProviderShapesTheSharedRecordWithValueStrategies() {
-        // Arrange - a literal strategy and a context-aware value on the shared Account
-        XFTY_SharedAncestor.put('hq', 
-                accountProvider()
-                        .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
-                        .put(Account.Site, 'Berlin')
-                        .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Name))
-        );
+    static void sharedRecordTakesValueExpressions() {
+        // Arrange - a literal and a context-aware expression on the shared Account
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ Ltd'))
+                .put(Account.Site, 'Berlin')
+                .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Name));
 
         // Act
         Contact leaf;
@@ -328,20 +326,17 @@ private class XFTY_SharedAncestorHierarchyTest {
         // Assert
         Account sharedHq = [SELECT Id, Name, Site, Description FROM Account];
         Assert.areEqual('HQ Ltd', sharedHq.Name);
-        Assert.areEqual('Berlin', sharedHq.Site, 'the literal strategy landed on the shared record');
-        Assert.areEqual('HQ Ltd', sharedHq.Description, 'the context-aware value ran on the shared record');
+        Assert.areEqual('Berlin', sharedHq.Site, 'the literal landed on the shared record');
+        Assert.areEqual('HQ Ltd', sharedHq.Description, 'the context-aware expression ran on the shared record');
         Assert.areEqual(sharedHq.Id, leaf.AccountId);
     }
 
     @IsTest
-    static void putProviderShapesTheSharedRecordsOwnAncestor() {
+    static void sharedRecordShapesItsOwnAncestor() {
         // Arrange - the shared 'hq' Account gets a parent Account of its own
-        XFTY_SharedAncestor.put('hq', 
-                accountProvider()
-                        .setOverrideTemplate(new Account(Name = 'HQ'))
-                        .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'HQ Parent')))
-                        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-        );
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'))
+                .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'HQ Parent')))
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
 
         // Act
         Test.startTest();
@@ -351,88 +346,8 @@ private class XFTY_SharedAncestorHierarchyTest {
         // Assert
         Account sharedHq = [SELECT ParentId FROM Account WHERE Name = 'HQ'];
         Account parent = [SELECT Id FROM Account WHERE Name = 'HQ Parent'];
-        Assert.areEqual(parent.Id, sharedHq.ParentId, 'the shared record got the parent configured via the put-Provider');
+        Assert.areEqual(parent.Id, sharedHq.ParentId, 'the shared record got its configured parent');
         Assert.areEqual(2, [SELECT COUNT() FROM Account]);
-    }
-
-    @IsTest
-    static void putProviderRejectsAKnobThatMeansMoreThanOneRecord() {
-        // Arrange - setQuantityPerTemplate has no meaning for a single shared record
-        XFTY_SharedAncestor.put('hq', 
-                accountProvider()
-                        .setOverrideTemplate(new Account(Name = 'HQ'))
-                        .setQuantityPerTemplate(2)
-        );
-
-        // Act
-        XFTY_DummySObjectProvider.SanityException thrown;
-        try {
-            supplyOneContactUnder('hq', XFTY_InsertModeEnum.MOCK);
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            thrown = ex;
-        }
-
-        // Assert
-        Assert.isNotNull(thrown, 'a quantity > 1 on a put-Provider must throw');
-        Assert.isTrue(thrown.getMessage().contains('one record'), thrown.getMessage());
-    }
-
-    @IsTest
-    static void putProviderRejectsAnExplicitInsertModeOnTheProvider() {
-        // Arrange - persistence follows the referencing call, not the Provider
-        XFTY_SharedAncestor.put('hq', 
-                accountProvider()
-                        .setOverrideTemplate(new Account(Name = 'HQ'))
-                        .setInsertMode(XFTY_InsertModeEnum.NOW)
-        );
-
-        // Act
-        XFTY_DummySObjectProvider.SanityException thrown;
-        try {
-            supplyOneContactUnder('hq', XFTY_InsertModeEnum.MOCK);
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            thrown = ex;
-        }
-
-        // Assert
-        Assert.isNotNull(thrown, 'setInsertMode on a put-Provider must throw');
-        Assert.isTrue(thrown.getMessage().contains('setInsertMode'), thrown.getMessage());
-    }
-
-    @IsTest
-    static void aTemplateThenAProviderIsRejected() {
-        // Arrange
-        XFTY_SharedAncestor.putAsTemplate('x', new Account());
-
-        // Act
-        XFTY_DummySObjectFtyProviderException thrown;
-        try {
-            XFTY_SharedAncestor.put('x', accountProvider());
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
-
-        // Assert
-        Assert.isNotNull(thrown, 'a template then a Provider must be rejected');
-        Assert.isTrue(thrown.getMessage().contains('not both'), thrown.getMessage());
-    }
-
-    @IsTest
-    static void aProviderThenATemplateIsRejected() {
-        // Arrange
-        XFTY_SharedAncestor.put('y', accountProvider());
-
-        // Act
-        XFTY_DummySObjectFtyProviderException thrown;
-        try {
-            XFTY_SharedAncestor.putAsTemplate('y', new Account());
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
-
-        // Assert
-        Assert.isNotNull(thrown, 'a Provider then a template must be rejected');
-        Assert.isTrue(thrown.getMessage().contains('not both'), thrown.getMessage());
     }
 
     // Path-scoped value wires in a shared ancestor -------------------
@@ -554,13 +469,12 @@ private class XFTY_SharedAncestorHierarchyTest {
 
     private static void configureAllSharedSpine() {
         XFTY_SharedAncestor.put('root', new Account(Name = 'Global Root'));
-        XFTY_SharedAncestor.put('division', sharedAccountUnder('Division', 'root'));
-        XFTY_SharedAncestor.put('region', sharedAccountUnder('Region', 'division'));
+        sharedAccountUnder('division', 'Division', 'root');
+        sharedAccountUnder('region', 'Region', 'division');
     }
 
-    private static XFTY_DummySObjectProvider sharedAccountUnder(String name, String sharedParentName) {
-        return accountProvider()
-                .setOverrideTemplate(new Account(Name = name))
+    private static void sharedAccountUnder(String name, String accountName, String sharedParentName) {
+        XFTY_SharedAncestor.put(name, new Account(Name = accountName))
                 .putRequired(Account.ParentId, XFTY_SharedAncestor.get(sharedParentName))
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
     }
@@ -618,10 +532,6 @@ private class XFTY_SharedAncestorHierarchyTest {
     }
 
     // Fixture - lookups + the Provider double ---------------------------
-
-    private static XFTY_DummySObjectProvider accountProvider() {
-        return new XFTY_DummySObjectProvider(Account.SObjectType, defaultTypesLookup());
-    }
 
     private static XFTY_DummySObjectProviderLookupIntf contactsUnder(String sharedName) {
         return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{

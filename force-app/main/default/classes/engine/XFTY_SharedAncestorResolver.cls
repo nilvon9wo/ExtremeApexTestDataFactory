@@ -4,8 +4,8 @@
  * (S1), then persisted one dependency layer at a time (S2 - the fewest `insert`
  * statements). Cycles throw; chains past ten deep warn.
  *
- * Never branches on how an ancestor was configured - {@link XFTY_SharedAncestorProvider}
- * answers for both kinds.
+ * Works from {@link XFTY_SharedAncestorProvider} - the single recipe type - so it
+ * never branches on how an ancestor was configured.
  */
 @IsTest
 public class XFTY_SharedAncestorResolver {

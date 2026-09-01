@@ -89,7 +89,8 @@ that is not a relationship on the ancestor's Provider throws — never a silent
 no-op. A path `put` wins over a value the ancestor's Provider already sets.
 
 You **cannot** `put` a plain value *onto* a [shared ancestor](shared-ancestors.md)
-— that throws; configure it with `.of(...)`. You **can** point a forced
+— that throws; shape it where it is registered
+(`XFTY_SharedAncestor.put('hq', …).put(field, …)`). You **can** point a forced
 relationship at one (as the `mr-smith` line above).
 
 This shares the path-walk with

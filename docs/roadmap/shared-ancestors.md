@@ -22,10 +22,11 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 - `putAsTemplate(name, t)` / `put(name, key)` / `.fromVariant(key)` / `.copyingRelatedField(field)`
   configuration; reconfiguring after resolution throws. `putIfAbsent(name,
   template|lookupKey)` configures only if unconfigured (for a shared setup helper
-  / superset config). `put(name, provider)` for the full case:
-  the whole generation API (value expressions, the shared record's own ancestors,
-  variant, child collections) describes the one shared record — resolver runs it
-  `buildStructurally()` then depth-batches. Not combined with the template/key forms.
+  / superset config). For the full case - value expressions on the shared record,
+  its own ancestors, path values, inclusivity - chain the same per-record `put`
+  API straight onto `put(name, ...)`; `XFTY_SharedAncestorProvider` carries it and
+  the resolver builds structurally then depth-batches. No multi-record knobs are
+  on that type, so no runtime guard.
 - Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`
   so it drops into `putRequired` / `putOptional`. The factory branches on the
   interface: one record resolved (generated once, or supplied via `put(...)`),

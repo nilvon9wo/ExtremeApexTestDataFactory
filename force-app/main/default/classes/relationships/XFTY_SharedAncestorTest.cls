@@ -300,10 +300,10 @@ private class XFTY_SharedAncestorTest {
         // nothing to arrange - configuration is the act
 
         // Act
-        XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.put('hq', new Account(Name = 'Configured'))
-                .copyingRelatedField(Account.Name);
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Configured')).copyingRelatedField(Account.Name);
 
         // Assert
+        XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.get('hq');
         Assert.areEqual('hq', ancestor.getSharedName());
         Assert.areEqual('Configured', (String) ancestor.getOverrideTemplate().get(Account.Name));
         Assert.areEqual(Account.Name, ancestor.getRelatedField());
