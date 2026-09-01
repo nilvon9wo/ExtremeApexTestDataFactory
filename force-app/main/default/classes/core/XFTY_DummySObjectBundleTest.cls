@@ -122,6 +122,60 @@ private class XFTY_DummySObjectBundleTest {
         Assert.isNull(outOfRange);
     }
 
+    // childRecordsOf - one primary's slice of the children -------------------
+
+    @IsTest
+    static void childRecordsOfReturnsOnlyTheChildrenOfThatPrimaryRow() {
+        // Arrange - 2 parents; row 0 owns children A0 and A1, row 1 owns A2
+        XFTY_DummySObjectBundle childBundle = new XFTY_DummySObjectBundle();
+        childBundle.putPrimaries(Contact.Id, new List<SObject>{
+                new Contact(LastName = 'A0'), new Contact(LastName = 'A1'), new Contact(LastName = 'A2')
+        });
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Account.Id, new List<SObject>{ new Account(), new Account() });
+        bundle.putChild(Contact.AccountId, childBundle, new List<Integer>{ 0, 0, 1 });
+
+        // Act
+        List<SObject> rowOneChildren = bundle.childRecordsOf(1, Contact.AccountId);
+
+        // Assert
+        Assert.areEqual(1, rowOneChildren.size());
+        Assert.areEqual('A2', ((Contact) rowOneChildren[0]).LastName);
+    }
+
+    @IsTest
+    static void childRecordsOfMergesAcrossConfigsInDeclarationOrder() {
+        // Arrange - two child configs on the same field, both with a child for parent row 0
+        XFTY_DummySObjectBundle firstConfig = new XFTY_DummySObjectBundle();
+        firstConfig.putPrimaries(Contact.Id, new List<SObject>{ new Contact(LastName = 'first') });
+        XFTY_DummySObjectBundle secondConfig = new XFTY_DummySObjectBundle();
+        secondConfig.putPrimaries(Contact.Id, new List<SObject>{ new Contact(LastName = 'second') });
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Account.Id, new List<SObject>{ new Account() });
+        bundle.putChild(Contact.AccountId, firstConfig, new List<Integer>{ 0 });
+        bundle.putChild(Contact.AccountId, secondConfig, new List<Integer>{ 0 });
+
+        // Act
+        List<SObject> rowZeroChildren = bundle.childRecordsOf(0, Contact.AccountId);
+
+        // Assert
+        Assert.areEqual(2, rowZeroChildren.size());
+        Assert.areEqual('first', ((Contact) rowZeroChildren[0]).LastName, 'config declaration order');
+        Assert.areEqual('second', ((Contact) rowZeroChildren[1]).LastName);
+    }
+
+    @IsTest
+    static void childRecordsOfIsEmptyWhenTheFieldCarriesNoChildren() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+
+        // Act
+        List<SObject> none = bundle.childRecordsOf(0, Contact.AccountId);
+
+        // Assert
+        Assert.areEqual(0, none.size(), 'no children configured for that field');
+    }
+
     @IsTest
     static void getValueRejectsAPathTooShortToWalk() {
         // Arrange

@@ -64,6 +64,7 @@ new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
 |---|---|
 | `bundle.getChild(field)` | the first child for that relationship field |
 | `bundle.getChildList(field)` | every child for that field, merged across configs, in the documented order |
+| `bundle.childRecordsOf(parentRowIndex, field)` | just the children belonging to `primaryRecords()[parentRowIndex]`, read from the recorded parent-of-child map (no arithmetic on `getChildList`) |
 | `bundle.getChildBundle(field)` | one `XFTY_DummySObjectBundle` of all those children — navigate on to the children's **own** generated parents, or to grandchildren |
 | `bundle.childRelationshipFields()` | every child relationship field populated |
 

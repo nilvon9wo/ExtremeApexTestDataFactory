@@ -104,10 +104,15 @@ XFTY_DummySObjectBundle kids = bundle.getChildBundle(Contact.AccountId);   // na
 |------|---------|
 | `bundle.getChild(field)` | the first child for that relationship field |
 | `bundle.getChildList(field)` | every child for that field, merged across configs, in declaration → primary → quantity order |
+| `bundle.childRecordsOf(parentRowIndex, field)` | just the children of `primaryRecords()[parentRowIndex]` |
 | `bundle.getChildBundle(field)` | one bundle of all those children, for navigating deeper |
 | `bundle.childRelationshipFields()` | every child relationship field populated |
 
-Full detail — ordering, multiple child configs, grandchildren — is in
+There is no `getChildValue(path)` — downward, one primary fans out to *many*
+children, so a per-parent read returns a **list**, not a value. Use
+`childRecordsOf(parentRowIndex, field)` (it reads the recorded parent-of-child
+map, so you never line rows up by arithmetic) and pull fields off the records it
+returns. Full detail — ordering, multiple child configs, grandchildren — is in
 [child-records](child-records.md).
 
 ▶ Runnable: `XFTY_Ex_BundlesTest`

@@ -131,6 +131,26 @@ private class XFTY_Ex_BundlesTest {
         Assert.areEqual(parentAccount.Id, children[0].AccountId, 'each child points back at the primary');
     }
 
+    @IsTest
+    static void childRecordsOfKeepsEachPrimaryLinedUpWithItsOwnChildren() {
+        // Arrange - two Accounts, three Contacts hung below each
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setQuantityPerTemplate(2)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+
+        // Act
+        List<SObject> secondAccountsContacts = bundle.childRecordsOf(1, Contact.AccountId);
+
+        // Assert
+        Account secondAccount = (Account) bundle.primaryRecords()[1];
+        Assert.areEqual(3, secondAccountsContacts.size(), 'exactly the slice for that primary row');
+        for (SObject childContact : secondAccountsContacts) {
+            Assert.areEqual(secondAccount.Id, childContact.get(Contact.AccountId), 'all belong to primary row 1');
+        }
+    }
+
     // Fixture ---------------------------------------------------------------
 
     private class ContactUnderNestedAccount implements XFTY_DummySobjectProviderIntf {

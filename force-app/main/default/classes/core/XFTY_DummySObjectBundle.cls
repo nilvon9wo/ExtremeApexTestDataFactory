@@ -210,6 +210,28 @@ public class XFTY_DummySObjectBundle {
     }
 
     /**
+     * Just the children of one primary row - the slice of `getChildList` that
+     * belongs to `primaryRecords()[parentRowIndex]`, read from the recorded
+     * parent-of-child map so the caller never has to derive it by arithmetic.
+     * Same order as `getChildList`, filtered to that parent. Empty if none.
+     */
+    public List<SObject> childRecordsOf(Integer parentRowIndex, SObjectField childRelationshipField) {
+        List<SObject> matching = new List<SObject>();
+        for (ChildEntry entry : this.childEntries(childRelationshipField)) {
+            List<SObject> childRecords = entry.bundle.primaryRecords();
+            if (childRecords == null) {
+                continue;
+            }
+            for (Integer childRow = 0; childRow < childRecords.size(); childRow++) {
+                if (entry.parentRowByChildRow[childRow] == parentRowIndex) {
+                    matching.add(childRecords[childRow]);
+                }
+            }
+        }
+        return matching;
+    }
+
+    /**
      * A single bundle of every child for `childRelationshipField` - merged
      * primaries plus each child's own generated parents - so a caller can
      * navigate on to the children's other ancestors. Null if none.
