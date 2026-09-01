@@ -34,6 +34,9 @@ public class XFTY_SharedAncestorResolver {
             return;
         }
         applyLookupDefaults(lookup);
+        if (XFTY_SharedAncestor.isManualResolutionOnly()) {
+            return;   // lightweight ancestors resolve on-demand; heavy ones the test resolves up front
+        }
         List<XFTY_SharedAncestor> configured = XFTY_SharedAncestor.configuredUnresolved();
         if (!configured.isEmpty()) {
             new XFTY_SharedAncestorResolver(lookup, callMode).resolve(configured);

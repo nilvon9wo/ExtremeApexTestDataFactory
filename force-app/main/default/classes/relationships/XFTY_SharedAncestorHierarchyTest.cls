@@ -226,6 +226,125 @@ private class XFTY_SharedAncestorHierarchyTest {
         Assert.areEqual('Test Override HQ', [SELECT Name FROM Account].Name, 'putIfAbsent left the test registration alone');
     }
 
+    // Developer control over resolution ------------------------------
+
+    @IsTest
+    static void aDisabledSharedAncestorLeavesTheForeignKeyNull() {
+        // Arrange
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'));
+        XFTY_SharedAncestor.disable('hq');
+
+        // Act
+        Contact leaf;
+        Test.startTest();
+        leaf = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, contactsUnder('hq'))
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(null, leaf.AccountId, 'a disabled shared ancestor is never wired');
+        Assert.areEqual(0, [SELECT COUNT() FROM Account], 'and never generated');
+    }
+
+    @IsTest
+    static void getIdOnADisabledSharedAncestorThrows() {
+        // Arrange
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'));
+        XFTY_SharedAncestor.disable('hq');
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        try {
+            XFTY_SharedAncestor.getId('hq');
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('disabled'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void manualResolutionLazyResolvesALightweightAncestor() {
+        // Arrange - a flat shared Account, no sub-graph of its own; auto-resolution off
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'));
+        XFTY_SharedAncestor.manualResolutionOnly();
+
+        // Act
+        Contact leaf;
+        Test.startTest();
+        leaf = supplyOneContactUnder('hq', XFTY_InsertModeEnum.NOW);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(1, [SELECT COUNT() FROM Account], 'the lightweight ancestor resolved on-demand');
+        Assert.areEqual([SELECT Id FROM Account].Id, leaf.AccountId);
+    }
+
+    @IsTest
+    static void manualResolutionThrowsForAnUnresolvedHeavyAncestor() {
+        // Arrange - 'hq' has a parent of its own -> heavy; auto-resolution off; not resolved up front
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'))
+                .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'HQ Parent')))
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
+        XFTY_SharedAncestor.manualResolutionOnly();
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        try {
+            supplyOneContactUnder('hq', XFTY_InsertModeEnum.MOCK);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a heavy ancestor must be resolved up front under manualResolutionOnly');
+        Assert.isTrue(thrown.getMessage().contains('resolveNow'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void manualResolutionWithResolveNowUpFrontWorksForAHeavyAncestor() {
+        // Arrange
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ'))
+                .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account(Name = 'HQ Parent')))
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
+        XFTY_SharedAncestor.manualResolutionOnly();
+        XFTY_SharedAncestor.get('hq').resolveNow(contactsUnder('hq'), XFTY_InsertModeEnum.NOW);
+
+        // Act
+        Contact leaf;
+        Test.startTest();
+        leaf = supplyOneContactUnder('hq', XFTY_InsertModeEnum.NOW);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(2, [SELECT COUNT() FROM Account], 'HQ + its parent, resolved up front');
+        Assert.areEqual(XFTY_SharedAncestor.getId('hq'), leaf.AccountId);
+    }
+
+    @IsTest
+    static void batchResolveNowResolvesTheNamedSetInOnePass() {
+        // Arrange
+        configureAllSharedSpine();
+        XFTY_SharedAncestor.manualResolutionOnly();
+
+        // Act
+        Integer statements;
+        Test.startTest();
+        Integer before = Limits.getDmlStatements();
+        XFTY_SharedAncestor.resolveNow(contactsUnder('region'), XFTY_InsertModeEnum.NOW,
+                new List<String>{ 'root', 'division', 'region' });
+        statements = Limits.getDmlStatements() - before;
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(3, [SELECT COUNT() FROM Account], 'root + division + region');
+        Assert.isTrue(statements <= 3, 'depth-batched, not one insert per record: ' + statements);
+    }
+
     // Cycles ---------------------------------------------------------
 
     @IsTest

@@ -220,27 +220,33 @@ and later `NOW` calls reuse that mock record.
   record across a `NOW` test by inserting it yourself and registering it with
   `XFTY_SharedAncestor.put(name, record)`, or by resolving it `NOW` up front with
   `resolveNow(lookup, XFTY_InsertModeEnum.NOW)`.
-- **Configuring one you never reference still resolves it.** Each shared ancestor
-  configured this test method is resolved before the first `supply*()`. Configure
-  the ones this test uses; use `putIfAbsent(...)` if a shared helper configures a
-  superset.
 - **A cycle throws.** Two shared ancestors that need each other, or one whose
   Provider references it back — break it with `put(name, record)`.
+- **Independent heavy sub-graphs each get their own insert pass.** Resolution
+  depth-batches *per* shared-ancestor sub-graph, not one pass across all of them.
+  A test with several *independent* heavy shared ancestors pays a few extra
+  `insert` statements. Converging chains (a shared root) are already one pass.
 
-### Still open
+---
 
-- Resolution is one depth-batched pass **per shared ancestor sub-graph**, not one
-  pass across every shared ancestor at once.
-- Only the **relationships reachable from the call** could be resolved instead of
-  every registered shared ancestor — a walk of the Master Template graph
-  (planned; `putIfAbsent` is the interim answer).
-- Load-test data for the depth-batch cost, documented limits, and a
-  disable-this-record / disable-the-feature off-switch (design-doc decision 3)
-  are not done.
-- The full deep-record-type-hierarchy acceptance test needs `test-support`
-  metadata (a custom SObject + ≥10 record types + a singleton trigger) that is
-  not in the repo — the mechanics are covered by `XFTY_SharedAncestorHierarchyTest`
-  using `Account.ParentId`.
+## Controlling what gets resolved
+
+By default every registered shared ancestor is resolved in the pre-phase — the
+ones your test registered plus any [packaged defaults](#packaged-defaults). Two
+knobs (both reset per test method) hand control back to the test:
+
+| Call | Effect |
+|------|--------|
+| `XFTY_SharedAncestor.disable(name)` | never resolved; every reference leaves the child's FK **null**. For null-scenario tests, or dropping a heavy default this test does not need. `getId(name)` on it throws. |
+| `XFTY_SharedAncestor.manualResolutionOnly()` | turns off the pre-phase. A **lightweight** shared ancestor (no sub-graph of its own — auto-detected) still resolves on-demand when first referenced. A **heavy** one throws unless it was resolved up front. |
+| `XFTY_SharedAncestor.get(name).resolveNow(lookup, mode)` | resolve one (and its chain) up front |
+| `XFTY_SharedAncestor.resolveNow(lookup, mode, List<String> names)` | resolve a named set up front, one depth-batched pass |
+
+```apex
+XFTY_SharedAncestor.manualResolutionOnly();
+XFTY_SharedAncestor.resolveNow(lookup, XFTY_InsertModeEnum.NOW, new List<String>{ 'division', 'region' });
+// the package's other 6 shared-ancestor defaults are never built
+```
 
 ---
 

@@ -27,6 +27,8 @@
 public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
 
     private static final Map<String, XFTY_SharedAncestor> BY_NAME = new Map<String, XFTY_SharedAncestor>();
+    private static final Set<String> DISABLED = new Set<String>();
+    private static Boolean manualResolution = false;
 
     private final String name;
     private XFTY_SharedAncestorProvider source;
@@ -52,6 +54,9 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     public static Id getId(String name) {
+        if (DISABLED.contains(name)) {
+            throw new XFTY_DummySObjectFtyProviderException('Shared ancestor "' + name + '" is disabled.');
+        }
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.resolvedRecord == null) {
             throw new XFTY_DummySObjectFtyProviderException(
@@ -115,11 +120,55 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return ancestor.isUnregistered() ? put(name, variantKey) : ancestor.provider();
     }
 
+    // Developer control over resolution -----------------------------
+
+    /**
+     * This shared ancestor is never resolved; any reference to it leaves the
+     * child's foreign key **null**. For null-scenario tests, or dropping a heavy
+     * default a test does not need. `getId(name)` on a disabled one throws.
+     */
+    public static void disable(String name) {
+        get(name).assertUnresolved('disable(...)');
+        DISABLED.add(name);
+    }
+
+    /**
+     * Turn off the pre-phase that auto-resolves every registered shared ancestor.
+     * A **lightweight** shared ancestor (no sub-graph of its own) still resolves
+     * on-demand when first referenced; a **heavy** one throws unless it was
+     * resolved up front with `resolveNow(...)`.
+     */
+    public static void manualResolutionOnly() {
+        manualResolution = true;
+    }
+
+    /** Package-internal: is auto-resolution off this test method? */
+    public static Boolean isManualResolutionOnly() {
+        return manualResolution;
+    }
+
+    /** Resolve a named set of shared ancestors up front, in one depth-batched pass. */
+    public static void resolveNow(
+            XFTY_DummySObjectProviderLookupIntf lookup, XFTY_InsertModeEnum insertMode, List<String> names
+    ) {
+        XFTY_SharedAncestorResolver.applyLookupDefaults(lookup);
+        List<XFTY_SharedAncestor> toResolve = new List<XFTY_SharedAncestor>();
+        for (String name : names) {
+            XFTY_SharedAncestor ancestor = get(name);
+            if (ancestor.resolvedRecord == null) {
+                toResolve.add(ancestor);
+            }
+        }
+        if (!toResolve.isEmpty()) {
+            new XFTY_SharedAncestorResolver(lookup, insertMode).resolve(toResolve);
+        }
+    }
+
     /** Package-internal, for {@link XFTY_SharedAncestorResolver}: every registered ancestor not yet resolved. */
     public static List<XFTY_SharedAncestor> configuredUnresolved() {
         List<XFTY_SharedAncestor> pending = new List<XFTY_SharedAncestor>();
         for (XFTY_SharedAncestor ancestor : BY_NAME.values()) {
-            if (ancestor.source != null && ancestor.resolvedRecord == null) {
+            if (ancestor.source != null && ancestor.resolvedRecord == null && !DISABLED.contains(ancestor.name)) {
                 pending.add(ancestor);
             }
         }
@@ -204,14 +253,33 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     public SObject resolveSharedRecord(XFTY_GenerationContext context) {
-        if (this.resolvedRecord == null) {
-            XFTY_SharedAncestorResolver.resolveAllConfigured(context.providerLookup, context.insertMode);
+        if (DISABLED.contains(this.name)) {
+            return null;   // the child's foreign key is left null on purpose
         }
+        if (this.resolvedRecord != null) {
+            return this.resolvedRecord;
+        }
+        if (manualResolution) {
+            return this.resolveUnderManualMode(context);
+        }
+        XFTY_SharedAncestorResolver.resolveAllConfigured(context.providerLookup, context.insertMode);
         if (this.resolvedRecord == null) {
             // Registered after the pre-phase ran (a later supply*() call) - resolve it alone.
             this.resolveNow(context.providerLookup, context.insertMode);
         }
         return this.resolvedRecord;
+    }
+
+    private SObject resolveUnderManualMode(XFTY_GenerationContext context) {
+        if (this.source().isLightweight(context.providerLookup)) {
+            this.resolveNow(context.providerLookup, context.insertMode);
+            return this.resolvedRecord;
+        }
+        throw new XFTY_DummySObjectFtyProviderException(
+                'Shared ancestor "' + this.name + '" has a sub-graph of its own and auto-resolution is off '
+                        + '(manualResolutionOnly). Resolve it up front: XFTY_SharedAncestor.get("' + this.name
+                        + '").resolveNow(lookup, mode), or XFTY_SharedAncestor.resolveNow(lookup, mode, names).'
+        );
     }
 
     /**

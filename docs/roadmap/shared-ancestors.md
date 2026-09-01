@@ -46,12 +46,18 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 - The main build wires the pre-resolved record; shared ancestors now work with
   `.depthBatched()` / `DEFERRED` on the referencing call (previously refused).
 
-**Not yet:** one S2 pass across *all* shared ancestors at once (currently per
-sub-graph); resolving only the ancestors **reachable from the call** rather than
-every configured one (a Master-Template-graph walk — `putIfAbsent` is the interim
-answer); load-test data + documented limits + off-switches for the depth-batch
-cost (decision 3); the deep-record-type-hierarchy acceptance test's
-`test-support` metadata.
+**Developer control (done):** `disable(name)` (never resolve; FK left null),
+`manualResolutionOnly()` (pre-phase off; lightweight ancestors lazy-resolve,
+heavy ones the test resolves up front — the light-vs-heavy split is the old
+"on-demand vs declared" distinction, auto-detected from the Master Template),
+`resolveNow(lookup, mode, names)` (batch). The reachability walk was **rejected**
+(Brian): it re-walks per `supply*()` call and would build independent ancestors
+separately anyway — the manual knob is the answer for heavy loads.
+
+**Known limit (documented, not fixed):** one S2 pass across *all* shared
+ancestors at once - resolution depth-batches per sub-graph, so several
+*independent* heavy shared ancestors cost a few extra `insert`s. Converging
+chains are already one pass.
 
 ---
 
@@ -523,13 +529,14 @@ So a shared ancestor is always generated fresh within the test that needs it -
    `require(...)`. The "undeclared → throw" error is gone (there is nothing to
    declare). `resolveNow(lookup, mode)` is the pre-`supply` `getId` entry point.
 3. ~~Phases S0-S2, triggered from the first `supply*()`~~ — **done**
-   (`XFTY_SharedAncestorResolver`, via `XFTY_SharedAncestorResolver.resolveAllConfigured`). S2 is
-   one depth-batched pass per ancestor sub-graph, not one across the whole set;
-   resolving only the *reachable* ancestors (not every configured one) is still
-   open.
+   (`XFTY_SharedAncestorResolver`). S2 is one depth-batched pass per ancestor
+   sub-graph, not one across the whole set — **documented as a known limit**
+   (converging chains are already one pass). Resolving only the *reachable*
+   ancestors was **rejected** (see "Developer control" above).
 4. ~~Nested ancestors; depth-warning + cycle detection (incl. the re-entrant
-   boundary)~~ — **done**. Load tests + documented limits + off-switches
-   (decision 3) — **not done**.
+   boundary)~~ — **done**. ~~Off-switches (decision 3)~~ — **done**
+   (`disable(name)` / `manualResolutionOnly()` / batch `resolveNow`). Load tests
+   + documented volume limits — still to do.
 5. ~~`put(name, record)` / `putIfAbsent(name, ...)`~~ — **done**. Docs — **done**
    ([use/shared-ancestors.md](../use/shared-ancestors.md),
    `XFTY_SharedAncestorTest` + `XFTY_SharedAncestorHierarchyTest`).

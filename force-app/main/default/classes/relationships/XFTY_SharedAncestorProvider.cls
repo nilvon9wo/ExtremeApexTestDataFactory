@@ -171,6 +171,29 @@ public class XFTY_SharedAncestorProvider {
         return template;
     }
 
+    /**
+     * True when the shared record is a single row with no sub-graph of its own -
+     * no relationships on its merged Master Template, no forced paths, no
+     * relationship-kind path value. Such a record is cheap enough to resolve
+     * on-demand; a "heavy" one needs `resolveNow(...)` up front under
+     * {@link XFTY_SharedAncestor#manualResolutionOnly}.
+     */
+    public Boolean isLightweight(XFTY_DummySObjectProviderLookupIntf lookup) {
+        if (!this.requiredRelationships.isEmpty()
+                || !this.optionalRelationships.isEmpty()
+                || !this.forcedRelationshipPaths.isEmpty()) {
+            return false;
+        }
+        for (XFTY_PathValue pathValue : this.pathValues) {
+            if (pathValue.isRelationshipKind()) {
+                return false;
+            }
+        }
+        XFTY_DummySObjectMasterTemplate base = this.baseProvider(lookup).getMasterTemplate();
+        return base.requiredRelationshipBySObjectFieldMap.isEmpty()
+                && base.optionalRelationshipBySObjectFieldMap.isEmpty();
+    }
+
     /** The lookup key this ancestor resolves under. */
     public XFTY_LookupKeyIntf lookupKey(XFTY_DummySObjectProviderLookupIntf lookup) {
         if (this.resolvedKey == null) {

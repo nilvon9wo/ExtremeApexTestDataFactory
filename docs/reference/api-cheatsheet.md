@@ -85,7 +85,8 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_SharedAncestor.put(name, key)` · `.fromVariant(key)` · `.copyingRelatedField(field)` | pin the variant / chain a variant onto a template / copy a field instead of the Id |
 | `.put(field, expr)` · `.putRequired(field, rel)` · `.includeOptional(...)` · `.put(path, …)` · `.setInclusivity(…)` chained onto `put(name, …)` | shape the shared record's own generation — the same per-record API a generated parent takes |
 | `XFTY_SharedAncestor.putIfAbsent(name, record \| key)` | register only if `name` is not registered yet this test |
-| `XFTY_SharedAncestor.getId(name)` · `.get(name).resolveNow(lookup, mode)` | read the Id / resolve (and fix the mode) before any `supply*()` call |
+| `XFTY_SharedAncestor.getId(name)` · `.get(name).resolveNow(lookup, mode)` · `.resolveNow(lookup, mode, names)` | read the Id / resolve one (+ chain) / resolve a named set, before any `supply*()` |
+| `XFTY_SharedAncestor.disable(name)` · `.manualResolutionOnly()` | never resolve this one (FK left null) / turn off the pre-phase (lightweight ones still lazy-resolve, heavy ones you resolve up front) |
 | implement `XFTY_SharedAncestorDefaultsIntf` on a lookup (`registerSharedAncestorDefaults()`) | ship a shared ancestor's default so consuming tests need not register it — or `XFTY_ProviderLookups.of(providerMap, Map<String,SObject> defaults)` |
 
 ---
