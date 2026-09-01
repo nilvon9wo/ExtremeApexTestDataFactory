@@ -10,6 +10,10 @@ relationship that `record.put(...)` rejects — via a `JSON.serialize` /
 It is one opt-in method on the finished bundle. None of it is core, and the
 serialization cost is the reason it may stay proposed.
 
+Everything below is a design sketch. What is actually feasible — and which parts
+of the surface ship first — gets worked out on a dedicated branch, not in
+`xfty-4.0-beta`.
+
 ---
 
 ## The shape: one method on the bundle
@@ -149,8 +153,8 @@ The child-relationship *name* for a subquery comes from the parent side — walk
 
 - The exact `injectAll…` signatures (depth arg? path arg?) and the full
   convenience set.
-- Whether the string relationship-name overload ships from the start or only if
-  the token-to-`__r` resolution proves too lossy.
+- Whether the token-to-`__r` resolution is lossy enough to need the string
+  relationship-name overload at all. (Decided on the build branch.)
 - Does the "children of a generated ancestor" inverse deserve a public bundle
   accessor, independent of this feature?
 - Is this common enough to justify the surface, or do most consumers navigate

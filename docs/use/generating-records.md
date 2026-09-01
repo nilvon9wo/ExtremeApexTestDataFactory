@@ -84,6 +84,29 @@ They are exactly equivalent to the `(SObjectType, lookup)` constructor followed
 by `setOverrideTemplate(...)` / `setOverrideTemplateList(...)` /
 `withVariant(...)`. Lookup keys and variants: [provider-variants](provider-variants.md).
 
+---
+
+## Going further
+
+This page is only the "how many, from what template" part. The rest of what a
+Provider call can do, each on its own page:
+
+| You want to… | Page |
+|---|---|
+| control the field values (strategies, overrides, precedence) | [value-strategies](value-strategies.md), [override-templates](override-templates.md) |
+| derive a value from a sibling, an ancestor, or a child | [context-aware-values](context-aware-values.md) |
+| generate the **parent** records a record needs (and how deep) | [relationships](relationships.md) |
+| force or exclude a specific relationship for this one call | [per-call-relationships](per-call-relationships.md) |
+| generate **child** records hanging below the primaries | [child-records](child-records.md) |
+| share **one** parent across many generated records | [shared-ancestors](shared-ancestors.md) |
+| pick a record-type or other Provider variant | [provider-variants](provider-variants.md) |
+| choose whether/when records are inserted (`MOCK` / `NOW` / …) | [insert-modes](insert-modes.md) |
+| build a graph across several calls and insert it once | [deferred-insert](deferred-insert.md) |
+| read every generated record back without SOQL | [bundles](bundles.md) |
+| a test-context `User` (admin, or by profile / role) | [test-user-helpers](test-user-helpers.md) |
+
+Combinations of these are worked in [advanced/](advanced/).
+
 ▶ Runnable: `XFTY_Ex_GeneratingRecordsTest`
 
 See also: [override-templates](override-templates.md) · [insert-modes](insert-modes.md) · [bundles](bundles.md)
