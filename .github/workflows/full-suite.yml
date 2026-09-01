@@ -1,0 +1,67 @@
+name: Full suite
+
+# The slow / org-shaped checks that CI does not run on every push:
+#   - XFTY_Load  - deliberately pushes generation toward the governor limits;
+#     flaky on a slow scratch org, so it is informational here.
+#   - XFTY_PersonAccount - needs the PersonAccounts feature, which the CI org
+#     does not have.
+# Runs against a fresh scratch org twice a day, and on demand.
+
+on:
+  schedule:
+    - cron: "17 3,15 * * *"   # 03:17 and 15:17 UTC
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or SHA to test
+        default: 4.0-beta
+
+concurrency:
+  group: scratch-org
+  cancel-in-progress: false
+
+jobs:
+  full:
+    name: Scratch org - every suite
+    runs-on: ubuntu-latest
+    env:
+      DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `schedule` runs against the default branch; pin it to the beta line
+          # until 4.0 ships and master becomes the release.
+          ref: ${{ github.event.inputs.ref || '4.0-beta' }}
+
+      - name: Install the Salesforce CLI
+        run: npm install --global @salesforce/cli@latest
+
+      - name: Authenticate the Dev Hub
+        run: |
+          if [ -z "$DEVHUB_SFDX_AUTH_URL" ]; then
+            echo "::error::The DEVHUB_SFDX_AUTH_URL repository secret is not set. See docs/contribute/ci.md."
+            exit 1
+          fi
+          printf '%s' "$DEVHUB_SFDX_AUTH_URL" > ./devhub-auth.txt
+          sf org login sfdx-url --sfdx-url-file ./devhub-auth.txt --set-default-dev-hub --alias devhub
+          rm -f ./devhub-auth.txt
+
+      - name: Create a scratch org
+        run: sf org create scratch --definition-file config/project-scratch-def.json --alias ci --set-default --duration-days 1 --wait 10
+
+      - name: Deploy the source
+        run: sf project deploy start --wait 20
+
+      - name: Every deterministic suite (must pass)
+        run: >
+          sf apex run test
+          --suite-names XFTY_Unit,XFTY_Integration,XFTY_Examples,XFTY_OrgOnly,XFTY_PersonAccount
+          --code-coverage --result-format human --wait 20
+
+      - name: Volume suite (informational - flaky on a slow scratch org)
+        continue-on-error: true
+        run: sf apex run test --suite-names XFTY_Load --result-format human --wait 20
+
+      - name: Delete the scratch org
+        if: always()
+        run: sf org delete scratch --target-org ci --no-prompt || true

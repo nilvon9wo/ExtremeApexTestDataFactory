@@ -6,12 +6,6 @@ on:
   pull_request:
     branches: [master, 4.0-beta]
 
-# Serialise scratch org creation so parallel runs don't exhaust the Dev Hub's
-# active scratch org allocation.
-concurrency:
-  group: scratch-org-${{ github.workflow }}
-  cancel-in-progress: false
-
 jobs:
   doc-examples:
     name: Doc examples
@@ -45,43 +39,39 @@ jobs:
           echo "comparing against $BASE"
           python3 scripts/check-apex-style.py --changed "$BASE"
 
-  apex-tests:
-    name: Deploy and run Apex tests
+  validate:
+    name: Validate + run tests (check-only)
     runs-on: ubuntu-latest
     env:
-      DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+      CI_ORG_AUTH_URL: ${{ secrets.CI_ORG_AUTH_URL }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install the Salesforce CLI
         run: npm install --global @salesforce/cli@latest
 
-      - name: Authenticate the Dev Hub
+      - name: Authenticate the CI org
         run: |
-          if [ -z "$DEVHUB_SFDX_AUTH_URL" ]; then
-            echo "::error::The DEVHUB_SFDX_AUTH_URL repository secret is not set. See docs/contribute/ci.md."
+          if [ -z "$CI_ORG_AUTH_URL" ]; then
+            echo "::error::The CI_ORG_AUTH_URL repository secret is not set. See docs/contribute/ci.md."
             exit 1
           fi
-          printf '%s' "$DEVHUB_SFDX_AUTH_URL" > ./devhub-auth.txt
-          sf org login sfdx-url --sfdx-url-file ./devhub-auth.txt --set-default-dev-hub --alias devhub
-          rm -f ./devhub-auth.txt
+          printf '%s' "$CI_ORG_AUTH_URL" > ./ci-auth.txt
+          sf org login sfdx-url --sfdx-url-file ./ci-auth.txt --alias ci --set-default
+          rm -f ./ci-auth.txt
 
-      - name: Create a scratch org
-        run: sf org create scratch --definition-file config/project-scratch-def.json --alias ci --set-default --duration-days 1 --wait 10
-
-      - name: Deploy the source
-        run: sf project deploy start --wait 20
-
-      # Everything except XFTY_Load - the volume suite deliberately pushes
-      # generation toward the governor limits, and a shared CI runner does not
-      # have the CPU headroom for it. Run it by hand when the engine changes
-      # (docs/contribute/test-suites.md).
-      - name: Run the Apex test suites
-        run: >
-          sf apex run test
-          --suite-names XFTY_Unit,XFTY_Integration,XFTY_Examples,XFTY_OrgOnly,XFTY_PersonAccount
-          --code-coverage --result-format human --wait 20
-
-      - name: Delete the scratch org
-        if: always()
-        run: sf org delete scratch --target-org ci --no-prompt || true
+      # `--dry-run` compiles the source and runs the named tests in a validation
+      # transaction, then rolls everything back - the org is never modified, so
+      # no scratch org, no Dev Hub, no drift, no quota. The Person Account
+      # classes are dropped from the manifest (they do not compile without the
+      # feature, which this org lacks); XFTY_PersonAccount and XFTY_Load run in
+      # the scheduled full-suite workflow instead.
+      - name: Check-only deploy + fast suites
+        run: |
+          sf project generate manifest --source-dir force-app --source-dir test-support --name /tmp/package.xml
+          grep -v 'XFTY_PersonAccount' /tmp/package.xml > /tmp/package-ci.xml
+          TESTS=$(bash scripts/list-suite-classes.sh XFTY_Unit XFTY_Integration XFTY_Examples XFTY_OrgOnly)
+          echo "running:"; echo "$TESTS" | tr ',' '\n'
+          sf project deploy start --dry-run --manifest /tmp/package-ci.xml \
+            --test-level RunSpecifiedTests --tests "$TESTS" \
+            --coverage-formatters text --wait 30
