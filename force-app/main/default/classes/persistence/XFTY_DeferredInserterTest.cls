@@ -122,7 +122,7 @@ private class XFTY_DeferredInserterTest {
 
     @IsTest
     static void deferredResolvesASharedAncestorUpFront() {
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             Contact result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)

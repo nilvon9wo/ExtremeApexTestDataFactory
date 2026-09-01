@@ -653,7 +653,7 @@ public class XFTY_DummySObjectProvider {
 
     private static void rejectForSharedAncestor(Boolean offending, String fix) {
         if (offending) {
-            throw new SanityException('suppliedBy(...): a shared ancestor is one record - ' + fix + '.');
+            throw new SanityException('put(name, provider): a shared ancestor is one record - ' + fix + '.');
         }
     }
 

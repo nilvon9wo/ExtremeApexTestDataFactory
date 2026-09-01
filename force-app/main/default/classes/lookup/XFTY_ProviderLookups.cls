@@ -114,12 +114,25 @@ public class XFTY_ProviderLookups {
     public static XFTY_DummySObjectProviderLookupIntf of(
             Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providerByKey
     ) {
-        return new MapBackedLookup(null, providerByKey);
+        return new MapBackedLookup(null, providerByKey, null);
+    }
+
+    /**
+     * As {@link #of(Map)}, plus the shared-ancestor defaults the Providers rely
+     * on - each registered with `putIfAbsent` before a `supply*()` call resolves
+     * shared ancestors, so a test that references one need not register it (and
+     * a test that wants a different record still can, first).
+     */
+    public static XFTY_DummySObjectProviderLookupIntf of(
+            Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providerByKey,
+            Map<String, SObject> sharedAncestorDefaults
+    ) {
+        return new MapBackedLookup(null, providerByKey, sharedAncestorDefaults);
     }
 
     /** A lookup over a complete map of Provider classes (instantiated lazily). */
     public static XFTY_DummySObjectProviderLookupIntf ofTypes(Map<XFTY_LookupKeyIntf, Type> providerTypeByKey) {
-        return new MapBackedLookup(providerTypeByKey, null);
+        return new MapBackedLookup(providerTypeByKey, null, null);
     }
 
     // ---------------------------------------------------------------------
@@ -136,18 +149,30 @@ public class XFTY_ProviderLookups {
         );
     }
 
-    private class MapBackedLookup implements XFTY_DummySObjectProviderLookupIntf {
+    private class MapBackedLookup implements XFTY_DummySObjectProviderLookupIntf, XFTY_SharedAncestorDefaultsIntf {
         private final Map<XFTY_LookupKeyIntf, Type> providerTypeByKey;
         private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providerByKey;
+        private final Map<String, SObject> sharedAncestorDefaults;
         private final Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> instanceCache
                 = new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>();
 
         private MapBackedLookup(
                 Map<XFTY_LookupKeyIntf, Type> providerTypeByKey,
-                Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providerByKey
+                Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> providerByKey,
+                Map<String, SObject> sharedAncestorDefaults
         ) {
             this.providerTypeByKey = providerTypeByKey;
             this.providerByKey = providerByKey;
+            this.sharedAncestorDefaults = sharedAncestorDefaults;
+        }
+
+        public void registerSharedAncestorDefaults() {
+            if (this.sharedAncestorDefaults == null) {
+                return;
+            }
+            for (String name : this.sharedAncestorDefaults.keySet()) {
+                XFTY_SharedAncestor.putIfAbsent(name, this.sharedAncestorDefaults.get(name));
+            }
         }
 
         public XFTY_DummySobjectProviderIntf get(SObjectType sObjectType) {

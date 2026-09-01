@@ -5,8 +5,8 @@ Status: **implemented, one API, resolution auto-detected** (v4). Usage in
 
 > **Update (v4):** the "declared vs on-demand" split below was a real design
 > stage, but the shipped API has **no `declared()` / `require()` / `context()`**.
-> A test configures a shared ancestor with `get(name).of(...)` (or
-> `getOrElse(name, ...)`) and references it. Before a Provider generates, every
+> A test configures a shared ancestor with `put(name, ...)` (or
+> `putIfAbsent(name, ...)`) and references it. Before a Provider generates, every
 > shared ancestor configured this test method is resolved in one pre-phase
 > (`XFTY_SharedAncestorResolver.resolveAllConfigured`), each honouring the
 > call's insert mode. XFTY inspects each one's Provider's Master Template: **no
@@ -19,13 +19,13 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 
 - `XFTY_SharedAncestor.get(name)` - flyweight, interned by name, static state so it
   resets between test methods (decision 5).
-- `.of(template)` / `.withKey(key)` (combinable) / `.copyingRelatedField(field)`
-  configuration; reconfiguring after resolution throws. `getOrElse(name,
+- `putAsTemplate(name, t)` / `put(name, key)` / `.fromVariant(key)` / `.copyingRelatedField(field)`
+  configuration; reconfiguring after resolution throws. `putIfAbsent(name,
   template|lookupKey)` configures only if unconfigured (for a shared setup helper
-  / superset config). `.suppliedBy(XFTY_DummySObjectProvider)` for the full case:
+  / superset config). `put(name, provider)` for the full case:
   the whole generation API (value strategies, the shared record's own ancestors,
   variant, child collections) describes the one shared record — resolver runs it
-  `buildStructurally()` then depth-batches. Mutually exclusive with `of`/`withKey`.
+  `buildStructurally()` then depth-batches. Not combined with the template/key forms.
 - Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`
   so it drops into `putRequired` / `putOptional`. The factory branches on the
   interface: one record resolved (generated once, or supplied via `put(...)`),
@@ -47,7 +47,7 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
 
 **Not yet:** one S2 pass across *all* shared ancestors at once (currently per
 sub-graph); resolving only the ancestors **reachable from the call** rather than
-every configured one (a Master-Template-graph walk — `getOrElse` is the interim
+every configured one (a Master-Template-graph walk — `putIfAbsent` is the interim
 answer); load-test data + documented limits + off-switches for the depth-batch
 cost (decision 3); the deep-record-type-hierarchy acceptance test's
 `test-support` metadata.
@@ -76,8 +76,8 @@ Consumption:
 
 ```apex
 // somewhere central
-XFTY_SharedAncestor.get('acme-hq').of(new Account(Name = 'ACME HQ'));
-XFTY_SharedAncestor.get('john').of(new Contact(LastName = 'Doe'));
+XFTY_SharedAncestor.put('acme-hq', new Account(Name = 'ACME HQ'));
+XFTY_SharedAncestor.put('john', new Contact(LastName = 'Doe'));
 
 // any Master Template, any field
 .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('acme-hq'))
@@ -106,7 +106,7 @@ Each `XFTY_SharedAncestor` holds:
 - `relatedField` (nullable, as for `XFTY_DummyDefaultRelationship`)
 - once resolved: the generated record (and, if useful, its sub-bundle)
 
-`of(...)` / `withKey(...)` configure it. Because it is interned, configuration
+`put(name, ...)` registers it. Because it is interned, configuration
 should happen **once**; changing the template on an already-*resolved* ancestor
 is a programming error and should throw. Re-configuring a not-yet-resolved
 ancestor is allowed but logs a `System.debug(WARN)` (see `put(...)` below).
@@ -321,8 +321,8 @@ deep-level record:
 
 ```apex
 // configure the shared part of the chain (once, centrally)
-XFTY_SharedAncestor.get('root').of(new MyHierarchyObj__c())
-    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
+    .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 
 MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
         XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level9_Branch'),
@@ -348,9 +348,8 @@ reused everywhere:
 
 ```apex
 // test-support, one place
-XFTY_SharedAncestor.get('root')
-        .of(new MyHierarchyObj__c())
-        .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
+        .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 
 // the Level1 Provider's Master Template
 .putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'))
@@ -530,9 +529,14 @@ So a shared ancestor is always generated fresh within the test that needs it -
 4. ~~Nested ancestors; depth-warning + cycle detection (incl. the re-entrant
    boundary)~~ — **done**. Load tests + documented limits + off-switches
    (decision 3) — **not done**.
-5. ~~`put(name, record)` / `getOrElse(name, ...)`~~ — **done**. Docs — **done**
+5. ~~`put(name, record)` / `putIfAbsent(name, ...)`~~ — **done**. Docs — **done**
    ([use/shared-ancestors.md](../use/shared-ancestors.md),
    `XFTY_SharedAncestorTest` + `XFTY_SharedAncestorHierarchyTest`).
+6. ~~Packaged defaults so a shipped Provider's shared ancestors work without the
+   test registering them~~ — **done**. `XFTY_SharedAncestorDefaultsIntf` on the
+   lookup (or `XFTY_ProviderLookups.of(providerMap, defaults)`);
+   `XFTY_SharedAncestorResolver.applyLookupDefaults` calls it before resolution,
+   `putIfAbsent` so a test still overrides.
    The deep-record-type-hierarchy worked example needs `test-support` metadata
    (custom SObject + ≥10 record types + singleton trigger) — **not created**; the
    mechanics are covered by `XFTY_SharedAncestorHierarchyTest` on

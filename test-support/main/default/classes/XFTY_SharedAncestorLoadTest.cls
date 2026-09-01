@@ -16,7 +16,7 @@ private class XFTY_SharedAncestorLoadTest {
     @IsTest
     static void fiveHundredChildrenUnderOneSharedAncestorCostOneParentInsert() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         Usage used;
@@ -37,10 +37,10 @@ private class XFTY_SharedAncestorLoadTest {
     @IsTest
     static void aDeepSharedChainStaysStatementFrugal() {
         // Arrange - Contact -> shared level1 -> shared root, four leaves
-        XFTY_SharedAncestor.get('root').of(new Account(Name = 'Root'))
-                .withKey(XFTY_LookupKey.get(Account.SObjectType));
-        XFTY_SharedAncestor.get('level1').of(new Account(Name = 'Level 1'))
-                .withKey(LEVEL1_KEY);
+        XFTY_SharedAncestor.put('root', new Account(Name = 'Root'))
+                .fromVariant(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.put('level1', new Account(Name = 'Level 1'))
+                .fromVariant(LEVEL1_KEY);
 
         // Act
         Usage used;
@@ -60,7 +60,7 @@ private class XFTY_SharedAncestorLoadTest {
     @IsTest
     static void oneSharedAncestorAcrossManySupplyCallsResolvesOnce() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act - three separate supply calls
         System.runAs(TEST_ADMIN) {

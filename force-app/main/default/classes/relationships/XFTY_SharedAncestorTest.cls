@@ -1,7 +1,8 @@
 /**
  * Coverage for `XFTY_SharedAncestor` - one generated record shared by every
- * child, `put(...)` / `getId(...)` / `getOrElse(...)`, the configuration guards,
- * `withKey` / `copyingRelatedField`, and cycle detection. Deep chains and the
+ * child, `put(...)` / `putAsTemplate` / `putAsValue` / `putIfAbsent` / `getId(...)`,
+ * the configuration guards, `fromVariant` / `copyingRelatedField`, and cycle
+ * detection. Deep chains and the
  * batched pre-phase are in `XFTY_SharedAncestorHierarchyTest`.
  *
  * See docs/use/shared-ancestors.md.
@@ -15,7 +16,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void manyChildrenShareOneGeneratedParent() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         XFTY_DummySObjectBundle bundle;
@@ -45,7 +46,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void nowModeInsertsTheSharedParentOnce() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         System.runAs(TEST_ADMIN) {
@@ -69,7 +70,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void theSharedRecordAppearsInBothTheListAndTheSubBundle() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         XFTY_DummySObjectBundle bundle;
@@ -93,7 +94,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void referencingAMockResolvedSharedAncestorFromANowCallThrows() {
         // Arrange - resolve 'hq' in MOCK mode first, so it has a mock (not real) Id
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
@@ -177,7 +178,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void theSameSharedAncestorIsReusedAcrossSeparateSupplyCalls() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act - two independent supply calls
         Contact fromFirstCall;
@@ -197,7 +198,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void getIdReturnsTheResolvedRecordsId() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         Contact result;
@@ -214,7 +215,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void getIdBeforeResolutionThrows() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'x'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'x'));
 
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
@@ -251,8 +252,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void copyingRelatedFieldCopiesThatFieldInsteadOfTheId() {
         // Arrange
-        XFTY_SharedAncestor.get('hq')
-                .of(new Account(Name = 'Named HQ'))
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Named HQ'))
                 .copyingRelatedField(Account.Name);
 
         // Act
@@ -273,11 +273,10 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void withKeyPinsTheProviderVariant() {
+    static void fromVariantPinsTheProviderVariant() {
         // Arrange
-        XFTY_SharedAncestor.get('acct')
-                .of(new Account())
-                .withKey(XFTY_LookupKey.get(Account.SObjectType));
+        XFTY_SharedAncestor.put('acct', new Account())
+                .fromVariant(XFTY_LookupKey.get(Account.SObjectType));
 
         // Act
         Contact result;
@@ -301,8 +300,7 @@ private class XFTY_SharedAncestorTest {
         // nothing to arrange - configuration is the act
 
         // Act
-        XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.get('hq')
-                .of(new Account(Name = 'Configured'))
+        XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.put('hq', new Account(Name = 'Configured'))
                 .copyingRelatedField(Account.Name);
 
         // Assert
@@ -332,16 +330,16 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void anUnconfiguredSharedAncestorThrowsWhenGenerated() {
+    static void anUnregisteredSharedAncestorThrowsWhenGenerated() {
         // Arrange
-        // nothing to arrange - 'never-configured' is referenced but never given a template
+        // nothing to arrange - 'never-registered' is referenced but never given a template
 
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
         System.runAs(TEST_ADMIN) {
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('never-configured'))
+                        .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('never-registered'))
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.MOCK)
                         .supply();
@@ -351,14 +349,14 @@ private class XFTY_SharedAncestorTest {
         }
 
         // Assert
-        Assert.isNotNull(thrown, 'an unconfigured shared ancestor must throw when generation reaches it');
-        Assert.isTrue(thrown.getMessage().contains('never configured'), thrown.getMessage());
+        Assert.isNotNull(thrown, 'an unregistered shared ancestor must throw when generation reaches it');
+        Assert.isTrue(thrown.getMessage().contains('never registered'), thrown.getMessage());
     }
 
     @IsTest
     static void depthBatchedResolvesTheSharedAncestorUpFront() {
         // Arrange
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
         // Act
         Contact result;
@@ -381,7 +379,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void reconfiguringAResolvedSharedAncestorThrows() {
         // Arrange - resolve 'hq', then try to reconfigure it
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'First'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'First'));
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             supplyOneContactUnderHq();
@@ -391,7 +389,7 @@ private class XFTY_SharedAncestorTest {
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
         try {
-            XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Second'));
+            XFTY_SharedAncestor.put('hq', new Account(Name = 'Second'));
         } catch (XFTY_DummySObjectFtyProviderException ex) {
             thrown = ex;
         }
@@ -404,7 +402,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void aSelfReferentialSharedAncestorThrowsInsteadOfRecursing() {
         // Arrange - the 'loop' Account's own ParentId is the 'loop' shared ancestor
-        XFTY_SharedAncestor.get('loop').of(new Account(Name = 'Loop'));
+        XFTY_SharedAncestor.put('loop', new Account(Name = 'Loop'));
         XFTY_DummySObjectProviderLookupIntf loopy = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
                         XFTY_LookupKey.get(Account.SObjectType) => new SelfReferencingAccountProvider(),
@@ -437,9 +435,9 @@ private class XFTY_SharedAncestorTest {
         XFTY_LookupKeyIntf tomKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'tom');
         XFTY_LookupKeyIntf dickKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'dick');
         XFTY_LookupKeyIntf harryKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'harry');
-        XFTY_SharedAncestor.get('tom').of(new Account(Name = 'Tom')).withKey(tomKey);
-        XFTY_SharedAncestor.get('dick').of(new Account(Name = 'Dick')).withKey(dickKey);
-        XFTY_SharedAncestor.get('harry').of(new Account(Name = 'Harry')).withKey(harryKey);
+        XFTY_SharedAncestor.put('tom', new Account(Name = 'Tom')).fromVariant(tomKey);
+        XFTY_SharedAncestor.put('dick', new Account(Name = 'Dick')).fromVariant(dickKey);
+        XFTY_SharedAncestor.put('harry', new Account(Name = 'Harry')).fromVariant(harryKey);
         XFTY_DummySObjectProviderLookupIntf ring = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
                         tomKey => new ParentedAccountProvider('dick'),
@@ -471,7 +469,7 @@ private class XFTY_SharedAncestorTest {
     @IsTest
     static void putOverAResolvedDifferentRecordWarnsButSucceeds() {
         // Arrange - resolve 'hq', then put a different record over it
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Generated'));
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Generated'));
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             supplyOneContactUnderHq();

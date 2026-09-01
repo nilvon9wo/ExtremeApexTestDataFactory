@@ -8,8 +8,9 @@ whole hierarchy converging on one root — use `XFTY_SharedAncestor`.
 
 ## One API — resolution is automatic
 
-There is nothing to declare, register, or opt into. You configure a shared
-ancestor once and reference it; XFTY works out how to resolve it.
+There is nothing to declare or opt into. A shared ancestor is registered once —
+by the [lookup that ships the Providers](#packaged-defaults) for the common case,
+or by the test — and referenced anywhere; XFTY works out how to resolve it.
 
 Before a Provider generates anything, every shared ancestor configured in the
 current test method is resolved in one place, each honouring the call's insert
@@ -28,8 +29,8 @@ per test method.
 ## The simplest case
 
 ```apex
-// configure once, somewhere central (a *LookupKeys-style constants class is ideal)
-XFTY_SharedAncestor.get('acme-hq').of(new Account(Name = 'ACME HQ'));
+// register once - centrally for shipped Providers (see "Packaged defaults"), or in the test
+XFTY_SharedAncestor.put('acme-hq', new Account(Name = 'ACME HQ'));
 
 // reference it from any Master Template, any field, required or optional
 new XFTY_DummySObjectMasterTemplate(Contact.Id)
@@ -65,10 +66,10 @@ Nothing extra to do — configure the rungs and reference the leaf:
 
 ```apex
 // once, centrally
-XFTY_SharedAncestor.get('root').of(new MyHierarchyObj__c())
-    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
-XFTY_SharedAncestor.get('level1').of(new MyHierarchyObj__c())
-    .withKey(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level1'));
+XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
+    .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
+XFTY_SharedAncestor.put('level1', new MyHierarchyObj__c())
+    .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Level1'));
 // level1's Provider does putRequired(MyHierarchyObj__c.Parent__c, XFTY_SharedAncestor.get('root'))
 ```
 
@@ -94,29 +95,34 @@ MyHierarchyObj__c leaf = (MyHierarchyObj__c) new XFTY_DummySObjectProvider(
 
 ---
 
-## Configuring
+## Registering
+
+`put(name, ...)` registers; `get(name)` only retrieves (the token to hand to
+`putRequired` / `putOptional`, and the handle for `resolveNow` / `getId`).
 
 | Call | Effect |
 |------|--------|
-| `XFTY_SharedAncestor.get(name)` | the interned shared ancestor for `name` (use in `putRequired` / `putOptional`) |
-| `.of(SObject template)` | the override template for the shared record (also sets its type) — needed before generation unless `.withKey(...)` is used |
-| `.withKey(XFTY_LookupKeyIntf key)` | pin which Provider variant generates it (see [provider-variants](provider-variants.md)) |
-| `.of(...)` **and** `.withKey(...)` together | fine — the key picks the Provider, the template is its override |
-| `.suppliedBy(XFTY_DummySObjectProvider provider)` | build the shared record from a fully-configured Provider — see below. Mutually exclusive with `.of(...)` / `.withKey(...)`. |
+| `XFTY_SharedAncestor.get(name)` | the interned shared ancestor for `name` — retrieval only |
+| `XFTY_SharedAncestor.put(name, SObject record)` | register `record`. **Id present** → a fixed value; **no Id** → an override template. Logs which; use the explicit forms to be sure |
+| `XFTY_SharedAncestor.putAsTemplate(name, SObject template)` | always an override template (generated in the pre-phase; also sets the type) |
+| `XFTY_SharedAncestor.putAsValue(name, SObject record)` | always used as-is |
+| `XFTY_SharedAncestor.put(name, XFTY_LookupKeyIntf key)` | register just the Provider variant that generates it ([provider-variants](provider-variants.md)) |
+| `.fromVariant(XFTY_LookupKeyIntf key)` | chained off `putAsTemplate` / `put(name, record)` — pin the variant *and* keep the template |
+| `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider provider)` | build it from a fully-configured Provider — see below. Not combined with the template / key forms |
 | `.copyingRelatedField(SObjectField f)` | copy `f` from the shared record into the child's field instead of its Id |
-| `XFTY_SharedAncestor.getOrElse(name, template)` | `get(name)`, applying `template` only if it has not been configured yet this test — for a shared setup helper that may run more than once, or configures more ancestors than one test uses |
-| `XFTY_SharedAncestor.getOrElse(name, lookupKey)` | as above, pinning the Provider variant instead of a template |
+| `XFTY_SharedAncestor.putIfAbsent(name, template)` | `putAsTemplate`, only if `name` is not registered yet this test — for a shared setup helper that may run more than once, or that registers more ancestors than one test uses |
+| `XFTY_SharedAncestor.putIfAbsent(name, lookupKey)` | as above, pinning the Provider variant instead of a template |
 
-Reconfiguring a shared ancestor after it has resolved throws.
+Re-registering a shared ancestor after it has resolved throws.
 
-### `suppliedBy` — the whole generation API for one shared record
+### `put(name, provider)` — the whole generation API for one shared record
 
-When `.of(...)` / `.withKey(...)` are not enough — you need value strategies on
-the shared record, or want to shape *its* own ancestors — hand `suppliedBy(...)`
-a fully-configured `XFTY_DummySObjectProvider`:
+When a template / key is not enough — you need value strategies on the shared
+record, or want to shape *its* own ancestors — hand `put(name, provider)` a
+fully-configured `XFTY_DummySObjectProvider`:
 
 ```apex
-XFTY_SharedAncestor.get('hq').suppliedBy(
+XFTY_SharedAncestor.put('hq', 
     new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
         .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
         .withVariant(enterpriseKey)
@@ -141,17 +147,57 @@ multi-element `setOverrideTemplateList([...])`, `setInsertMode(...)` (persistenc
 follows the referencing call), `.depthBatched()` (the resolver already
 depth-batches), and child collections (`with(...)` / `withChildren(...)`).
 
-`suppliedBy` and `of` / `withKey` cannot both be set — the Provider already says
-everything they would.
+`put(name, provider)` and the template / key forms cannot both be set — the
+Provider already says everything they would.
 
-**The shared record's own field values go on `.of(...)`** — it is one record for
-every child, so there is no per-call place to set them. A
+**The shared record's own field values go on the template / provider** — it is
+one record for every child, so there is no per-call place to set them. A
 `put(new List<SObjectField>{ theSharedRelationshipField, deeperField }, value)`
 that would *set a value on* a shared ancestor
 ([per-call ancestor values](per-call-relationships.md)) **throws**. Wiring a
 shared ancestor **in** as a relationship value —
 `putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))` —
 is fine.
+
+---
+
+## Packaged defaults
+
+A Provider you ship should work without every consuming test knowing its shared
+ancestors' names. Put the defaults on the **lookup** — the package boundary a
+consumer already depends on.
+
+The quick form: pass them alongside the Provider map.
+
+```apex
+XFTY_ProviderLookups.of(
+    new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+        XFTY_LookupKey.get(Account.SObjectType) => new MyAccountProvider(),
+        XFTY_LookupKey.get(Contact.SObjectType) => new MyContactProvider()   // references get('acme-hq')
+    },
+    new Map<String, SObject>{ 'acme-hq' => new Account(Name = 'ACME HQ') }
+);
+```
+
+A hand-written lookup implements the companion interface
+**`XFTY_SharedAncestorDefaultsIntf`** — one method:
+
+```apex
+public class MyProjectLookup implements XFTY_DummySObjectProviderLookupIntf, XFTY_SharedAncestorDefaultsIntf {
+    // ... the usual get / keysFor ...
+    public void registerSharedAncestorDefaults() {
+        XFTY_SharedAncestor.putIfAbsent('acme-hq', new Account(Name = 'ACME HQ'));
+        XFTY_SharedAncestor.putIfAbsent('primary-price-book', new Pricebook2(Name = 'Standard'));
+    }
+}
+```
+
+XFTY calls it before each `supply*()` resolves shared ancestors. Because it uses
+**`putIfAbsent`**, a test that wants a different shared record just registers it
+first — the default is skipped. A lookup with no shared ancestors does not
+implement the interface.
+
+▶ Runnable: `XFTY_SharedAncestorHierarchyTest.aLookupSuppliesTheSharedAncestorSoNoTestRegistrationIsNeeded`
 
 ---
 
@@ -188,7 +234,7 @@ and later `NOW` calls reuse that mock record.
   `resolveNow(lookup, XFTY_InsertModeEnum.NOW)`.
 - **Configuring one you never reference still resolves it.** Each shared ancestor
   configured this test method is resolved before the first `supply*()`. Configure
-  the ones this test uses; use `getOrElse(...)` if a shared helper configures a
+  the ones this test uses; use `putIfAbsent(...)` if a shared helper configures a
   superset.
 - **A cycle throws.** Two shared ancestors that need each other, or one whose
   Provider references it back — break it with `put(name, record)`.
@@ -198,8 +244,8 @@ and later `NOW` calls reuse that mock record.
 - Resolution is one depth-batched pass **per shared ancestor sub-graph**, not one
   pass across every shared ancestor at once.
 - Only the **relationships reachable from the call** could be resolved instead of
-  every configured shared ancestor — a walk of the Master Template graph
-  (planned; `getOrElse` is the interim answer).
+  every registered shared ancestor — a walk of the Master Template graph
+  (planned; `putIfAbsent` is the interim answer).
 - Load-test data for the depth-batch cost, documented limits, and a
   disable-this-record / disable-the-feature off-switch (design-doc decision 3)
   are not done.

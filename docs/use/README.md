@@ -53,7 +53,7 @@ examples compile and behave as documented.
 | `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | `XFTY_Ex_PerCallRelationshipsTest` |
 | `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_ChildGenerationTest` |
 | `put(List<SObjectField>, value)` — path-scoped ancestor values (literal / strategy / context-aware / relationship) | [value-strategies](value-strategies.md#setting-a-value-on-a-generated-ancestor) | `XFTY_PathValueTest` |
-| `XFTY_SharedAncestor` — `get` / `of` / `getOrElse` / `put` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
+| `XFTY_SharedAncestor` — `get` / `put` / `putAsTemplate` / `putIfAbsent` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
 | insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |

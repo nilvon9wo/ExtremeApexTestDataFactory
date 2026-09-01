@@ -56,7 +56,7 @@ list are **done** — `142c6d9`, and the commit after it.)
    across children; the never-`flush()` loud error.
    [descendant-value-reads.md](descendant-value-reads.md).
 5. ~~Deep / batched shared ancestors~~ — **done, and with no manual opt-in.**
-   `get(name).of(...)` / `getOrElse(name, ...)` / `resolveNow(lookup, mode)`; the
+   `put(name, ...)` / `putIfAbsent(name, ...)` / `resolveNow(lookup, mode)`; the
    pre-phase (`XFTY_SharedAncestorResolver.resolveAllConfigured`) auto-detects
    flat vs deep from the Provider's Master Template, depth-batches each sub-graph, honours
    the call's mode (incl. `.depthBatched()` / `DEFERRED`), and guards cycles +
