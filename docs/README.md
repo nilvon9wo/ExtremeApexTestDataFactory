@@ -10,6 +10,7 @@ directory that matches your goal.
 | **Work on XFTY itself** (architecture, tests, packaging, contributing) | [`contribute/`](contribute/) | [contribute/architecture.md](contribute/README.md) |
 | **Look something up** (breaking changes, platform constraints, open defects, the API list) | [`reference/`](reference/) | [reference/](reference/) |
 | **See what's built, in progress, or proposed** | [`roadmap/`](roadmap/) | [roadmap/README.md](roadmap/README.md) |
+| **Read the thinking behind XFTY** (the author's essays — background, not reference) | [`articles/`](articles/) | [articles/README.md](articles/README.md) |
 
 ---
 
@@ -65,3 +66,11 @@ matrix (every feature → its page → the runnable test that proves its example
 remaining work. [roadmap/open-questions.md](roadmap/open-questions.md) is the
 short list of genuine questions that block progress (currently one). Detail
 pages (the former `design/` proposals) sit beside them.
+
+## articles/
+
+Three long-form essays by the author on the reasoning behind XFTY — where it came
+from, why isolated unit tests are worth the effort on Salesforce, and how to
+write them. Opinion pieces kept for background;
+[articles/README.md](articles/README.md) has the reading order. Nothing else in
+the docs depends on them.
