@@ -53,8 +53,10 @@ methods, not the block. Equivalent: declare the variables bare and do the
 > **One thing still needs an org check.** Salesforce re-runs static
 > initialisation for each test method and rolls back all of a test method's DML,
 > static init included — that is what keeps the fixture isolated between methods.
-> Nimbus rebuilds the bundles per method (so bundle-based assertions are safe)
-> but does **not** roll back the static-initialiser `insert`, so a
+> Nimbus (the local Apex runtime some contributors use —
+> [about-nimbus](../../contribute/about-nimbus.md)) rebuilds the bundles per
+> method (so bundle-based assertions are safe) but does **not** roll back the
+> static-initialiser `insert`, so a
 > `[SELECT COUNT()]` in a local run sees rows accumulate. Assert against the
 > bundle, not the database, and confirm isolation once on a real org.
 

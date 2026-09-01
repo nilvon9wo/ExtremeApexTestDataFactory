@@ -35,7 +35,9 @@ rather than recreating the org.
 
 [Nimbus](https://testnimbus.dev/) is a local Apex runtime. `nimbus test "*"` runs
 the whole suite in seconds with no org. Config is in `nimbus.properties`
-(committed); `.nimbus/` is gitignored.
+(committed); `.nimbus/` is gitignored. It is a third-party tool this project
+uses for the inner loop only and does not endorse or depend on — see
+[about-nimbus](about-nimbus.md).
 
 ```bash
 nimbus test "*"                                   # everything
