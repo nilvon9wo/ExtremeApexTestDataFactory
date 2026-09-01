@@ -13,15 +13,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  doc-examples:
-    name: Verify doc examples are backed by a runnable test
+  static-checks:
+    name: Docs and style
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Run scripts/verify-doc-examples.py
+      - name: Doc examples are backed by a runnable test
         run: python3 scripts/verify-doc-examples.py
+
+      - name: Every doc link resolves
+        run: python3 scripts/verify-doc-links.py
+
+      - name: Apex style (whole-tree safety + changed-file rules)
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="HEAD~1"
+          fi
+          echo "comparing against $BASE"
+          python3 scripts/check-apex-style.py --changed "$BASE"
 
   apex-tests:
     name: Deploy and run Apex tests
