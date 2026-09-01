@@ -22,7 +22,8 @@ By centralizing test data definitions, XFTY dramatically reduces boilerplate and
 > It also carries **breaking API changes** (mostly mechanical renames) — the
 > [4.0 migration guide](../../blob/4.0-beta/docs/reference/migration.md) has the
 > exact before/after, and [CHANGELOG.md](CHANGELOG.md) the full list. Feedback →
-> [open an issue](../../issues). APIs may still shift before 4.0 final.
+> [start a Discussion](../../discussions) (or [open an issue](../../issues) for a
+> bug). APIs may still shift before 4.0 final.
 
 ---
 
