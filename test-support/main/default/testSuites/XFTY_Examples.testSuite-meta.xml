@@ -9,6 +9,7 @@
     <testClassName>XFTY_Ex_Adv_DeepSetupChainsTest</testClassName>
     <testClassName>XFTY_Ex_Adv_MatchingValuesTest</testClassName>
     <testClassName>XFTY_Ex_Adv_StaticDeferredFixtureTest</testClassName>
+    <testClassName>XFTY_Ex_Adv_UnitVsIntegrationTest</testClassName>
     <testClassName>XFTY_Ex_BundlesTest</testClassName>
     <testClassName>XFTY_Ex_Extend_CustomValueStrategiesTest</testClassName>
     <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>

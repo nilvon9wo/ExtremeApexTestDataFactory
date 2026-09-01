@@ -8,13 +8,13 @@ database integration tests. Only the [insert mode](../insert-modes.md) changes.
 ## The shared shape
 
 ```apex
-private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
+private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 ```
 
 A unit test:
 
 ```apex
-Contact c = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+Contact generatedContact = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
     .setInsertMode(XFTY_InsertModeEnum.MOCK)
     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
     .supply();
@@ -30,7 +30,37 @@ The integration test changes one line:
   graphs. The recommended starting point.
 - `NOW` + `REQUIRED` — the same graph, actually inserted.
 
-Because the data description does not change, a test can be promoted from unit to
-integration (or the reverse) without touching its setup.
+Because the data *description* does not change, a test can usually be promoted
+from unit to integration (or the reverse) without touching its setup.
 
-▶ Runnable: `XFTY_Ex_Adv_UnitVsIntegrationTest` _(pending — Pass B)_
+---
+
+## What "usually" is carrying
+
+The flip is free only when the graph can actually be inserted. Three things stop
+that, and none of them are bugs XFTY can remove:
+
+1. **A Provider is only as correct as its author kept it.** `MOCK` never runs
+   validation rules, triggers, flows, duplicate rules or required-field checks;
+   `NOW` runs all of them. A Provider that has drifted behind the org — a new
+   required field, a new validation rule — passes every `MOCK` test and fails
+   the moment the same test runs `NOW`. The fix belongs in
+   [the Provider](../../extend/providers.md), not the test; the framework can
+   centralise that fix but cannot guarantee it was made.
+
+2. **Some SObjects cannot be inserted from Apex at all** — custom metadata
+   types, most platform events, and various read-only standard objects. A graph
+   that includes one works under `MOCK` and throws under `NOW`. Keep those tests
+   `MOCK`-only.
+
+3. **Mixed DML.** When the required graph spans **setup** objects (`User`,
+   `Profile`, `PermissionSet`, `Group`, `Territory`, …) and ordinary objects,
+   Salesforce forbids inserting both in one transaction. Under `MOCK` there is
+   no DML so it never surfaces; under `NOW` it throws `MIXED_DML_OPERATION`.
+   Insert the setup records in a `System.runAs` block (or a separate step)
+   before the rest of the graph.
+
+The takeaway: default to `MOCK`, and treat a `NOW` run as its own thing that has
+to be *kept* green, not as a switch that is guaranteed to stay flipped.
+
+▶ Runnable: `XFTY_Ex_Adv_UnitVsIntegrationTest`
