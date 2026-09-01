@@ -1,13 +1,14 @@
 # Roadmap: Serialization-Based Mock Enrichment
 
-Status: **📋 proposed, not built.** Two related asks that both need the one
+Status: **📋 proposed, not built.** Three related asks that all need the one
 thing the SObject API cannot do in memory — write a field or relationship that
 `record.put(...)` rejects — via a `JSON.serialize` / `deserialize` round-trip
 (the technique in Nebula's `TestingUtils` / the `XAP_TEST_ReadOnlyHelper` the
-project has floated).
+project has floated: `setReadOnlyField`, `setParentRelationships`,
+`setChildRelationships`).
 
-Both are opt-in test conveniences for `MOCK` / `NEVER` graphs. Neither is core,
-and the serialization cost is the reason they may stay proposed.
+All three are opt-in test conveniences for `MOCK` / `NEVER` graphs. None is
+core, and the serialization cost is the reason they may stay proposed.
 
 ---
 
@@ -69,25 +70,47 @@ aligned; the transform is only to inject them where `put` cannot.
   count: `.withParentsPopulated()` (all generated relationships) or
   `.withParentsPopulated(List<List<SObjectField>> paths)` (only those paths).
 
-This is the higher-value of the two — a lot of real code receives records and
+This is the higher-value of the three — a lot of real code receives records and
 reads through them. It does not help code that issues its own SOQL.
+
+---
+
+## Idea C — populate child relationship subqueries
+
+The mirror of B, downward: code that reads `account.Contacts` (the child
+subquery) needs the `{ totalSize, done, records }` shape injected — the third
+method in the same serialization helper.
+
+- Only possible when the children **exist in the bundle** — i.e. the graph was
+  built with [`with` / `withChildren`](../use/child-records.md). Upward
+  generation never produces children, so there is nothing to inject.
+- The data is already there: `bundle.childRecordsOf(i, childField)` is the
+  record list for primary row `i`. The relationship *name* comes from the parent
+  side — walk `SObjectType.getDescribe().getChildRelationships()`, match on
+  `getField()`, take `getRelationshipName()` (`Contacts`, `Cases`, `Foo__r`).
+- Same instance-identity constraint → terminal transform, same modes, same
+  opt-in / path-scoping (`.withChildrenPopulated()` /
+  `.withChildrenPopulated(paths)`).
+- Extra caveat: the injected subquery is a snapshot. Code under test that
+  mutates children and expects re-query semantics will not see the change.
 
 ---
 
 ## If built, build them as one mechanism
 
-Both are "JSON round-trip the final bundle to inject what `put` cannot." One
-internal `XFTY_BundleSerializationPass` (terminal, re-points lists, refuses
-real-Id records / non-`MOCK`-non-`NEVER` unless post-flush), two public entry
+All three are "JSON round-trip the final bundle to inject what `put` cannot."
+One internal `XFTY_BundleSerializationPass` (terminal, re-points lists, refuses
+real-Id records / non-`MOCK`-non-`NEVER` unless post-flush), three public entry
 points. A shipped version needs tests around the JSON quirks — datetime
 formatting, `Blob` fields, compound `Location` fields, the required
-`attributes.type` on deserialize.
+`attributes.type` on deserialize, and the subquery envelope shape for C.
 
 ## Open questions
 
-- Is Idea B common enough to justify the surface, or do most consumers navigate
-  relationships rarely enough that "read it off the bundle" suffices?
-- Should `.overrideReadOnly(...)` and `.withParentsPopulated(...)` be blocked
-  (throw) under `NOW` / `RELATED_ONLY`, or just no-op with a warning?
+- Are B and C common enough to justify the surface, or do most consumers
+  navigate relationships rarely enough that "read it off the bundle" suffices?
+- Should `.overrideReadOnly(...)` / `.withParentsPopulated(...)` /
+  `.withChildrenPopulated(...)` be blocked (throw) under `NOW` / `RELATED_ONLY`,
+  or just no-op with a warning?
 - Does the terminal-transform restriction bite anyone who wants a forced
   read-only value visible to a context-aware value? (No use case yet.)
