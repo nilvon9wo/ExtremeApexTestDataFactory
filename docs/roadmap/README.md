@@ -24,7 +24,7 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
 | Namespace / AppExchange listing | 📋 | [namespace-appexchange.md](namespace-appexchange.md) |
-| Serialization-based mock enrichment — `bundle.getWithInjectedValues(config)`: forced read-only values + materialised parent / child relationships | 📋 | [serialization-mock-enrichment.md](serialization-mock-enrichment.md) |
+| Serialization-based mock enrichment — `bundle.getWithInjectedValues(config)`: `injectValue` / `injectParent` / `injectChild` forced values + materialised relationships | 📋 | [serialization-mock-enrichment.md](serialization-mock-enrichment.md) |
 
 ---
 

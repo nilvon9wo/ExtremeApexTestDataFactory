@@ -35,30 +35,53 @@ XFTY_DummySObjectBundle enriched = bundle.getWithInjectedValues(config);
 
 ### `XFTY_InjectionConfig` (sketch)
 
-Three maps keyed by **path** — a `List<SObjectField>` giving a location relative
-to the primary record (`{}` = the primary itself, `{ Contact.AccountId }` = its
-Account, `{ Contact.AccountId, Account.OwnerId }` = that Account's Owner):
+Every method is a verb — `inject…` — and is **additive**: call it as many times
+as needed for multiple values, parents and children. A **path** is a
+`List<SObjectField>` of relationship hops from the primary record
+(`{ Contact.AccountId }` = its Account, `{ Contact.AccountId, Account.ParentId }`
+= that Account's parent); anything that sits on the primary itself has an
+overload that takes no path.
 
 ```apex
 XFTY_InjectionConfig config = new XFTY_InjectionConfig()
-    // 1. values to write - the value is anything that can feed a master template
-    //    (an exact value, XFTY_DummyDefaultValueIntf, ...)
-    .value(new List<SObjectField>{}, Contact.CreatedDate, aDatetime)
-    .value(new List<SObjectField>{ Contact.AccountId }, Account.LastModifiedById, new SomeUserIdProvider())
-    // 2. parents to materialise as relationship objects
-    .parent(new List<SObjectField>{ Contact.AccountId })                 // contact.Account
-    .parent(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }) // contact.Account.Owner
-    // 3. children to materialise as subqueries
-    .children(new List<SObjectField>{}, Case.ContactId)                   // contact.Cases
-    .children(new List<SObjectField>{ Contact.AccountId }, Case.AccountId); // contact.Account.Cases
+    // values - the value arg is anything that can feed a master template
+    //           (an exact value, an XFTY_DummyDefaultValueIntf, ...)
+    .injectValue(Contact.CreatedDate, aDatetime)                                        // on the primary
+    .injectValue(new List<SObjectField>{ Contact.AccountId }, Account.LastModifiedById, new SomeUserIdProvider())
+
+    // parents - materialise the relationship object, any depth SOQL allows
+    .injectParent(Contact.AccountId)                                                    // contact.Account
+    .injectParent(new List<SObjectField>{ Contact.AccountId, Account.ParentId })        // contact.Account.Parent
+    .injectAllParents()                                                                 // every generated parent on the primary
+
+    // children - materialise the subquery
+    .injectChild(Case.ContactId)                                                        // contact.Cases
+    .injectChild(new List<SObjectField>{ Contact.AccountId }, Case.AccountId)            // contact.Account.Cases
+    .injectAllChildren();                                                               // every child collection on the primary
 ```
 
-Internally: `Map<path, valueProviderByField>`, `Map<path, Set<parentField>>`,
-`Map<path, Set<childField>>`.
+`injectValue` / `injectParent` / `injectChild` have a no-path overload for the
+primary and a `List<SObjectField>` overload for a deeper location.
+`injectAllParents` / `injectAllChildren` default to the primary and may take a
+path (and, for parents, an optional depth). Internally: `Map<path,
+valueProviderByField>`, `Map<path, Set<parentField>>`, `Map<path,
+Set<childField>>`.
 
-**Convenience methods** for the common cases so most configs are one or two
-lines: exact value on a root field; a named root parent or root child; *all*
-root parents; *all* root children.
+Multiple generations are just longer paths, bounded by what SOQL can express —
+ancestor chains up to the platform's relationship-hop limit; child subqueries
+one level deep (SOQL cannot nest them), where the leading path is all *upward*
+hops and the final field is the child lookup.
+
+### The Apex relationship-field problem
+
+Apex `SObjectField` tokens do not reliably carry everything needed to resolve a
+relationship — custom `Foo__c` → `Foo__r`, polymorphic `WhatId` / `WhoId` →
+`What` / `Who`, self-lookups — and a `List<SObjectField>` cannot be
+compile-time-checked as a coherent chain. So the config **validates every path
+against the describe** when it is built (or when `getWithInjectedValues` runs),
+throwing a clear error naming the bad hop. A string relationship-name overload
+(`injectParent('Account')`) is the likely escape hatch where the token mapping
+is ambiguous.
 
 ### The SOQL-shape safety check
 
@@ -124,10 +147,10 @@ The child-relationship *name* for a subquery comes from the parent side — walk
 
 ## Open questions
 
-- Final `XFTY_InjectionConfig` API — the three maps and the exact convenience
-  set.
-- How a path element is read as "up" vs "down" (the field's own type vs the type
-  it references), and whether the three separate maps make that unambiguous.
+- The exact `injectAll…` signatures (depth arg? path arg?) and the full
+  convenience set.
+- Whether the string relationship-name overload ships from the start or only if
+  the token-to-`__r` resolution proves too lossy.
 - Does the "children of a generated ancestor" inverse deserve a public bundle
   accessor, independent of this feature?
 - Is this common enough to justify the surface, or do most consumers navigate
