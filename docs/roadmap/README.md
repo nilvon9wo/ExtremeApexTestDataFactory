@@ -8,12 +8,13 @@ not tracked here; `git log --grep` on the branch finds any of them.
 
 Legend: ✅ built · 📋 designed, not built.
 
-## Built (`xfty-4.0-beta`)
+## 
+Built (`xfty-4.0-beta`)
 
 | Feature | Tests | Docs | Notes / limits |
 |---------|-------|------|----------------|
 | **Multi-variant Providers** — record-type / flavour lookup keys, `withVariant`, the lookup-key constructor | `XFTY_MultiVariantProviderTest`, `XFTY_LookupKeyTest`, `XFTY_RecordTypeMatchingTest`, `XFTY_RecordTypeRealRtTest` (org) | [use](../use/provider-variants.md), [extend](../extend/provider-variants.md), [detail](multi-variant-providers.md) | — |
-| **Context-aware values** — `XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression` (multi-hop), custom `XFTY_ContextAwareExpressionIntf`, `context.siblingValue` | `XFTY_ContextAwareExpressionTest`, `XFTY_Ex_ContextAwareTest`, `XFTY_LoadTest` (value pass at 3 000 rows) | [use](../use/context-aware-values.md), [extend](../extend/custom-value-expressions.md), [detail](context-aware-values.md) | Reading a parent's **Id** is only real under `NOW` — [documented per mode](../use/context-aware-values.md) |
+| **Context-aware values** — `XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression` (multi-hop), custom `XFTY_ContextAwareExpressionIntf`, `context.siblingValue` | `XFTY_ContextAwareExpressionTest`, `XFTY_Ex_ContextAwareTest`, `XFTY_LoadTest` (value pass at 3 000 rows) | [use](../use/context-aware-values.md), [extend](../extend/custom-value-expressions.md), [detail](context-aware-values.md) | Reading a parent's **non-Id** fields works in every mode. Its **Id**: a consistent mock under `MOCK`, the real one under `NOW`, `null` under `NEVER` / `DEFERRED` (the value pass runs before `flush()`) — [per mode](../extend/custom-value-expressions.md), proven in `XFTY_Ex_Extend_CustomExpressionsTest` |
 | **Loud guard for a mis-ordered sibling read** | `XFTY_ContextAwareExpressionTest` | [use](../use/context-aware-values.md) | — |
 | **Per-call relationship control** — `includeOptional(field \| path)`, `excludeRelationship` | `XFTY_Ex_PerCallRelationshipsTest`, `XFTY_AncestorCycleTest` | [use](../use/per-call-relationships.md) | — |
 | **Path-scoped value overrides** — `put(List<SObjectField>, …)` into a generated ancestor | `XFTY_PathValueTest` | [use](../use/value-expressions.md#setting-a-value-on-a-generated-ancestor), [detail](path-scoped-values.md) | — |
