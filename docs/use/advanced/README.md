@@ -7,7 +7,8 @@ individual feature pages in [../](../) first.
 |------|----------|
 | [unit-vs-integration](unit-vs-integration.md) | one set of Providers, `MOCK` ↔ `NOW` |
 | [large-graphs](large-graphs.md) | inclusivity + `PREVENT_CASCADE` + `.depthBatched()` + the governor budget |
-| [deep-setup-chains](deep-setup-chains.md) | the `static` fixture pattern, then `DEFERRED` across helper methods when steps are ordered and need real DML |
+| [deep-setup-chains](deep-setup-chains.md) | the `static` fixture pattern, a `static {}` block to `flush()` a `DEFERRED` fixture, then `DEFERRED` across helper methods when steps are ordered and need real DML |
 | [matching-values](matching-values.md) | context-aware values + shared ancestors to keep a validation-rule field pair in sync |
 
-▶ Runnable tests: `XFTY_Ex_Adv_*Test` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_Adv_DeepSetupChainsTest`, `XFTY_Ex_Adv_StaticDeferredFixtureTest`,
+`XFTY_Ex_Adv_MatchingValuesTest`. Still pending: `unit-vs-integration`, `large-graphs`.

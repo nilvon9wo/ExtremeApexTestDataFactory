@@ -22,41 +22,49 @@ everything, `flush()` once.
 
 ### `DEFERRED` in a `static` fixture: use a `static {}` block
 
-`DEFERRED` only pays off if something calls `XFTY_DeferredInserter.flush()`. A
-static **initialiser block**, placed *after* the fixture variables it depends on,
-is that place — it runs once per test method, after those variables are built:
+`DEFERRED` only pays off if something calls `XFTY_DeferredInserter.flush()`. Build
+the bundles as ordinary `static` initialisers (no DML), then add **one trailing
+`static {}` block** whose only job is the flush:
 
 ```apex
-private static XFTY_DummySObjectBundle sharedAccounts;
-private static XFTY_DummySObjectBundle sharedContacts;
+private static XFTY_DummySObjectBundle sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
+    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+    .setQuantityPerTemplate(3)
+    .supplyBundle();
+
+private static XFTY_DummySObjectBundle sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+    .supplyBundle();
 
 static {
-    sharedAccounts = new XFTY_DummySObjectProvider(Account.SObjectType, PROVIDER_LOOKUP)
-        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
-        .setQuantityPerTemplate(3)
-        .supplyBundle();
-    sharedContacts = new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
-        .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-        .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
-        .supplyBundle();
     XFTY_DeferredInserter.flush();   // one insert phase for both, before any test method runs
 }
 ```
 
-Order matters — the block runs in declaration order with everything else, so it
-must come *below* the variables. Two ordered steps with their own `flush()`
-between them go in the same block. `System.runAs(...)` belongs in the test
-methods, not the block.
+The block must come *below* the variables it flushes. `flush()` back-fills the
+real Ids onto the same bundle instances, so `sharedAccounts.getList(Account.Id)[0].Id`
+is populated in every test method. `System.runAs(...)` belongs in the test
+methods, not the block. Equivalent: declare the variables bare and do the
+`supplyBundle()` calls *and* the `flush()` inside one block.
 
-> **Verify this on your org.** Salesforce re-runs static initialisation for each
-> test method and rolls back all of a test method's DML (static init included),
-> which is what makes this work. Nimbus does **not** roll back static-initialiser
-> DML between test methods, so this specific form cannot be checked locally —
-> `XFTY_Ex_Adv_DeepSetupChainsTest` proves the helper form instead.
+▶ Runnable: `XFTY_Ex_Adv_StaticDeferredFixtureTest`
 
-Use the **per-method helper form below** when the setup order depends on the test
-method rather than being fixed — a method that flushes, reads an Id, then builds
-more, when a different method needs a different sequence.
+> **One thing still needs an org check.** Salesforce re-runs static
+> initialisation for each test method and rolls back all of a test method's DML,
+> static init included — that is what keeps the fixture isolated between methods.
+> Nimbus rebuilds the bundles per method (so bundle-based assertions are safe)
+> but does **not** roll back the static-initialiser `insert`, so a
+> `[SELECT COUNT()]` in a local run sees rows accumulate. Assert against the
+> bundle, not the database, and confirm isolation once on a real org.
+
+**Do not** try to hand a flushed Id from an earlier `static {}` block to a
+*later* `static` variable — an earlier block reading `firstId` then a later
+`sharedContacts` initialiser consuming it. Static-variable initialisers and
+`static {}` blocks are not reliably interleaved in source order everywhere
+(Nimbus runs every field initialiser before any block), and the moment one step
+needs a real Id from a previous one, the ordering is inherently
+test-method-specific. Use the **per-method helper form below** for that.
 
 ---
 
