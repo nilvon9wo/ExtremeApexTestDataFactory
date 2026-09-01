@@ -51,6 +51,54 @@ This works both on Provider Master Templates and on `XFTY_DummySObjectProvider`.
 
 ---
 
+## Setting a value on a generated ancestor
+
+`put` (and `putRequired` / `putOptional`) also takes a **path** —
+`[rel1, ..., relN, targetField]` — to control how a field on a *generated
+ancestor* is produced, for this one call, without editing that ancestor's
+Provider.
+
+The value is whatever the field forms accept — **not just an exact value**:
+
+```apex
+new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+
+    // an exact value
+    .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
+
+    // a strategy - the generated Account gets a unique name
+    .put(new List<SObjectField>{ Contact.AccountId, Account.Name },
+         new XFTY_DummyDefaultValueUniqueString('Acct'))
+
+    // a context-aware value - evaluated against that ancestor
+    .put(new List<SObjectField>{ Contact.AccountId, Account.Description },
+         new XFTY_CopyFromSibling(Account.Name))
+
+    // a relationship - give the ancestor its own generated parent
+    .putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId },
+         XFTY_SharedAncestor.get('mr-smith'))
+
+    .supply();
+```
+
+`put(path, ...)` **forces its whole path**, whatever the inclusivity — every
+relationship named is generated even at the default `NONE`, and a forced
+ancestor is generated fully formed (its own required relationships fill in).
+Everything **not** on a named path stays at the call's inclusivity. A path field
+that is not a relationship on the ancestor's Provider throws — never a silent
+no-op. A path `put` wins over a value the ancestor's Provider already sets.
+
+You **cannot** `put` a plain value *onto* a [shared ancestor](shared-ancestors.md)
+— that throws; configure it with `.of(...)`. You **can** point a forced
+relationship at one (as the `mr-smith` line above).
+
+This shares the path-walk with
+[`includeOptional(path)`](per-call-relationships.md#reaching-deeper--a-path).
+Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
+
+---
+
 ## Override template vs `put(...)`
 
 | Use an [override template](override-templates.md) when… | Use `put(...)` when… |
@@ -78,6 +126,6 @@ fields — see [context-aware-values](context-aware-values.md)) or a plain
 `XFTY_DummyDefaultValueIntf`. Shipping one as a reusable extension:
 [extend/custom-value-strategies.md](../extend/custom-value-strategies.md).
 
-▶ Runnable: `XFTY_Ex_ValueStrategiesTest`
+▶ Runnable: `XFTY_Ex_ValueStrategiesTest` · `XFTY_PathValueTest`
 
-See also: [override-templates](override-templates.md) · [context-aware-values](context-aware-values.md)
+See also: [override-templates](override-templates.md) · [context-aware-values](context-aware-values.md) · [per-call-relationships](per-call-relationships.md)

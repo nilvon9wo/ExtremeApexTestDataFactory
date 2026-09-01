@@ -55,39 +55,13 @@ generation. Whether a step is a plain relationship or a
 
 ---
 
-## Setting a value on a generated ancestor — `put(path, value)`
+## Setting a *value* on a generated ancestor
 
-The same path walk can set **how a field on an ancestor is generated**, for this
-call — without editing that ancestor's Provider. `path` is
-`[rel1, ..., relN, targetField]`.
-
-```apex
-new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
-    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-    .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
-    .supply();
-// the generated Account has Industry = 'Aerospace'
-```
-
-The value can be anything plain `put` / `putRequired` / `putOptional` accept — a
-literal, a value strategy, a context-aware value (evaluated against that
-ancestor), or a relationship (`putRequired(path, ...)` gives the ancestor its own
-generated parent).
-
-**Forces its whole path, whatever the inclusivity** — every relationship you
-name is generated even at the default `NONE`, and a forced ancestor is generated
-*fully formed* (its own required relationships fill in). Everything **not** on a
-named path stays at the call's inclusivity. A path field that is not a
-relationship on the Provider throws — never a silent no-op. A path `put` on a
-field the ancestor's Provider already sets wins.
-
-The path's value can be a [shared ancestor](shared-ancestors.md) —
-`putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))`
-wires the generated Account's Owner to a shared `mr-smith` — nothing extra to
-set up. What you **cannot** do is `put` a plain value *onto* a shared ancestor —
-that throws (configure it with `.of(...)`).
-
-Full detail: [../roadmap/path-scoped-values.md](../roadmap/path-scoped-values.md).
+The same path walk also sets **how a field on an ancestor is generated** —
+`put(path, value)`, where the value is an exact value, a strategy, a
+context-aware value, or a relationship. That is a value concern, so it lives
+with the other `put` forms:
+[value-strategies → setting a value on a generated ancestor](value-strategies.md#setting-a-value-on-a-generated-ancestor).
 
 ▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` _(pending — Pass B)_ · `XFTY_PathValueTest`
 

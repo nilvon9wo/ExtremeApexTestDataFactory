@@ -21,7 +21,7 @@ example and builds up.
 Then, as needed:
 
 - [context-aware-values](context-aware-values.md) — a field derived from a sibling, an ancestor, or (under `DEFERRED`) a child
-- [per-call-relationships](per-call-relationships.md) — one-off `includeOptional` / `excludeRelationship` / `put(path, value)` into an ancestor
+- [per-call-relationships](per-call-relationships.md) — one-off `includeOptional` / `excludeRelationship` for a single call
 - [child-records](child-records.md) — `with` / `withChildren`: generate the records *below* a primary
 - [shared-ancestors](shared-ancestors.md) — many children under one parent (flat or deep, auto-detected)
 - [deferred-insert](deferred-insert.md) — `DEFERRED` + `.depthBatched()`
@@ -52,7 +52,7 @@ examples compile and behave as documented.
 | `PREVENT_CASCADE` | [relationships](relationships.md) | _(pending)_ |
 | `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | _(pending)_ |
 | `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_ChildGenerationTest` |
-| `put(List<SObjectField>, value)` — path-scoped ancestor values | [per-call-relationships](per-call-relationships.md) | `XFTY_PathValueTest` |
+| `put(List<SObjectField>, value)` — path-scoped ancestor values (literal / strategy / context-aware / relationship) | [value-strategies](value-strategies.md#setting-a-value-on-a-generated-ancestor) | `XFTY_PathValueTest` |
 | `XFTY_SharedAncestor` — `get` / `of` / `getOrElse` / `put` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
