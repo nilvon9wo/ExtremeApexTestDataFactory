@@ -1,94 +1,53 @@
 # XFTY Roadmap
 
-The single source of truth for **what is built, what is left to build, and the
-few genuine decisions still open**.
+What is built, what is left, and the one decision still open.
 
-Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
-`xfty-4.0-beta`; `master` carries only a pointer to that branch.
+**Everything marked ✅ is on `xfty-4.0-beta`** — there are no unmerged feature
+branches. `master` carries only a pointer to `xfty-4.0-beta`. Commit hashes are
+not tracked here; `git log --grep` on the branch finds any of them.
 
-## Status
+Legend: ✅ built · 📋 designed, not built.
 
-| Plan | Status | Detail |
-|------|--------|--------|
-| Multi-variant Providers — record-type / flavour lookup keys | ✅ (on `xfty-4.0-beta`) | [multi-variant-providers.md](multi-variant-providers.md) |
-| Context-aware values — sibling + ancestor reads | ✅ | [context-aware-values.md](context-aware-values.md), [../use/context-aware-values.md](../use/context-aware-values.md) |
-| Context-aware values — loud guard for a mis-ordered sibling read | ✅ (`31264ed`) | [../use/context-aware-values.md](../use/context-aware-values.md) |
-| Per-call relationship control — `includeOptional` / `excludeRelationship` | ✅ | [../use/per-call-relationships.md](../use/per-call-relationships.md) |
-| Shared ancestors — `XFTY_SharedAncestor` (one API, flat + deep, auto-detected) | ✅ | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
-| 100% framework line coverage + split test suites | ✅ | [../contribute/coverage-standards.md](../contribute/coverage-standards.md) |
-| Deferred persistence — `.depthBatched()` + `DEFERRED` mode | ✅ (`407d38a`) | [deferred-persistence.md](deferred-persistence.md), [../use/deferred-insert.md](../use/deferred-insert.md) |
-| Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
-| Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
-| Shared ancestors — deep chains / batched resolution / `.depthBatched()` + `DEFERRED` | ✅ (per-sub-graph depth-batch — not one pass across all; resolves every configured ancestor, not just the reachable ones; no decision-3 load data yet) | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
-| Descendant (up-flowing) value reads — `XFTY_CopyFromDescendantExpression` | ✅ (`DEFERRED` / `.depthBatched()` only; single child, single hop) | [descendant-value-reads.md](descendant-value-reads.md), [../use/context-aware-values.md](../use/context-aware-values.md) |
-| Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
-| Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
-| Namespace / AppExchange listing | 📋 | [namespace-appexchange.md](namespace-appexchange.md) |
-| Serialization-based mock enrichment — `bundle.getWithInjectedValues(config)`: `injectValue` / `injectParent` / `injectChild` forced values + materialised relationships | 📋 | [serialization-mock-enrichment.md](serialization-mock-enrichment.md) |
+## Built (`xfty-4.0-beta`)
 
----
+| Feature | Tests | Docs | Notes / limits |
+|---------|-------|------|----------------|
+| **Multi-variant Providers** — record-type / flavour lookup keys, `withVariant`, the lookup-key constructor | `XFTY_MultiVariantProviderTest`, `XFTY_LookupKeyTest`, `XFTY_RecordTypeMatchingTest`, `XFTY_RecordTypeRealRtTest` (org) | [use](../use/provider-variants.md), [extend](../extend/provider-variants.md), [detail](multi-variant-providers.md) | — |
+| **Context-aware values** — `XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression` (multi-hop), custom `XFTY_ContextAwareExpressionIntf`, `context.siblingValue` | `XFTY_ContextAwareExpressionTest`, `XFTY_Ex_ContextAwareTest` | [use](../use/context-aware-values.md), [extend](../extend/custom-value-expressions.md), [detail](context-aware-values.md) | Reading a parent's **Id** is only real under `NOW` — [documented per mode](../use/context-aware-values.md) |
+| **Loud guard for a mis-ordered sibling read** | `XFTY_ContextAwareExpressionTest` | [use](../use/context-aware-values.md) | — |
+| **Per-call relationship control** — `includeOptional(field \| path)`, `excludeRelationship` | `XFTY_Ex_PerCallRelationshipsTest`, `XFTY_AncestorCycleTest` | [use](../use/per-call-relationships.md) | — |
+| **Path-scoped value overrides** — `put(List<SObjectField>, …)` into a generated ancestor | `XFTY_PathValueTest` | [use](../use/value-expressions.md#setting-a-value-on-a-generated-ancestor), [detail](path-scoped-values.md) | — |
+| **Downward generation** — `with` / `withChildren` / `XFTY_SObjectChildProvider`, nested grandchildren, DEFERRED-aware | `XFTY_ChildGenerationTest` | [use](../use/child-records.md) | Row count multiplies down the tree; the governor budget warns |
+| **Deferred / depth-batched insert** — `DEFERRED` + `flush()`, `.depthBatched()` | `XFTY_DeferredInserterTest`, `XFTY_DeferredInsertBufferTest`, `XFTY_DepthBatchedInserterTest`, `XFTY_DeferredLoadTest` | [use](../use/deferred-insert.md), [detail](deferred-persistence.md) | `flush()` ≈ 5 s CPU at 4 000 records → ~1 000–1 500 primaries / transaction ([limits](../reference/volume-and-limits.md)) |
+| **Descendant (up-flowing) value reads** — `XFTY_CopyFromDescendantExpression` | `XFTY_CopyFromDescendantExpressionTest`, `XFTY_Ex_Adv_MatchingValuesTest` | [use](../use/context-aware-values.md#reading-up-from-a-child), [detail](descendant-value-reads.md) | `DEFERRED` / `.depthBatched()` only (throws otherwise); first matching child, single hop. **Not built:** multi-hop path, aggregates across children, a loud error when `flush()` is never called |
+| **Shared ancestors** — `XFTY_SharedAncestor.put/get`, flat + deep auto-detected, nested, cycle + depth guards, `XFTY_SharedAncestorProvider` per-record config, `XFTY_SharedAncestorDefaultsIntf` packaged defaults, `disable` / `manualResolutionOnly` / batch `resolveNow` | `XFTY_SharedAncestorTest`, `XFTY_SharedAncestorHierarchyTest`, `XFTY_SharedAncestorLoadTest`, `XFTY_SharedAncestorHierarchyAcceptanceTest` (org) | [use](../use/shared-ancestors.md), [extend](../extend/shared-ancestors-in-templates.md), [detail](shared-ancestors.md) | S2 is one depth-batched pass **per sub-graph** — independent heavy shared ancestors cost a few extra inserts ([known limit](shared-ancestors.md)) |
+| **Governor-limit warnings + volume tests** — `XFTY_GovernorBudget`, `XFTY_Settings__c` | `XFTY_GovernorBudgetTest`, `XFTY_LoadTest` | [limits](../reference/volume-and-limits.md) | — |
+| **Framework coverage + split test suites** — `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` / `XFTY_Examples` / `XFTY_OrgOnly` | — | [coverage](../contribute/coverage-standards.md), [suites](../contribute/test-suites.md) | Line coverage is verified by stripping `@IsTest` and running on an org (the local runtime's coverage is unreliable); branch coverage is hand-checked (the platform can't measure it) |
 
-## Remaining work (decided, needs building)
+## Designed, not built
 
-Ordered roughly by dependency. (The two known-issue fixes at the top of the
-list are **done** — `142c6d9`, and the commit after it.)
-
-1. ~~Constructor retarget fix~~ — **done.** An explicit `SObjectType` /
-   lookup-key constructor argument wins, and an override-template list of a
-   different type throws `ConflictException`.
-2. ~~Ancestor cycle detection~~ — **done.** `XFTY_AncestorCycleGuard` threads the
-   chain of in-progress Provider lookup-key hashes; `XFTY_AncestorGenerator`
-   throws when it would recurse into one already in progress. One level of
-   self-reference still works (the guard fires on the second repeat); distinct
-   per-level Providers recurse freely; `.allowAncestorCycles()` on the Provider
-   suppresses the guard. `PREVENT_CASCADE` unchanged.
-3. ~~Merge deferred persistence to `xfty-4.0-beta`~~ — **done** (`407d38a`).
-   ~~Volume measurement~~ — **done**: the `XFTY_Load` suite now pins the
-   ceilings ([../reference/volume-and-limits.md](../reference/volume-and-limits.md));
-   `DEFERRED` `flush()` costs ~5 s CPU at 4,000 records, so the practical
-   ceiling is ~1,000–1,500 primaries per transaction. Shared ancestors under
-   `.depthBatched()` / `DEFERRED` now work (resolved up front, honouring the
-   real mode).
-4. ~~Descendant (up-flowing) value reads — option B~~ — **done.**
-   `XFTY_CopyFromDescendantExpression`, resolved by `XFTY_DescendantValuePass` over the
-   whole `DEFERRED` forest before the depth-batched insert; a non-`DEFERRED`
-   build with one throws. **Still open:** a multi-hop path form; aggregates
-   across children; the never-`flush()` loud error.
-   [descendant-value-reads.md](descendant-value-reads.md).
-5. ~~Deep / batched shared ancestors~~ — **done, and with no manual opt-in.**
-   `put(name, ...)` / `putIfAbsent(name, ...)` / `resolveNow(lookup, mode)`; the
-   pre-phase (`XFTY_SharedAncestorResolver.resolveAllConfigured`) auto-detects
-   flat vs deep from the Provider's Master Template, depth-batches each sub-graph, honours
-   the call's mode (incl. `.depthBatched()` / `DEFERRED`), and guards cycles +
-   depth + the re-entrant boundary. **Still open:** one S2 pass across all shared
-   ancestors at once (currently per sub-graph); resolving only the ancestors
-   *reachable from the call* rather than every configured one; decision-3
-   load-test data + documented limits + off-switches.
-6. **Namespace steps 1–3** ([namespace-appexchange.md](namespace-appexchange.md))
-   — mechanical; gated on the distribution-model decision below only for step 4.
-7. ~~Test-class cleanup~~ — **done.** `XFTY_DummySObjectProviderTests` →
-   `XFTY_DummySObjectProviderScenarioTest` (end-to-end scenarios, now `private`,
-   `Assert.*`, duplicate null-type test dropped); `XFTY_DummySObjectProviderTest`
-   → `XFTY_DummySObjectProviderApiTest` (one test per fluent-API affordance).
-   Both in `core/` beside `XFTY_DummySObjectProvider`. Part of the wider
-   test-co-location reorg.
+| Feature | Detail |
+|---------|--------|
+| Sandbox data seeding — `XFTY_Seeder` (prototype on branch `sandbox-seeding`) | [sandbox-seeding.md](sandbox-seeding.md) |
+| Serialization-based mock enrichment — `bundle.getWithInjectedValues(config)` | [serialization-mock-enrichment.md](serialization-mock-enrichment.md) |
+| Namespace / AppExchange listing | [namespace-appexchange.md](namespace-appexchange.md) |
 
 ---
 
-## Open questions
+## The one open question
 
-There is currently **one**, and it is
-[in its own file](open-questions.md): does XFTY commit to a deployable
-(non-`@IsTest`) distribution? Everything else on this page is decided.
+Does XFTY commit to a **deployable, non-`@IsTest` distribution**? Everything else
+is decided. [open-questions.md](open-questions.md).
 
 ---
 
 ## Standing constraints (facts, not tasks)
 
-- **Branch coverage cannot be measured or enforced by the platform.** Salesforce
-  measures only line coverage. Branch coverage is checked by hand on every
-  change. There is no fix short of a third-party tool or building our own.
-  See [../contribute/coverage-standards.md](../contribute/coverage-standards.md).
-- **`@TestSetup` resets static variables**, which breaks XFTY's incrementing /
-  unique value expressions. Inherent to the platform; documented, not fixable by
-  us. See [../reference/salesforce-considerations.md](../reference/salesforce-considerations.md).
+- **Branch coverage cannot be measured by the platform** — hand-checked on every
+  change. [coverage-standards.md](../contribute/coverage-standards.md).
+- **`@TestSetup` resets static variables**, breaking XFTY's incrementing / unique
+  value expressions. Platform behaviour; documented, not fixable.
+  [salesforce-considerations.md](../reference/salesforce-considerations.md).
+- **The local Apex runtime fakes some org schema / query semantics** — those
+  tests live in `test-support/classes/orgonly/` and run on a scratch org.
+  [about-nimbus.md](../contribute/about-nimbus.md).

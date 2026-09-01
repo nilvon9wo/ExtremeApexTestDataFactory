@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        Tests that need a real org's schema and query semantics - a custom
+        object's record-type describe, real Profile / UserRole tables, record-
+        type query counting, Person Accounts. The local Apex runtime fakes
+        these, so they live in test-support/main/default/classes/orgonly/ and are
+        excluded from `nimbus test` (nimbus.test.exclude). They pass on a scratch
+        org.
+        Run: sf project deploy start -d test-support -o <scratch>
+             sf apex run test --suite-names XFTY_OrgOnly -o <scratch>
+    -->
+    <testClassName>XFTY_DefaultDataProviderOrgTest</testClassName>
+    <testClassName>XFTY_PersonAccountVariantTest</testClassName>
+    <testClassName>XFTY_RecordTypeDataProviderOrgTest</testClassName>
+    <testClassName>XFTY_RecordTypeRealRtTest</testClassName>
+    <testClassName>XFTY_SharedAncestorHierarchyAcceptanceTest</testClassName>
+</ApexTestSuite>

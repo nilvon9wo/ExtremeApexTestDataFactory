@@ -27,9 +27,14 @@ ternary, both sides. Salesforce can neither measure nor enforce that, so it is o
 the author: when you touch a method, make sure every branch has a test, not just
 every line.
 
-- Line coverage is currently **100%** — verify by temporarily stripping
-  `@IsTest` and running with `--code-coverage` (see
-  [local-development](local-development.md#measuring-coverage)).
+- The line-coverage target is **100%**, verified on an **org**: temporarily
+  strip `@IsTest`, deploy `force-app` + `test-support`, run every suite
+  (`XFTY_Unit`, `XFTY_Integration`, `XFTY_Load`, `XFTY_Examples`, `XFTY_OrgOnly`)
+  with `--code-coverage` (see
+  [local-development](local-development.md#measuring-coverage)). The local Apex
+  runtime's coverage numbers are **not** reliable — it under-reports classes
+  exercised only through in-test Provider doubles — so it cannot stand in for the
+  org check. Re-run the org check after any engine change or large rename.
 - Branch coverage is reviewed by hand on every change.
 - Remove dead code rather than covering it.
 

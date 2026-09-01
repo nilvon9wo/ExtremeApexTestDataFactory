@@ -62,6 +62,8 @@ guard; re-run it against your own org.
 | `NEVER`, 5,000 primaries + a parent each, held in memory | under the 6 MB heap limit |
 | `NOW`, 3,000 primaries + a parent each (6,000 DML rows) | passes; ~50 s wall time (trigger-bound), CPU under budget |
 | `NOW`, 500 children under **one shared ancestor** | 1 Account row, ≤ 4 DML statements — the shared record does not multiply |
+| `NOW`, 12 **independent** shared ancestors, 10 children each | ≤ 24 DML statements, CPU well under budget — but see the note below |
+| `NOW`, a **10-level** all-shared chain, 5 leaves | 10 Account rows, ≤ 12 DML statements — the chain depth-batches, one `insert` per level |
 | `DEFERRED`, 2,000 primaries + parents (4,000 records), then `flush()` | `flush()` alone ≈ **5 s CPU — half the limit** |
 
 **Practical ceilings for one transaction:**
@@ -69,6 +71,21 @@ guard; re-run it against your own org.
 - **`MOCK` / `NEVER`**: a few thousand primaries. Heap is the first wall (~5,000–6,000 primaries with a parent each).
 - **`NOW` / `DEFERRED`**: **~1,000–1,500 primaries with parents.** The inserts and their triggers eat CPU fast; 4,000 records is already half the CPU budget before your code under test runs.
 - **DML rows**: hard cap at 10,000 — so ~5,000 primaries for a 2-level graph, fewer for a deeper one.
+
+### Shared ancestors
+
+A shared ancestor's sub-graph is resolved **once** and inserted **depth-batched**
+(one `insert` per dependency level), however many children reference it — a wide
+fan-out (500 Contacts, one HQ) is one Account `insert`, and a deep all-shared
+chain (`Root ← L1 ← … ← L9`) is one `insert` per level, not per record.
+
+The one cost that does *not* collapse: resolution is a separate depth-batched
+pass **per shared-ancestor sub-graph**, so *N independent heavy* shared ancestors
+cost ~N extra `insert` statements up front (converging chains share theirs). If a
+test registers many heavy shared ancestors it does not need — e.g. from
+[packaged defaults](../use/shared-ancestors.md#packaged-defaults) —
+`XFTY_SharedAncestor.manualResolutionOnly()` plus `disable(name)` /
+`resolveNow(lookup, mode, names)` keeps only the ones it uses.
 
 ### Deep vs. wide
 

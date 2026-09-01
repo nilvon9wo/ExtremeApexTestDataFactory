@@ -58,6 +58,59 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     @IsTest
+    static void manyIndependentSharedAncestorsStayStatementFrugal() {
+        // Arrange - 12 independent shared Accounts, each referenced by its own Contacts.
+        // S2 depth-batches per sub-graph, so this is the "several independent heavy
+        // ancestors" case the docs flag as a known limit - it must still be bounded.
+        List<String> names = new List<String>();
+        for (Integer i = 0; i < 12; i++) {
+            String name = 'hq' + i;
+            names.add(name);
+            XFTY_SharedAncestor.put(name, new Account(Name = 'Shared ' + name));
+        }
+
+        // Act
+        Usage used;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            used = new Usage();
+            for (String name : names) {
+                supplyContacts(10, contactsUnder(name));
+            }
+            used.recordEnd();
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(12, [SELECT COUNT() FROM Account], 'one Account per shared ancestor');
+        Assert.areEqual(120, [SELECT COUNT() FROM Contact]);
+        Assert.isTrue(used.statements <= 12 + 12,
+                '12 shared-ancestor inserts + at most one Contact insert per supply call, used ' + used.statements);
+        Assert.isTrue(used.cpuMs < 4000, 'well inside the CPU budget, used ' + used.cpuMs + ' ms');
+    }
+
+    @IsTest
+    static void aTenLevelSharedChainInsertsOnePerLevelNotOnePerRecord() {
+        // Arrange - Root <- L1 <- ... <- L9, all shared; five leaf Contacts under L9
+        configureTenLevelChain();
+
+        // Act
+        Usage used;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            used = supplyMeasured(5, tenLevelLookup());
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(10, [SELECT COUNT() FROM Account], 'one row per shared level');
+        Assert.areEqual(5, [SELECT COUNT() FROM Contact]);
+        Assert.isTrue(used.statements <= 12,
+                'the ten-level chain depth-batches - not one insert per record, used ' + used.statements);
+        Assert.isTrue(used.cpuMs < 4000, 'used ' + used.cpuMs + ' ms');
+    }
+
+    @IsTest
     static void oneSharedAncestorAcrossManySupplyCallsResolvesOnce() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
@@ -94,10 +147,40 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     private static XFTY_DummySObjectProviderLookupIntf defaultContactsUnderHq() {
+        return contactsUnder('hq');
+    }
+
+    private static XFTY_DummySObjectProviderLookupIntf contactsUnder(String sharedName) {
         return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
                 XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
-                XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderShared('hq')
+                XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderShared(sharedName)
         });
+    }
+
+    private static void configureTenLevelChain() {
+        XFTY_SharedAncestor.put('L0', new Account(Name = 'Root')).fromVariant(chainKey(0));
+        for (Integer level = 1; level <= 9; level++) {
+            XFTY_SharedAncestor.put('L' + level, new Account(Name = 'Level ' + level))
+                    .fromVariant(chainKey(level))
+                    .putRequired(Account.ParentId, XFTY_SharedAncestor.get('L' + (level - 1)))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED);
+        }
+    }
+
+    private static XFTY_DummySObjectProviderLookupIntf tenLevelLookup() {
+        Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf> byKey =
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                        XFTY_LookupKey.get(Contact.SObjectType) => new ContactUnderShared('L9')
+                };
+        for (Integer level = 0; level <= 9; level++) {
+            byKey.put(chainKey(level), new XFTY_DefaultAccountDataProvider());
+        }
+        return XFTY_ProviderLookups.of(byKey);
+    }
+
+    private static XFTY_LookupKeyIntf chainKey(Integer level) {
+        return XFTY_FlavouredLookupKey.get(Account.SObjectType, 'chainL' + level);
     }
 
     private static XFTY_DummySObjectProviderLookupIntf deepChainLookup() {
@@ -111,12 +194,15 @@ private class XFTY_SharedAncestorLoadTest {
     private class Usage {
         private final Integer startStatements = Limits.getDmlStatements();
         private final Integer startRows = Limits.getDmlRows();
+        private final Integer startCpu = Limits.getCpuTime();
         private Integer statements;
         private Integer rows;
+        private Integer cpuMs;
 
         private void recordEnd() {
             this.statements = Limits.getDmlStatements() - this.startStatements;
             this.rows = Limits.getDmlRows() - this.startRows;
+            this.cpuMs = Limits.getCpuTime() - this.startCpu;
         }
     }
 
