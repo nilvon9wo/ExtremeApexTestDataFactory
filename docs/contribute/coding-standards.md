@@ -48,7 +48,7 @@ new XFTY_Thing()
 ### Compound conditions: capture the whole thing, keep it lazy
 
 ```apex
-Boolean nothingToFill = strategy == null
+Boolean nothingToFill = expression == null
         || record.get(field) != null;
 if (nothingToFill) {
     return;

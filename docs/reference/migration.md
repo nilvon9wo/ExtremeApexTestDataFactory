@@ -136,8 +136,8 @@ The value-producing types dropped their `DummyDefault` prefix and took an
 | `XFTY_CopyFromDescendant` | `XFTY_CopyFromDescendantExpression` |
 
 `XFTY_DummyDefaultRelationship` is a relationship, not a value expression, and is
-**unchanged**. The doc page moved: `use/value-strategies.md` →
-`use/value-expressions.md`, `extend/custom-value-strategies.md` →
+**unchanged**. The doc page moved: `use/value-expressions.md` →
+`use/value-expressions.md`, `extend/custom-value-expressions.md` →
 `extend/custom-value-expressions.md`.
 
 ---
@@ -152,7 +152,7 @@ Not required, but available:
 | `withVariant(key)` / lookup-key constructor / template constructor | [use/provider-variants](../use/provider-variants.md), [use/generating-records](../use/generating-records.md#shorthand-constructors) |
 | Record-type / flavour Provider variants (`XFTY_RecordTypeLookupKey`, `XFTY_FlavouredLookupKey`, `XFTY_FieldPredicate`) | [extend/provider-variants](../extend/provider-variants.md) |
 | Context-aware values (`XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression`, `XFTY_ContextAwareExpressionIntf`) | [use/context-aware-values](../use/context-aware-values.md) |
-| `context.siblingValue(field)` for custom context-aware strategies - guarded sibling read, throws instead of returning a misleading `null` | [use/context-aware-values](../use/context-aware-values.md) |
+| `context.siblingValue(field)` for custom context-aware expressions - guarded sibling read, throws instead of returning a misleading `null` | [use/context-aware-values](../use/context-aware-values.md) |
 | Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [use/per-call-relationships](../use/per-call-relationships.md) |
 | Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [use/shared-ancestors](../use/shared-ancestors.md) |
 | `.depthBatched()` - opt-in, one `insert` per dependency depth instead of one per Provider | [use/deferred-insert](../use/deferred-insert.md) |

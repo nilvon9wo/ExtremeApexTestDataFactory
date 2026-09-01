@@ -1,7 +1,7 @@
 /**
  * A shared ancestor described by a fully-configured `XFTY_DummySObjectProvider` -
  * `XFTY_SharedAncestor.put(name, provider)`. The whole generation API
- * (value strategies, relationship control, path values, a pinned variant) shapes
+ * (value expressions, relationship control, path values, a pinned variant) shapes
  * the one shared record; the Provider carries its own override template and
  * Provider Lookup.
  */

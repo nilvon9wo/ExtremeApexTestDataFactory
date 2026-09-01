@@ -43,10 +43,10 @@ examples compile and behave as documented.
 | shorthand constructors (template / list / key) | [generating-records](generating-records.md) | `XFTY_Ex_GeneratingRecordsTest` |
 | `setOverrideTemplate`, precedence | [override-templates](override-templates.md) | `XFTY_Ex_OverrideTemplatesTest` |
 | `removeFromMasterTemplate` | [override-templates](override-templates.md) | `XFTY_Ex_OverrideTemplatesTest` |
-| `put(field, strategy)`, implicit literal | [value-expressions](value-expressions.md) | `XFTY_Ex_ValueExpressionsTest` |
+| `put(field, expression)`, implicit literal | [value-expressions](value-expressions.md) | `XFTY_Ex_ValueExpressionsTest` |
 | the 6 bundled `XFTY_*Expression` classes | [value-expressions](value-expressions.md) | `XFTY_Ex_ValueExpressionsTest` |
 | `XFTY_CopyFromSiblingExpression` / `XFTY_CopyFromAncestorExpression` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareExpressionTest` |
-| `XFTY_CopyFromDescendantExpression` — up-flow, `DEFERRED` only | [context-aware-values](context-aware-values.md) | `XFTY_CopyFromDescendantExpressionExpressionTest` |
+| `XFTY_CopyFromDescendantExpression` — up-flow, `DEFERRED` only | [context-aware-values](context-aware-values.md) | `XFTY_CopyFromDescendantExpressionTest` |
 | custom `XFTY_ContextAwareExpressionIntf` + `context.siblingValue` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareExpressionTest` |
 | `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |
 | `PREVENT_CASCADE`, self-referential cycle guard | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |

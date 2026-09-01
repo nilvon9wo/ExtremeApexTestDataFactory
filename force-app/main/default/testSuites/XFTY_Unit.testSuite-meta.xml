@@ -9,7 +9,7 @@
     <testClassName>XFTY_AncestorCycleGuardTest</testClassName>
     <testClassName>XFTY_AncestorCycleTest</testClassName>
     <testClassName>XFTY_ContextAwareExpressionTest</testClassName>
-    <testClassName>XFTY_CopyFromDescendantExpressionExpressionTest</testClassName>
+    <testClassName>XFTY_CopyFromDescendantExpressionTest</testClassName>
     <testClassName>XFTY_DefaultSObjectProviderLookupTest</testClassName>
     <testClassName>XFTY_ValueExpressionTest</testClassName>
     <testClassName>XFTY_DummyDefaultRelationshipTest</testClassName>

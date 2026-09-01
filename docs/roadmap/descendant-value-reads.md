@@ -47,7 +47,7 @@ so a validation rule comparing the two passes.
 [Deferred persistence](deferred-persistence.md) already accumulates the entire
 forest in `XFTY_DeferredInsertBuffer` before it inserts. A pass over those
 buffered records at the start of `flush()`, before the depth-batched insert, sees
-every record — so an up-flowing strategy can read any descendant.
+every record — so an up-flowing expression can read any descendant.
 
 **Option A** — a light `context.requestingChildTemplate` (the child's seed
 template, available when the factory builds a parent because a child asked for
@@ -59,7 +59,7 @@ only for that one requesting child.
 | Works in | any insert mode | `DEFERRED` only |
 | Covers | one requesting child's seed value | any descendant, fully generated |
 | New machinery | small | a pass + a descendant-scoped context |
-| Perf | free | one extra in-memory pass at `flush()`, `O(records × strategies)` — negligible beside the DML it precedes; skip it entirely when no up-flow strategy is registered |
+| Perf | free | one extra in-memory pass at `flush()`, `O(records × strategies)` — negligible beside the DML it precedes; skip it entirely when no up-flow expression is registered |
 
 They are **not mutually exclusive** — A would serve non-`DEFERRED` tests while B
 serves `DEFERRED` — but maintaining both doubles the surface for a feature B
@@ -69,9 +69,9 @@ already covers. So: **B only.**
 
 Up-flowing reads require `DEFERRED` mode. A test that needs one and is not using
 `DEFERRED` gets a clear error, not a silent `null`. Likewise a `DEFERRED` test
-that registers an up-flow strategy but never calls `flush()` — the value stays
+that registers an up-flow expression but never calls `flush()` — the value stays
 unresolved, and reading it must fail loudly (same "not-computed vs computed-null"
 distinction as the [sibling guard](../use/context-aware-values.md)).
 
 No toggle is needed: B's cost is negligible and it self-skips when nothing
-registers an up-flow strategy.
+registers an up-flow expression.

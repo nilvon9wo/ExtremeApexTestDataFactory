@@ -26,7 +26,7 @@ Every kind plain `put` / `putRequired` / `putOptional` accept:
 | Call | Effect on the ancestor's field |
 |---|---|
 | `put(path, Object literal)` | a constant |
-| `put(path, XFTY_ValueExpressionIntf)` | a value strategy (runs once per generated ancestor) |
+| `put(path, XFTY_ValueExpressionIntf)` | a value expression (runs once per generated ancestor) |
 | `put(path, XFTY_ContextAwareExpressionIntf)` | evaluated against the ancestor as `recordBeingBuilt` — `XFTY_CopyFromSiblingExpression` / `XFTY_CopyFromAncestorExpression` etc. work relative to that ancestor |
 | `putRequired(path, XFTY_DummyDefaultRelationshipIntf)` | the ancestor's own lookup gets a generated parent |
 | `putOptional(path, XFTY_DummyDefaultRelationshipIntf)` | …optional on the ancestor |

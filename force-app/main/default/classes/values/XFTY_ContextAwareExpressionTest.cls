@@ -74,9 +74,9 @@ private class XFTY_ContextAwareExpressionTest {
     static void aContextAwareStrategyIsNotAPlainValueStrategy() {
         // B, not A: XFTY_ContextAwareExpressionIntf does not extend XFTY_ValueExpressionIntf,
         // so there is no misleading no-arg get() to call.
-        Object strategy = new XFTY_CopyFromSiblingExpression(Account.Name);
-        Assert.isFalse(strategy instanceof XFTY_ValueExpressionIntf);
-        Assert.isTrue(strategy instanceof XFTY_ContextAwareExpressionIntf);
+        Object expression = new XFTY_CopyFromSiblingExpression(Account.Name);
+        Assert.isFalse(expression instanceof XFTY_ValueExpressionIntf);
+        Assert.isTrue(expression instanceof XFTY_ContextAwareExpressionIntf);
     }
 
     @IsTest
@@ -140,7 +140,7 @@ private class XFTY_ContextAwareExpressionTest {
         }
     }
 
-    /** A context-aware strategy whose generated value is legitimately null. */
+    /** A context-aware expression whose generated value is legitimately null. */
     private class AlwaysNull implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             return null;
@@ -277,7 +277,7 @@ private class XFTY_ContextAwareExpressionTest {
         }
     }
 
-    // --- a custom context-aware strategy ----------------------------------
+    // --- a custom context-aware expression ----------------------------------
 
     @IsTest
     static void aCustomContextAwareStrategyCanDeriveFromASibling() {

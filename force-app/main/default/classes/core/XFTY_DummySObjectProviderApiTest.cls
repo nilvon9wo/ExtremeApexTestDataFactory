@@ -231,7 +231,7 @@ private class XFTY_DummySObjectProviderApiTest {
                 .supply();
         Test.stopTest();
 
-        Assert.areEqual('Source', result.Department, 'a context-aware strategy passed as Object still routes correctly');
+        Assert.areEqual('Source', result.Department, 'a context-aware expression passed as Object still routes correctly');
     }
 
     @IsTest

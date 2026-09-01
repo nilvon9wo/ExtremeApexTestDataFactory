@@ -66,7 +66,7 @@ new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
     // an exact value
     .put(new List<SObjectField>{ Contact.AccountId, Account.Industry }, 'Aerospace')
 
-    // a strategy - the generated Account gets a unique name
+    // an expression - the generated Account gets a unique name
     .put(new List<SObjectField>{ Contact.AccountId, Account.Name },
          new XFTY_UniqueStringExpression('Acct'))
 

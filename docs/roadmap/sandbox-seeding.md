@@ -17,7 +17,7 @@ deployable.
 
 XFTY's declarative model would also generate representative **sandbox** data, not
 just test data. The obstacle: the framework is `@IsTest` today, which keeps it
-(and consumers' Providers / value strategies) out of production code and its
+(and consumers' Providers / value expressions) out of production code and its
 limits. Seeding needs deployable, non-`@IsTest` code.
 
 ---

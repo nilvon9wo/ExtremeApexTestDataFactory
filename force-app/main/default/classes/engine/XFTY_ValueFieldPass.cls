@@ -1,6 +1,6 @@
 /**
  * The narrowest scope of a generation run: the single value field whose
- * context-aware strategy is running right now, plus the set of context-aware
+ * context-aware expression is running right now, plus the set of context-aware
  * value fields on the same record that have *not* been generated yet.
  *
  * `pendingContextAwareValues` is what lets the engine tell "this sibling has not

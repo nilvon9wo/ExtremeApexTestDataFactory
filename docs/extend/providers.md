@@ -59,8 +59,8 @@ values, required relationships, optional relationships. Fluent builders:
 
 | Method | Adds |
 |--------|------|
-| `put(field, strategy)` / `put(field, literal)` | a [value strategy](../use/value-expressions.md) (a bare value is wrapped as `XFTY_LiteralExpression`) |
-| `put(field, contextAwareStrategy)` | a [context-aware value](../use/context-aware-values.md) |
+| `put(field, expression)` / `put(field, literal)` | a [value expression](../use/value-expressions.md) (a bare value is wrapped as `XFTY_LiteralExpression`) |
+| `put(field,expression | literal | contextAwareExpression)` | a [context-aware value](../use/context-aware-values.md) |
 | `putRequired(field, relationship)` | a required [relationship](../use/relationships.md) |
 | `putOptional(field, relationship)` | an optional relationship |
 

@@ -46,7 +46,7 @@ If more than one customization touches a field, **the override template wins.**
 // -> "Alice", not "Generated"
 ```
 
-An override value also wins over a [context-aware strategy](context-aware-values.md).
+An override value also wins over a [context-aware expression](context-aware-values.md).
 
 ---
 
@@ -55,7 +55,7 @@ An override value also wins over a [context-aware strategy](context-aware-values
 | Use an override template when… | Use [`put(...)`](value-expressions.md) when… |
 |--------------------------------|--------------------------------------------|
 | customizing one or two records | every generated record should differ |
-| supplying an exact value | replacing the *generation strategy* |
+| supplying an exact value | replacing the *generation expression* |
 | making one test more readable | generating unique values, or customizing relationships |
 
 Override templates describe **data**; `put(...)` describes **generation**.

@@ -1,6 +1,6 @@
 # Context-Aware Values
 
-Most [value strategies](value-expressions.md) generate a field in isolation. A
+Most [value expressions](value-expressions.md) generate a field in isolation. A
 **context-aware** value sees the rest of the record — a field copied from a
 sibling, from a generated parent, or (under `DEFERRED`) from a generated child.
 
@@ -76,8 +76,8 @@ public class IsAdultFlag implements XFTY_ContextAwareExpressionIntf {
 
 ## How it runs, and the one ordering rule
 
-Values are filled in two passes: plain strategies first, then context-aware
-strategies **in the order they were `put(...)`**. So a context-aware value can
+Values are filled in two passes: plain expressions first, then context-aware
+  expressions **in the order they were `put(...)`**. So a context-aware value can
 read any plain field, any wired lookup, and any *earlier* context-aware value.
 
 Reading a *later* context-aware value — or a circular pair — throws a clear error
@@ -91,7 +91,7 @@ a not-yet-generated one throws.)
 .put(Account.ShippingCity, new XFTY_CopyFromSiblingExpression(Account.Site))   // throws at generation
 ```
 
-An override-template value still wins over a context-aware strategy.
+An override-template value still wins over a context-aware expression.
 
 ---
 
@@ -128,7 +128,7 @@ children are not built — see
 ---
 
 Design rationale: [roadmap/context-aware-values.md](../roadmap/context-aware-values.md).
-Writing custom strategies as a distributable extension:
+Writing custom expressions as a distributable extension:
 [extend/custom-value-expressions.md](../extend/custom-value-expressions.md).
 
 ▶ Runnable: `XFTY_Ex_ContextAwareTest`

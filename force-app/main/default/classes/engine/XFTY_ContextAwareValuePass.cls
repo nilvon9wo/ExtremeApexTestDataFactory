@@ -1,5 +1,5 @@
 /**
- * The second value pass: the context-aware strategies, run once the plain values,
+ * The second value pass: the context-aware expressions, run once the plain values,
  * ancestors and lookups are all in place for each record to read.
  */
 @IsTest
@@ -42,13 +42,13 @@ public class XFTY_ContextAwareValuePass {
     }
 
     private void completeField(SObject record, XFTY_GenerationContext scoped, SObjectField field) {
-        XFTY_ContextAwareExpressionIntf strategy = this.template.contextAwareBySObjectFieldMap.get(field);
-        Boolean nothingToFill = strategy == null
+        XFTY_ContextAwareExpressionIntf expression = this.template.contextAwareBySObjectFieldMap.get(field);
+        Boolean nothingToFill = expression == null
                 || record.get(field) != null;
         if (nothingToFill) {
             return;
         }
-        Object value = strategy.get(scoped);
+        Object value = expression.get(scoped);
         record.put(field, value);
     }
 }

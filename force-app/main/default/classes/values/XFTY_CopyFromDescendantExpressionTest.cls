@@ -5,7 +5,7 @@
  * See docs/roadmap/descendant-value-reads.md.
  */
 @IsTest
-private class XFTY_CopyFromDescendantExpressionExpressionTest {
+private class XFTY_CopyFromDescendantExpressionTest {
 
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final String CHILD_DEPARTMENT = 'Field Ops';

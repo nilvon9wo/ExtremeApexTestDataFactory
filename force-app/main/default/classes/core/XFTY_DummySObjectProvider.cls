@@ -235,9 +235,9 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareValue) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareExpression) {
         this.masterTemplate.remove(sObjectField);
-        this.masterTemplate.put(sObjectField, contextAwareValue);
+        this.masterTemplate.put(sObjectField, contextAwareExpression);
         this.hasCustomMasterTemplate = true;
         return this;
     }
@@ -266,7 +266,7 @@ public class XFTY_DummySObjectProvider {
 
     /**
      * Convenience overload mirroring `XFTY_DummySObjectMasterTemplate.put(SObjectField, Object)`:
-     * a context-aware strategy, a plain value strategy, or (anything else) a bare
+     * a context-aware expression, a plain value expression, or (anything else) a bare
      * literal wrapped in `XFTY_LiteralExpression`. Relationships are rejected -
      * use `putRequired(...)` / `putOptional(...)`.
      */
@@ -338,14 +338,14 @@ public class XFTY_DummySObjectProvider {
     private final List<XFTY_PathValue> pathValues = new List<XFTY_PathValue>();
 
     /** `put([Opportunity.Pricebook2Id, Pricebook2.Name], strategy)` - set a field on a generated ancestor. */
-    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ValueExpressionIntf valueStrategy) {
-        this.pathValues.add(XFTY_PathValue.ofStrategy(path, valueStrategy));
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ValueExpressionIntf valueExpression) {
+        this.pathValues.add(XFTY_PathValue.ofExpression(path, valueExpression));
         return this;
     }
 
-    /** `put([...path], contextAwareValue)` - the ancestor field is evaluated by a context-aware strategy. */
-    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAwareValue) {
-        this.pathValues.add(XFTY_PathValue.ofContextAware(path, contextAwareValue));
+    /** `put([...path], contextAwareExpression)` - the ancestor field is evaluated by a context-aware expression. */
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAwareExpression) {
+        this.pathValues.add(XFTY_PathValue.ofContextAware(path, contextAwareExpression));
         return this;
     }
 

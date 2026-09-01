@@ -13,7 +13,7 @@
  *   `NOW` for related records, `PREVENT_CASCADE` becomes `NONE` one level down) -
  *   see {@link #forRelated};
  * - carries the `includeOptional(...)` paths down the graph;
- * - is what a context-aware value strategy reads (see
+ * - is what a context-aware expression reads (see
  *   {@link XFTY_ContextAwareExpressionIntf}, docs/roadmap/context-aware-values.md).
  *
  * `recordBeingBuilt` / `bundleSoFar` / `rowIndex` are populated only for the
@@ -43,7 +43,7 @@ public class XFTY_GenerationContext {
     public final Integer rowIndex;
 
     /**
-     * The single value field whose context-aware strategy is running, and which
+     * The single value field whose context-aware expression is running, and which
      * sibling context-aware values are still ungenerated - see
      * {@link XFTY_ValueFieldPass} and {@link #siblingValue}. Set only during the
      * context-aware value pass, one field at a time (via {@link #forValueField});
@@ -266,7 +266,7 @@ public class XFTY_GenerationContext {
     /**
      * As {@link #forRecord}, narrowed to the one context-aware value field being
      * generated now. `pendingContextAwareValues` is the set of context-aware
-     * fields on this record whose strategies have not run yet.
+     * fields on this record whose expressions have not run yet.
      */
     public XFTY_GenerationContext forValueField(SObjectField fieldBeingBuilt, Set<SObjectField> pendingContextAwareValues) {
         return new XFTY_GenerationContext(
@@ -279,7 +279,7 @@ public class XFTY_GenerationContext {
 
     /**
      * The final value of a sibling field on {@link #recordBeingBuilt}, for a
-     * context-aware strategy (see {@link XFTY_CopyFromSiblingExpression}). A returned `null`
+     * context-aware expression (see {@link XFTY_CopyFromSiblingExpression}). A returned `null`
      * means the sibling was genuinely generated to `null`.
      *
      * Throws when `siblingField` is itself a context-aware value that has not been

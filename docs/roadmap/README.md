@@ -90,5 +90,5 @@ There is currently **one**, and it is
   change. There is no fix short of a third-party tool or building our own.
   See [../contribute/coverage-standards.md](../contribute/coverage-standards.md).
 - **`@TestSetup` resets static variables**, which breaks XFTY's incrementing /
-  unique value strategies. Inherent to the platform; documented, not fixable by
+  unique value expressions. Inherent to the platform; documented, not fixable by
   us. See [../reference/salesforce-considerations.md](../reference/salesforce-considerations.md).

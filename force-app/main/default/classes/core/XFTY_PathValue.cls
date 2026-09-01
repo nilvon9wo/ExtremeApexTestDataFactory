@@ -13,35 +13,35 @@
 @IsTest
 public class XFTY_PathValue {
 
-    public enum Kind { VALUE_STRATEGY, CONTEXT_AWARE, LITERAL, REQUIRED_RELATIONSHIP, OPTIONAL_RELATIONSHIP }
+    public enum Kind { VALUE_EXPRESSION, CONTEXT_AWARE, LITERAL, REQUIRED_RELATIONSHIP, OPTIONAL_RELATIONSHIP }
 
     public final List<SObjectField> path;
     public final Kind kind;
-    private final XFTY_ValueExpressionIntf valueStrategy;
-    private final XFTY_ContextAwareExpressionIntf contextAwareValue;
+    private final XFTY_ValueExpressionIntf valueExpression;
+    private final XFTY_ContextAwareExpressionIntf contextAwareExpression;
     private final Object literal;
     private final XFTY_DummyDefaultRelationshipIntf relationship;
 
     private XFTY_PathValue(
             List<SObjectField> path,
             Kind kind,
-            XFTY_ValueExpressionIntf valueStrategy,
-            XFTY_ContextAwareExpressionIntf contextAwareValue,
+            XFTY_ValueExpressionIntf valueExpression,
+            XFTY_ContextAwareExpressionIntf contextAwareExpression,
             Object literal,
             XFTY_DummyDefaultRelationshipIntf relationship
     ) {
         assertPath(path);
         this.path = path;
         this.kind = kind;
-        this.valueStrategy = valueStrategy;
-        this.contextAwareValue = contextAwareValue;
+        this.valueExpression = valueExpression;
+        this.contextAwareExpression = contextAwareExpression;
         this.literal = literal;
         this.relationship = relationship;
     }
 
-    public static XFTY_PathValue ofStrategy(List<SObjectField> path, XFTY_ValueExpressionIntf strategy) {
+    public static XFTY_PathValue ofExpression(List<SObjectField> path, XFTY_ValueExpressionIntf expression) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.VALUE_STRATEGY, strategy, null, null, null);
+        return new XFTY_PathValue(path, Kind.VALUE_EXPRESSION, expression, null, null, null);
     }
     public static XFTY_PathValue ofContextAware(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAware) {
         assertUsablePath(path);
@@ -94,7 +94,7 @@ public class XFTY_PathValue {
         for (Integer i = 1; i < this.path.size(); i++) {
             rest.add(this.path[i]);
         }
-        return new XFTY_PathValue(rest, this.kind, this.valueStrategy, this.contextAwareValue, this.literal, this.relationship);
+        return new XFTY_PathValue(rest, this.kind, this.valueExpression, this.contextAwareExpression, this.literal, this.relationship);
     }
 
     /** Land the value on `template` (call only when `isAtTarget()`). */
@@ -102,11 +102,11 @@ public class XFTY_PathValue {
         SObjectField targetField = this.path[0];
         template.remove(targetField);
         switch on this.kind {
-            when VALUE_STRATEGY {
-                template.put(targetField, this.valueStrategy);
+            when VALUE_EXPRESSION {
+                template.put(targetField, this.valueExpression);
             }
             when CONTEXT_AWARE {
-                template.put(targetField, this.contextAwareValue);
+                template.put(targetField, this.contextAwareExpression);
             }
             when LITERAL {
                 template.put(targetField, this.literal);

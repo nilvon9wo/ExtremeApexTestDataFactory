@@ -11,7 +11,7 @@ After reading this guide you should be comfortable:
 - choosing insert modes
 - deciding when relationships should be created
 
-More advanced topics such as implementing Providers and writing custom value strategies are covered in later guides.
+More advanced topics such as implementing Providers and writing custom value expressions are covered in later guides.
 
 ---
 
@@ -209,7 +209,7 @@ XFTY_DummySObjectBundle opportunityBundle = bundle.getBundle(OpportunityLineItem
 
 Generating objects and inserting objects are separate concerns.
 
-XFTY supports six insertion strategies.
+XFTY supports six insert modes.
 
 | Mode | Description |
 |------|-------------|

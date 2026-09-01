@@ -23,7 +23,7 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
   configuration; reconfiguring after resolution throws. `putIfAbsent(name,
   template|lookupKey)` configures only if unconfigured (for a shared setup helper
   / superset config). `put(name, provider)` for the full case:
-  the whole generation API (value strategies, the shared record's own ancestors,
+  the whole generation API (value expressions, the shared record's own ancestors,
   variant, child collections) describes the one shared record — resolver runs it
   `buildStructurally()` then depth-batches. Not combined with the template/key forms.
 - Implements `XFTY_SharedRelationshipIntf extends XFTY_DummyDefaultRelationshipIntf`

@@ -21,7 +21,7 @@ One line per public entry point. Follow the links for detail.
 | `.setInsertMode(XFTY_InsertModeEnum)` | [insert modes](../use/insert-modes.md) |
 | `.setInclusivity(XFTY_InsertInclusivityEnum)` | [relationship inclusivity](../use/relationships.md#inclusivity) |
 | `.withVariant(XFTY_LookupKeyIntf)` | pick a Provider variant (before any `put`) |
-| `.put(SObjectField, strategy \| literal \| contextAwareStrategy)` | change generation of one field |
+| `.put(SObjectField, expression \| literal \| contextAwareExpression)` | change generation of one field |
 | `.putRequired(SObjectField, relationship)` / `.putOptional(...)` | add a relationship |
 | `.removeFromMasterTemplate(SObjectField)` | drop a value field's generation |
 | `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
@@ -57,7 +57,7 @@ One line per public entry point. Follow the links for detail.
 
 ---
 
-## Value strategies (`put(field, …)`)
+## Value expressions (`put(field, …)`)
 
 | `XFTY_LiteralExpression(value)` | constant (also the implicit wrapper for a bare literal) |
 | `XFTY_IncrementingStringExpression(prefix)` | `prefix 1`, `prefix 2`, … |
@@ -83,7 +83,7 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_SharedAncestor.get(name)` | retrieve — the token for `putRequired`, the handle for `resolveNow` / `getId` |
 | `XFTY_SharedAncestor.put(name, SObject)` | register — Id present → fixed value, no Id → override template (logs; `putAsTemplate` / `putAsValue` force it) |
 | `XFTY_SharedAncestor.put(name, key)` · `.fromVariant(key)` · `.copyingRelatedField(field)` | pin the variant / chain a variant onto a template / copy a field instead of the Id |
-| `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider)` | full generation API for the shared record — value strategies, its own ancestors, variant (not with the template/key forms) |
+| `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider)` | full generation API for the shared record — value expressions, its own ancestors, variant (not with the template/key forms) |
 | `XFTY_SharedAncestor.putIfAbsent(name, record \| key)` | register only if `name` is not registered yet this test |
 | `XFTY_SharedAncestor.getId(name)` · `.get(name).resolveNow(lookup, mode)` | read the Id / resolve (and fix the mode) before any `supply*()` call |
 | implement `XFTY_SharedAncestorDefaultsIntf` on a lookup (`registerSharedAncestorDefaults()`) | ship a shared ancestor's default so consuming tests need not register it — or `XFTY_ProviderLookups.of(providerMap, Map<String,SObject> defaults)` |

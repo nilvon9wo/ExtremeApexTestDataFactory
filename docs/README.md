@@ -6,7 +6,7 @@ directory that matches your goal.
 | I want to… | Go to | Start with |
 |------------|-------|-----------|
 | **Use XFTY to write tests for my code** | [`use/`](use/) | [use/getting-started.md](use/getting-started.md) |
-| **Teach XFTY about my org's SObjects** (write Providers, register variants, custom value strategies) | [`extend/`](extend/) | [extend/README.md](extend/README.md) |
+| **Teach XFTY about my org's SObjects** (write Providers, register variants, custom value expressions) | [`extend/`](extend/) | [extend/README.md](extend/README.md) |
 | **Work on XFTY itself** (architecture, tests, packaging, contributing) | [`contribute/`](contribute/) | [contribute/architecture.md](contribute/README.md) |
 | **Look something up** (breaking changes, platform constraints, open defects, the API list) | [`reference/`](reference/) | [reference/](reference/) |
 | **See what's built, in progress, or proposed** | [`roadmap/`](roadmap/) | [roadmap/README.md](roadmap/README.md) |
@@ -38,7 +38,7 @@ matrix (every feature → its page → the runnable test that proves its example
 - [Providers](extend/providers.md) — support a new `SObject` type
 - [Provider Lookups](extend/provider-lookups.md) — your project's registry
 - [Provider Variants](extend/provider-variants.md) — record-type / flavour keys
-- [Custom Value Strategies](extend/custom-value-expressions.md)
+- [Custom Value Expressions](extend/custom-value-expressions.md)
 - [Shared Ancestors in a Master Template](extend/shared-ancestors-in-templates.md)
 - [The Bundled Providers](extend/bundled-providers.md) — copy-and-adjust
 

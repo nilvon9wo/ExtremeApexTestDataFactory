@@ -1,7 +1,7 @@
 # Extending XFTY for your org
 
 You are here to **teach XFTY about your org's SObjects** — write Providers,
-register variants, add custom value strategies. (If you just want to *use* XFTY
+register variants, add custom value expressions. (If you just want to *use* XFTY
 to write tests, go to [../use/](../use/).)
 
 | Page | Covers |

@@ -1,8 +1,8 @@
 /**
- * Coverage for the small `XFTY_ValueExpressionIntf` strategy implementations.
+ * Coverage for the small `XFTY_ValueExpressionIntf` expression implementations.
  *
  * These generators are pure value producers, so the tests need neither DML nor
- * `System.runAs`. They double as executable documentation of what each strategy
+ * `System.runAs`. They double as executable documentation of what each expression
  * guarantees (format, uniqueness scope, statefulness).
  */
 @IsTest
@@ -23,30 +23,30 @@ private class XFTY_ValueExpressionTest {
 
     @IsTest
     static void exactReturnsTheSameValueEveryCall() {
-        XFTY_LiteralExpression strategy = new XFTY_LiteralExpression('constant');
-        Assert.areEqual('constant', strategy.get());
-        Assert.areEqual('constant', strategy.get());
+        XFTY_LiteralExpression expression = new XFTY_LiteralExpression('constant');
+        Assert.areEqual('constant', expression.get());
+        Assert.areEqual('constant', expression.get());
     }
 
     // XFTY_IncrementingStringExpression ----------------------------------
 
     @IsTest
     static void incrementingStringSeparatesPrefixAndCounterByDefault() {
-        XFTY_IncrementingStringExpression strategy =
+        XFTY_IncrementingStringExpression expression =
                 new XFTY_IncrementingStringExpression('Account');
-        Assert.areEqual('Account 1', strategy.get());
-        Assert.areEqual('Account 2', strategy.get());
-        Assert.areEqual('Account 3', strategy.get());
+        Assert.areEqual('Account 1', expression.get());
+        Assert.areEqual('Account 2', expression.get());
+        Assert.areEqual('Account 3', expression.get());
     }
 
     @IsTest
     static void incrementingStringCanOmitTheSeparator() {
-        XFTY_IncrementingStringExpression strategy = new XFTY_IncrementingStringExpression(
+        XFTY_IncrementingStringExpression expression = new XFTY_IncrementingStringExpression(
                 'ACME',
                 XFTY_IncrementingStringExpression.DONT_SEPARATE_PREFIX
         );
-        Assert.areEqual('ACME1', strategy.get());
-        Assert.areEqual('ACME2', strategy.get());
+        Assert.areEqual('ACME1', expression.get());
+        Assert.areEqual('ACME2', expression.get());
     }
 
     @IsTest
@@ -93,10 +93,10 @@ private class XFTY_ValueExpressionTest {
 
     @IsTest
     static void uniqueStringLengthProducesFixedLengthUppercaseValues() {
-        XFTY_UniqueStringOfLengthExpression strategy = new XFTY_UniqueStringOfLengthExpression(5);
+        XFTY_UniqueStringOfLengthExpression expression = new XFTY_UniqueStringOfLengthExpression(5);
         Set<Object> produced = new Set<Object>();
         for (Integer i = 0; i < 20; i++) {
-            String value = (String) strategy.get();
+            String value = (String) expression.get();
             Assert.areEqual(5, value.length(), 'Got: ' + value);
             Assert.isTrue(Pattern.matches('[A-Z]{5}', value), 'Got: ' + value);
             produced.add(value);
@@ -119,10 +119,10 @@ private class XFTY_ValueExpressionTest {
 
     @IsTest
     static void incrementingDecimalReturnsAscendingDecimals() {
-        XFTY_IncrementingDecimalExpression strategy = new XFTY_IncrementingDecimalExpression();
-        Object first = strategy.get();
+        XFTY_IncrementingDecimalExpression expression = new XFTY_IncrementingDecimalExpression();
+        Object first = expression.get();
         Assert.isTrue(first instanceof Decimal, 'Expected a Decimal');
         Assert.areEqual(Decimal.valueOf('1'), (Decimal) first);
-        Assert.areEqual(Decimal.valueOf('2'), (Decimal) strategy.get());
+        Assert.areEqual(Decimal.valueOf('2'), (Decimal) expression.get());
     }
 }

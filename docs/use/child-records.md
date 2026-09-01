@@ -31,7 +31,7 @@ new XFTY_SObjectChildProvider(Contact.AccountId, new Contact(Title='Buyer'))
 | Method | |
 |---|---|
 | `.setQuantity(Integer)` | children per primary (default 1) |
-| `.put(field, strategy \| literal \| contextAwareStrategy)` | as on the main Provider |
+| `.put(field, expression \| literal \| contextAwareExpression)` | as on the main Provider |
 | `.putRequired(field, relationship)` / `.putOptional(field, relationship)` | the child's own relationships |
 | `.setInsertMode(XFTY_InsertModeEnum)` | default: the parent Provider's. **Cannot mix mock Ids with real DML** either way (`NOW`+`MOCK` or `MOCK`+`NOW` throws); ignored under `DEFERRED`. |
 | `.setInclusivity(XFTY_InsertInclusivityEnum)` | default: the parent Provider's. Governs the child's **own other** relationships only. |

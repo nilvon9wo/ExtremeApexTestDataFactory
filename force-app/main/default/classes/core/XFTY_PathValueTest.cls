@@ -21,7 +21,7 @@ private class XFTY_PathValueTest {
     }
 
     @IsTest
-    static void valueStrategyLandsOnTheGeneratedAncestor() {
+    static void valueExpressionLandsOnTheGeneratedAncestor() {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setQuantityPerTemplate(3)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)

@@ -61,16 +61,16 @@ public class XFTY_SObjectChildProvider {
         return this;
     }
 
-    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ValueExpressionIntf valueStrategy) {
+    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ValueExpressionIntf valueExpression) {
         PendingPut pendingPut = new PendingPut(field);
-        pendingPut.valueStrategy = valueStrategy;
+        pendingPut.valueExpression = valueExpression;
         this.pendingPuts.add(pendingPut);
         return this;
     }
 
-    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ContextAwareExpressionIntf contextAwareValue) {
+    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ContextAwareExpressionIntf contextAwareExpression) {
         PendingPut pendingPut = new PendingPut(field);
-        pendingPut.contextAwareValue = contextAwareValue;
+        pendingPut.contextAwareExpression = contextAwareExpression;
         this.pendingPuts.add(pendingPut);
         return this;
     }
@@ -205,8 +205,8 @@ public class XFTY_SObjectChildProvider {
 
     private class PendingPut {
         final SObjectField field;
-        XFTY_ValueExpressionIntf valueStrategy;
-        XFTY_ContextAwareExpressionIntf contextAwareValue;
+        XFTY_ValueExpressionIntf valueExpression;
+        XFTY_ContextAwareExpressionIntf contextAwareExpression;
         XFTY_DummyDefaultRelationshipIntf requiredRelationship;
         XFTY_DummyDefaultRelationshipIntf optionalRelationship;
         Object literal;
@@ -217,10 +217,10 @@ public class XFTY_SObjectChildProvider {
         }
 
         void applyTo(XFTY_DummySObjectProvider provider) {
-            if (this.valueStrategy != null) {
-                provider.put(this.field, this.valueStrategy);
-            } else if (this.contextAwareValue != null) {
-                provider.put(this.field, this.contextAwareValue);
+            if (this.valueExpression != null) {
+                provider.put(this.field, this.valueExpression);
+            } else if (this.contextAwareExpression != null) {
+                provider.put(this.field, this.contextAwareExpression);
             } else if (this.requiredRelationship != null) {
                 provider.putRequired(this.field, this.requiredRelationship);
             } else if (this.optionalRelationship != null) {

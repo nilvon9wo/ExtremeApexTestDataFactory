@@ -1,4 +1,4 @@
-# Custom Value Strategies
+# Custom Value Expressions
 
 XFTY ships the [plumbing, not a mini-expression-language](../use/value-expressions.md).
 Anything with real logic is a small class you write. The bundled
@@ -17,7 +17,7 @@ need to see":
 
 ---
 
-## A plain value strategy — `XFTY_ValueExpressionIntf`
+## A plain value expression — `XFTY_ValueExpressionIntf`
 
 One no-argument method:
 
@@ -43,7 +43,7 @@ public class NextBusinessDay implements XFTY_ValueExpressionIntf {
 .put(Task.ActivityDate, new NextBusinessDay())
 ```
 
-Stateful strategies (incrementing, unique) are fine and common — see
+Stateful expressions (incrementing, unique) are fine and common — see
 [../reference/salesforce-considerations.md](../reference/salesforce-considerations.md)
 for why that means avoiding `@TestSetup`.
 
@@ -178,12 +178,12 @@ that *requested* this parent, or a row from a `withChildren(...)` collection.
 
 ## Testing
 
-A custom strategy earns a test the same way a [Provider](providers.md) does —
+A custom expression earns a test the same way a [Provider](providers.md) does —
 generate with it, assert the value. The models:
 
-- `XFTY_ValueExpressionTest` — plain strategies.
+- `XFTY_ValueExpressionTest` — plain expressions.
 - `XFTY_ContextAwareExpressionTest` — sibling + ancestor reads.
-- `XFTY_CopyFromDescendantExpressionExpressionTest` — up-flow reads under `DEFERRED`.
-- `XFTY_Ex_Adv_MatchingValuesTest` — a worked custom strategy end to end.
+- `XFTY_CopyFromDescendantExpressionTest` — up-flow reads under `DEFERRED`.
+- `XFTY_Ex_Adv_MatchingValuesTest` — a worked custom expression end to end.
 
 ▶ Runnable: `XFTY_Ex_Extend_CustomValueExpressionsTest`

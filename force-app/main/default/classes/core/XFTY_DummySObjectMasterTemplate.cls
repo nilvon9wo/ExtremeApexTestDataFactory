@@ -3,7 +3,7 @@ public class XFTY_DummySObjectMasterTemplate {
     public SObjectField primaryTargetField { get; private set; }
     public Map<SObjectField, XFTY_ValueExpressionIntf> defaultBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_ContextAwareExpressionIntf> contextAwareBySObjectFieldMap { get; private set; }
-    public Map<SObjectField, XFTY_DeferredExpressionIntf> deferredValueBySObjectFieldMap { get; private set; }
+    public Map<SObjectField, XFTY_DeferredExpressionIntf> deferredExpressionBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> requiredRelationshipBySObjectFieldMap { get; private set; }
     public Map<SObjectField, XFTY_DummyDefaultRelationshipIntf> optionalRelationshipBySObjectFieldMap { get; private set; }
 
@@ -22,7 +22,7 @@ public class XFTY_DummySObjectMasterTemplate {
         this.primaryTargetField = primaryTargetField;
         this.defaultBySObjectFieldMap = defaultBySObjectFieldMap;
         this.contextAwareBySObjectFieldMap = new Map<SObjectField, XFTY_ContextAwareExpressionIntf>();
-        this.deferredValueBySObjectFieldMap = new Map<SObjectField, XFTY_DeferredExpressionIntf>();
+        this.deferredExpressionBySObjectFieldMap = new Map<SObjectField, XFTY_DeferredExpressionIntf>();
         this.requiredRelationshipBySObjectFieldMap = requiredRelationshipBySObjectFieldMap;
         this.optionalRelationshipBySObjectFieldMap = optionalRelationshipBySObjectFieldMap;
         this.valueFieldOrder = new List<SObjectField>(defaultBySObjectFieldMap.keySet());
@@ -40,16 +40,16 @@ public class XFTY_DummySObjectMasterTemplate {
     public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ValueExpressionIntf valueTemplate) {
         this.trackFieldOrder(sObjectField);
         this.contextAwareBySObjectFieldMap.remove(sObjectField);
-        this.deferredValueBySObjectFieldMap.remove(sObjectField);
+        this.deferredExpressionBySObjectFieldMap.remove(sObjectField);
         this.defaultBySObjectFieldMap.put(sObjectField, valueTemplate);
         return this;
     }
 
-    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareValue) {
+    public XFTY_DummySObjectMasterTemplate put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareExpression) {
         this.trackFieldOrder(sObjectField);
         this.defaultBySObjectFieldMap.remove(sObjectField);
-        this.deferredValueBySObjectFieldMap.remove(sObjectField);
-        this.contextAwareBySObjectFieldMap.put(sObjectField, contextAwareValue);
+        this.deferredExpressionBySObjectFieldMap.remove(sObjectField);
+        this.contextAwareBySObjectFieldMap.put(sObjectField, contextAwareExpression);
         return this;
     }
 
@@ -58,7 +58,7 @@ public class XFTY_DummySObjectMasterTemplate {
         this.trackFieldOrder(sObjectField);
         this.defaultBySObjectFieldMap.remove(sObjectField);
         this.contextAwareBySObjectFieldMap.remove(sObjectField);
-        this.deferredValueBySObjectFieldMap.put(sObjectField, deferredValue);
+        this.deferredExpressionBySObjectFieldMap.put(sObjectField, deferredValue);
         return this;
     }
 
@@ -110,7 +110,7 @@ public class XFTY_DummySObjectMasterTemplate {
      * The field maps (and the field-order list) are recreated so that callers
      * (typically `XFTY_DummySObjectProvider`) can add or remove entries without
      * mutating the shared, statically-held Master Template a Provider exposes. The
-     * strategy instances themselves are intentionally shared: they are treated as
+     * expression instances themselves are intentionally shared: they are treated as
      * immutable configuration by the engine.
      *
      * The implicit Apex `clone()` is a shallow copy and would leave these maps
@@ -124,7 +124,7 @@ public class XFTY_DummySObjectMasterTemplate {
                 new Map<SObjectField, XFTY_DummyDefaultRelationshipIntf>(this.optionalRelationshipBySObjectFieldMap)
         );
         theCopy.contextAwareBySObjectFieldMap.putAll(this.contextAwareBySObjectFieldMap);
-        theCopy.deferredValueBySObjectFieldMap.putAll(this.deferredValueBySObjectFieldMap);
+        theCopy.deferredExpressionBySObjectFieldMap.putAll(this.deferredExpressionBySObjectFieldMap);
         theCopy.valueFieldOrder.clear();
         theCopy.valueFieldOrder.addAll(this.valueFieldOrder);
         return theCopy;
@@ -133,7 +133,7 @@ public class XFTY_DummySObjectMasterTemplate {
     public XFTY_DummySObjectMasterTemplate remove(SObjectField sObjectField) {
         this.defaultBySObjectFieldMap.remove(sObjectField);
         this.contextAwareBySObjectFieldMap.remove(sObjectField);
-        this.deferredValueBySObjectFieldMap.remove(sObjectField);
+        this.deferredExpressionBySObjectFieldMap.remove(sObjectField);
         this.requiredRelationshipBySObjectFieldMap.remove(sObjectField);
         this.optionalRelationshipBySObjectFieldMap.remove(sObjectField);
         for (Integer i = this.valueFieldOrder.size() - 1; i >= 0; i--) {
@@ -147,7 +147,7 @@ public class XFTY_DummySObjectMasterTemplate {
     private void trackFieldOrder(SObjectField sObjectField) {
         Boolean alreadyTracked = this.defaultBySObjectFieldMap.containsKey(sObjectField)
                 || this.contextAwareBySObjectFieldMap.containsKey(sObjectField)
-                || this.deferredValueBySObjectFieldMap.containsKey(sObjectField);
+                || this.deferredExpressionBySObjectFieldMap.containsKey(sObjectField);
         if (!alreadyTracked) {
             this.valueFieldOrder.add(sObjectField);
         }

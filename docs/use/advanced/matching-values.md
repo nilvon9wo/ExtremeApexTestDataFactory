@@ -39,7 +39,7 @@ public class SiblingCountryLabel implements XFTY_ContextAwareExpressionIntf {
 }
 ```
 
-Writing and shipping one: [extend/custom-value-strategies](../../extend/custom-value-expressions.md).
+Writing and shipping one: [extend/custom-value-expressions](../../extend/custom-value-expressions.md).
 
 ---
 

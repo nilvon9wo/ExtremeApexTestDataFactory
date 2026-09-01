@@ -117,7 +117,7 @@ Re-registering a shared ancestor after it has resolved throws.
 
 ### `put(name, provider)` — the whole generation API for one shared record
 
-When a template / key is not enough — you need value strategies on the shared
+When a template / key is not enough — you need value expressions on the shared
 record, or want to shape *its* own ancestors — hand `put(name, provider)` a
 fully-configured `XFTY_DummySObjectProvider`:
 

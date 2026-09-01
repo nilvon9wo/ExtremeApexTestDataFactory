@@ -48,7 +48,7 @@ public class XFTY_DummySObjectFactory {
      * whole forest never exists, so it is a loud error, not a silent `null`.
      */
     private void registerDeferredValues(XFTY_DummySObjectBundle bundle) {
-        if (this.template.deferredValueBySObjectFieldMap.isEmpty()) {
+        if (this.template.deferredExpressionBySObjectFieldMap.isEmpty()) {
             return;
         }
         if (!this.context.batchedInsertPending) {
@@ -58,7 +58,7 @@ public class XFTY_DummySObjectFactory {
                             + 'setInsertMode(XFTY_InsertModeEnum.DEFERRED) and call XFTY_DeferredInserter.flush().'
             );
         }
-        bundle.deferValues(this.template.deferredValueBySObjectFieldMap);
+        bundle.deferValues(this.template.deferredExpressionBySObjectFieldMap);
     }
 
     private void persist(List<SObject> records) {

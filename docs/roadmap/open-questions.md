@@ -17,7 +17,7 @@ area with nothing blocked does not appear.
 Shipping the engine as real deployable code — not `@IsTest` — is what sandbox
 seeding needs and what a managed / AppExchange package requires. The cost: the
 engine then needs real production test coverage, and so do every consumer's
-custom Providers and value strategies.
+custom Providers and value expressions.
 
 A consumer almost certainly **cannot** install a deployable base and add the
 `@IsTest` layer later (you cannot replace a file from another package). So this is

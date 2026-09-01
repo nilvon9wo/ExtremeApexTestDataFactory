@@ -115,7 +115,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     }
 
     /**
-     * Register a fully-configured `XFTY_DummySObjectProvider` - value strategies,
+     * Register a fully-configured `XFTY_DummySObjectProvider` - value expressions,
      * `putRequired` / `includeOptional` / `put(path, ...)`, a pinned variant.
      * Not combined with the template / key forms.
      */

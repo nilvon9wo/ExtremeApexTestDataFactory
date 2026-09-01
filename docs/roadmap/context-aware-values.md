@@ -11,7 +11,7 @@ the design record. Builds on `XFTY_GenerationContext`
 
 ## The need
 
-A value strategy today implements `XFTY_ValueExpressionIntf.get()` - no
+A value expression today implements `XFTY_ValueExpressionIntf.get()` - no
 arguments, no knowledge of anything around it. Real data models routinely need
 more:
 
@@ -99,7 +99,7 @@ not something to rely on.
 | | Approach | Handles |
 |-|----------|---------|
 | **A** *(recommended for v1)* | **Two passes.** Pass 1 fills every non-context-aware value. Pass 2 evaluates context-aware values, in template-insertion order, against a `recordBeingBuilt` that already has all the plain values (and any earlier context-aware ones). | sibling reads of plain fields; ancestor reads; context-aware reading an *earlier* context-aware sibling. |
-| **B** | Each context-aware strategy declares the sibling fields it reads; topological sort. | arbitrary context-aware dependency chains. |
+| **B** | Each context-aware expression declares the sibling fields it reads; topological sort. | arbitrary context-aware dependency chains. |
 | **C** | `context.sibling(field)` resolves that field lazily on demand, recursing, with cycle detection. | everything, including cycles (as errors). |
 
 **A** covers the motivating cases and is a small change. The limitation: a
@@ -130,7 +130,7 @@ pass over the whole graph**:
 
 1. build the entire structure (every record, every relationship) with plain +
    sibling + ancestor values, no insert;
-2. **up-flow pass** - walk the graph and evaluate descendant-reading strategies,
+2. **up-flow pass** - walk the graph and evaluate descendant-reading expressions,
    now that every record exists in memory. Bottom-up isn't required; a single
    pass works because every record is present;
 3. wire lookups, assign / insert Ids.
