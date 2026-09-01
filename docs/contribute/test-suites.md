@@ -8,7 +8,8 @@ XFTY defines `ApexTestSuite`s so you can run only what you need.
 | `XFTY_Integration` | `force-app` | The classes that do real DML — `NOW` / `RELATED_ONLY` insert modes and the bundled Providers persisting records. Sensitive to org config. | Before a commit; in CI. |
 | `XFTY_Load` | `test-support` | `XFTY_LoadTest`, `XFTY_SharedAncestorLoadTest`, `XFTY_DeferredLoadTest` — push generation toward each governor limit and pin where it breaks ([../reference/volume-and-limits.md](../reference/volume-and-limits.md)). Assertions assume a quiet org, so it is **not** shipped. | On demand, and when changing the engine. Slowest. |
 | `XFTY_Examples` | `test-support` | `XFTY_Ex_*Test` — the runnable versions of every [use/](../use/) doc example. Guards the documented public API. | With the docs; in CI. |
-| `XFTY_OrgOnly` | `test-support/orgonly` | Tests that need a real org's schema / query semantics — a custom object's record-type describe, real `Profile` / `UserRole` tables, Person Accounts, the deep-hierarchy acceptance test. Excluded from the local `nimbus test` run ([about-nimbus](about-nimbus.md)). | On a scratch org, in CI. |
+| `XFTY_OrgOnly` | `test-support/orgonly` | Tests that need a real org's schema / query semantics — a custom object's record-type describe, real `Profile` / `UserRole` tables, record-type query counting, the deep-hierarchy acceptance test. Excluded from the local `nimbus test` run ([about-nimbus](about-nimbus.md)). Runs on **any** Developer Edition or scratch org. | On a scratch org, in CI. |
+| `XFTY_PersonAccount` | `test-support/orgonly` | `XFTY_PersonAccountVariantTest` only — kept out of `XFTY_OrgOnly` because it needs a **Person-Account-enabled** org, which a package / test cannot turn on. Deploy `XFTY_PersonAccountDataProvider` alongside it. | On a Person-Account org, in CI. |
 
 ```bash
 sf apex run test --suite-names XFTY_Unit --result-format human            # fast loop
@@ -26,6 +27,7 @@ keeps the no-DML matrix; `XFTY_DummySObjectFactoryDmlTest` has the `NOW` /
 `XFTY_DummySObjectProviderScenarioTest` (end-to-end "does the whole flow work").
 Each test class lives in the same folder as the class it exercises.
 
-The other `test-support/` tests (`XFTY_PersonAccountVariantTest`,
-`XFTY_RecordTypeRealRtTest`) are not in a suite — CI's `RunLocalTests` runs them
-on the scratch org, which enables `PersonAccounts`.
+`XFTY_RecordTypeRealRtTest` is in `XFTY_OrgOnly` (it was retargeted off
+`PersonAccount` onto the `XFTY_HierarchyNode__c` custom object, so it no longer
+needs the feature). Only `XFTY_PersonAccountVariantTest` still does — hence its
+own `XFTY_PersonAccount` suite.

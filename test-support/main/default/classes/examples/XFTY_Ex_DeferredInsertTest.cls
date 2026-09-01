@@ -96,7 +96,7 @@ private class XFTY_Ex_DeferredInsertTest {
 
         // Assert
         Assert.isNotNull(parentId);
-        for (Contact seededContact : contacts.getList(Contact.Id)) {
+        for (Contact seededContact : (List<Contact>) contacts.getList(Contact.Id)) {
             Assert.areEqual(parentId, seededContact.AccountId, 'every Contact points at the flushed Account');
         }
     }

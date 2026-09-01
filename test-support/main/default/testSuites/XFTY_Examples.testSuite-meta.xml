@@ -4,7 +4,7 @@
       Runnable proofs for the fenced examples in docs/use/** and docs/extend/**.
       Every XFTY_Ex_*Test method is one documentation example; a page's
       "▶ Runnable" line names its class. test-support/ only.
-      Run: sf apex run test --suite-names XFTY_Examples
+      Run with: sf apex run test, suite name XFTY_Examples.
     -->
     <testClassName>XFTY_Ex_Adv_DeepSetupChainsTest</testClassName>
     <testClassName>XFTY_Ex_Adv_LargeGraphsTest</testClassName>
@@ -14,7 +14,7 @@
     <testClassName>XFTY_Ex_BundlesTest</testClassName>
     <testClassName>XFTY_Ex_ContextAwareTest</testClassName>
     <testClassName>XFTY_Ex_DeferredInsertTest</testClassName>
-    <testClassName>XFTY_Ex_Extend_CustomValueExpressionsTest</testClassName>
+    <testClassName>XFTY_Ex_Extend_CustomExpressionsTest</testClassName>
     <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>
     <testClassName>XFTY_Ex_InsertModesTest</testClassName>
     <testClassName>XFTY_Ex_OverrideTemplatesTest</testClassName>

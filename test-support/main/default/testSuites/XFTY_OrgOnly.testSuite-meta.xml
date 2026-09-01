@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
     <!--
-        Tests that need a real org's schema and query semantics - a custom
-        object's record-type describe, real Profile / UserRole tables, record-
-        type query counting, Person Accounts. The local Apex runtime fakes
-        these, so they live in test-support/main/default/classes/orgonly/ and are
-        excluded from `nimbus test` (nimbus.test.exclude). They pass on a scratch
-        org.
-        Run: sf project deploy start -d test-support -o <scratch>
-             sf apex run test --suite-names XFTY_OrgOnly -o <scratch>
+        Tests that need a real org's schema and query semantics: a custom
+        object's record type describe, real Profile and UserRole tables, record
+        type query counting. The local Apex runtime fakes these, so they live in
+        test-support/main/default/classes/orgonly/ and are excluded from
+        `nimbus test` (see nimbus.test.exclude). They pass on any Developer
+        Edition or scratch org.
+
+        Person Account tests are NOT here; they need a Person-Account-enabled
+        org, so they have their own suite, XFTY_PersonAccount.
+
+        Run with: sf project deploy start (test-support), then
+        sf apex run test with suite name XFTY_OrgOnly.
     -->
     <testClassName>XFTY_DefaultDataProviderOrgTest</testClassName>
-    <testClassName>XFTY_PersonAccountVariantTest</testClassName>
     <testClassName>XFTY_RecordTypeDataProviderOrgTest</testClassName>
     <testClassName>XFTY_RecordTypeRealRtTest</testClassName>
-    <testClassName>XFTY_SharedAncestorHierarchyAcceptanceTest</testClassName>
+    <testClassName>XFTY_SharedAncestorDeepHierarchyTest</testClassName>
 </ApexTestSuite>

@@ -64,7 +64,7 @@ tables + query counting, Person Accounts — live in
 sf project deploy start -o <scratch> -d test-support
 sf apex run test -o <scratch> --tests XFTY_RecordTypeRealRtTest --tests XFTY_PersonAccountVariantTest \
   --tests XFTY_DefaultDataProviderOrgTest --tests XFTY_RecordTypeDataProviderOrgTest \
-  --tests XFTY_SharedAncestorHierarchyAcceptanceTest
+  --tests XFTY_SharedAncestorDeepHierarchyTest
 ```
 
 ---

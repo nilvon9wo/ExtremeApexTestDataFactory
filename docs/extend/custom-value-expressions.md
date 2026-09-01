@@ -132,7 +132,7 @@ transformation, not a straight copy.
   before `flush()`. If a child needs the parent's real Id under `DEFERRED`, put
   it in the **lookup field** (normal relationship generation — the depth-batched
   insert wires it); a context-aware value into any other field cannot get it.
-  This is proven in `XFTY_Ex_Extend_CustomValueExpressionsTest`.
+  This is proven in `XFTY_Ex_Extend_CustomExpressionsTest`.
 
 ---
 
@@ -186,4 +186,4 @@ generate with it, assert the value. The models:
 - `XFTY_CopyFromDescendantExpressionTest` — up-flow reads under `DEFERRED`.
 - `XFTY_Ex_Adv_MatchingValuesTest` — a worked custom expression end to end.
 
-▶ Runnable: `XFTY_Ex_Extend_CustomValueExpressionsTest`
+▶ Runnable: `XFTY_Ex_Extend_CustomExpressionsTest`

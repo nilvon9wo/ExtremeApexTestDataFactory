@@ -91,7 +91,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
 
         // Assert
         Assert.isNotNull(firstSeededAccountId);
-        for (Contact contactRecord : laterContacts.getList(Contact.Id)) {
+        for (Contact contactRecord : (List<Contact>) laterContacts.getList(Contact.Id)) {
             Assert.areEqual(firstSeededAccountId, contactRecord.AccountId, 'every later Contact points at the flushed Account');
         }
         Assert.areEqual(3, [SELECT COUNT() FROM Account], 'no extra Accounts - the later step reused the Id');

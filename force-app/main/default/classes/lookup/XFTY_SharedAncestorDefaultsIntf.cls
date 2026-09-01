@@ -13,7 +13,7 @@
  *
  * A lookup that never references a shared ancestor does not implement this.
  */
-@IsTest
+//@IsTest
 public interface XFTY_SharedAncestorDefaultsIntf {
     /**
      * Register this lookup's shared-ancestor defaults, e.g.

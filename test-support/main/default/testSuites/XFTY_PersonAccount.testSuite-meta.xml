@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        Tests that need Person Accounts enabled on the org. Person Accounts
+        cannot be enabled from a package or a test, so these are kept apart from
+        XFTY_OrgOnly: deploy XFTY_PersonAccountDataProvider and run this suite
+        only against an org that already has the feature.
+
+        Run with: sf project deploy start (test-support) against a
+        Person-Account org, then sf apex run test with suite name
+        XFTY_PersonAccount.
+    -->
+    <testClassName>XFTY_PersonAccountVariantTest</testClassName>
+</ApexTestSuite>

@@ -548,7 +548,7 @@ So a shared ancestor is always generated fresh within the test that needs it -
    The deep-record-type-hierarchy acceptance test is **done**:
    `XFTY_HierarchyNode__c` (test-support: self-parent lookup, 10 record types,
    `XFTY_HierarchyNodeRootSingleton` trigger) +
-   `XFTY_SharedAncestorHierarchyAcceptanceTest` (`test-support/orgonly/`, scratch
+   `XFTY_SharedAncestorDeepHierarchyTest` (`test-support/orgonly/`, scratch
    org) — two `Level9` leaves, `REQUIRED` + `NOW`, whole chain generated with the
    right record types, both converging on the one shared singleton `Root`.
 

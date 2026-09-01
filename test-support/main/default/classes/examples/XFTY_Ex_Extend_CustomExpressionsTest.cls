@@ -5,7 +5,7 @@
  * Every `@IsTest` method is one example or one stated limitation from that page.
  */
 @IsTest
-private class XFTY_Ex_Extend_CustomValueExpressionsTest {
+private class XFTY_Ex_Extend_CustomExpressionsTest {
 
     private static final XFTY_DefaultSObjectProviderLookup PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;

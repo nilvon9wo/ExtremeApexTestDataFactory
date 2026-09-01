@@ -29,7 +29,8 @@ every line.
 
 - The line-coverage target is **100%**, verified on an **org**: temporarily
   strip `@IsTest`, deploy `force-app` + `test-support`, run every suite
-  (`XFTY_Unit`, `XFTY_Integration`, `XFTY_Load`, `XFTY_Examples`, `XFTY_OrgOnly`)
+  (`XFTY_Unit`, `XFTY_Integration`, `XFTY_Load`, `XFTY_Examples`, `XFTY_OrgOnly`,
+  and `XFTY_PersonAccount` on a Person-Account org)
   with `--code-coverage` (see
   [local-development](local-development.md#measuring-coverage)). The local Apex
   runtime's coverage numbers are **not** reliable — it under-reports classes

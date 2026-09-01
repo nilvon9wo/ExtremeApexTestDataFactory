@@ -17,7 +17,7 @@
  * describe, which the local Apex runtime does not have. Runs on a scratch org.
  */
 @IsTest
-private class XFTY_SharedAncestorHierarchyAcceptanceTest {
+private class XFTY_SharedAncestorDeepHierarchyTest {
 
     private static final SObjectType NODE = XFTY_HierarchyNode__c.SObjectType;
 
