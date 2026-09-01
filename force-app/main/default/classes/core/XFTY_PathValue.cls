@@ -16,7 +16,7 @@ public class XFTY_PathValue {
     public enum Kind { VALUE_EXPRESSION, CONTEXT_AWARE, LITERAL, REQUIRED_RELATIONSHIP, OPTIONAL_RELATIONSHIP }
 
     public final List<SObjectField> path;
-    public final Kind kind;
+    public final Kind pathKind;
     private final XFTY_ValueExpressionIntf valueExpression;
     private final XFTY_ContextAwareExpressionIntf contextAwareExpression;
     private final Object literal;
@@ -24,7 +24,7 @@ public class XFTY_PathValue {
 
     private XFTY_PathValue(
             List<SObjectField> path,
-            Kind kind,
+            Kind pathKind,
             XFTY_ValueExpressionIntf valueExpression,
             XFTY_ContextAwareExpressionIntf contextAwareExpression,
             Object literal,
@@ -32,7 +32,7 @@ public class XFTY_PathValue {
     ) {
         assertPath(path);
         this.path = path;
-        this.kind = kind;
+        this.pathKind = pathKind;
         this.valueExpression = valueExpression;
         this.contextAwareExpression = contextAwareExpression;
         this.literal = literal;
@@ -80,7 +80,7 @@ public class XFTY_PathValue {
 
     /** True when the value is itself a relationship (`putRequired`/`putOptional` path form). */
     public Boolean isRelationshipKind() {
-        return this.kind == Kind.REQUIRED_RELATIONSHIP || this.kind == Kind.OPTIONAL_RELATIONSHIP;
+        return this.pathKind == Kind.REQUIRED_RELATIONSHIP || this.pathKind == Kind.OPTIONAL_RELATIONSHIP;
     }
 
     /** True when the value is a shared ancestor (`putRequired(path, XFTY_SharedAncestor.get(name))`). */
@@ -94,14 +94,14 @@ public class XFTY_PathValue {
         for (Integer i = 1; i < this.path.size(); i++) {
             rest.add(this.path[i]);
         }
-        return new XFTY_PathValue(rest, this.kind, this.valueExpression, this.contextAwareExpression, this.literal, this.relationship);
+        return new XFTY_PathValue(rest, this.pathKind, this.valueExpression, this.contextAwareExpression, this.literal, this.relationship);
     }
 
     /** Land the value on `template` (call only when `isAtTarget()`). */
     public void applyTo(XFTY_DummySObjectMasterTemplate template) {
         SObjectField targetField = this.path[0];
         template.remove(targetField);
-        switch on this.kind {
+        switch on this.pathKind {
             when VALUE_EXPRESSION {
                 template.put(targetField, this.valueExpression);
             }
