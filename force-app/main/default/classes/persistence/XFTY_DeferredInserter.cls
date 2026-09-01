@@ -7,7 +7,9 @@
  * appear on the instances the calls already returned.
  *
  * Static, so it clears between test methods; not usable from `@TestSetup` (which
- * also clears statics) or with shared ancestors (refused during generation).
+ * also clears statics). Shared ancestors work (each resolves in its own pre-phase
+ * with a real / mock Id, so the flush treats it as an anchor). Up-flowing values
+ * ({@link XFTY_CopyFromDescendant}) are filled here, at the top of `flush()`.
  */
 @IsTest
 public class XFTY_DeferredInserter {

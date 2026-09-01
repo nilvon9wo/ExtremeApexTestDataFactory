@@ -1,7 +1,31 @@
 # Roadmap: Descendant (Up-Flowing) Value Reads
 
-Status: **📋 designed, not built.** Approach decided — see below. This is
-decision 4 of [context-aware-values.md](context-aware-values.md).
+Status: **✅ built** (option B). `XFTY_CopyFromDescendant`, resolved in a pass over
+the whole `DEFERRED` forest just before the depth-batched insert. This was
+decision 4 of [context-aware-values.md](context-aware-values.md); usage in
+[../use/context-aware-values.md](../use/context-aware-values.md#reading-up-from-a-child).
+
+Implemented:
+
+- `XFTY_DeferredValueIntf` — a value read up from a descendant; its own template
+  slot (`deferredValueBySObjectFieldMap`), so the normal value passes ignore it.
+- `XFTY_CopyFromDescendant(childLookupField, sourceField)` — copy a field from the
+  child that references this record through `childLookupField`; first matching
+  child, or `null`.
+- `XFTY_DummySObjectFactory` leaves the field unresolved and calls
+  `bundle.deferValues(...)`; **in any mode but `DEFERRED` / `.depthBatched()` it
+  throws** (the forest never exists otherwise) — not a silent `null`.
+- `XFTY_DeferredInsertBuffer` captures each pending value keyed by the record's
+  flat index; `XFTY_DescendantValuePass` (via `XFTY_DeferredGraph.childrenOf`)
+  fills them at the top of `insertAll()` / `resolveAll()`, before the insert.
+- Works for a generated ancestor reading its requesting child **and** for a
+  parent reading one of its `withChildren` rows — the parent link is the same
+  shape either way.
+
+Not yet: a multi-hop path form (`XFTY_CopyFromAncestor` has one); reading an
+**aggregate** across many children (only the first is read); a loud error when a
+`DEFERRED` build registers one but never calls `flush()` (the value stays `null`,
+like the rest of that un-flushed graph).
 
 ---
 

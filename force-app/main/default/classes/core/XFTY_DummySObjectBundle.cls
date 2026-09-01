@@ -48,6 +48,37 @@ public class XFTY_DummySObjectBundle {
         return this.sObjectBundleBySObjectFieldMap.keySet();
     }
 
+    // Up-flowing values - resolved during the DEFERRED flush, once the forest exists ----
+
+    private final List<DeferredValue> deferredValues = new List<DeferredValue>();
+
+    /** One primary row's field, still to be filled by an up-flow strategy. */
+    public class DeferredValue {
+        public final Integer primaryRow;
+        public final SObjectField field;
+        public final XFTY_DeferredValueIntf strategy;
+
+        public DeferredValue(Integer primaryRow, SObjectField field, XFTY_DeferredValueIntf strategy) {
+            this.primaryRow = primaryRow;
+            this.field = field;
+            this.strategy = strategy;
+        }
+    }
+
+    /** Record that each primary row's `byField` entries are still to be resolved up from descendants. */
+    public void deferValues(Map<SObjectField, XFTY_DeferredValueIntf> byField) {
+        List<SObject> primaries = this.primaryRecords();
+        for (Integer row = 0; row < primaries.size(); row++) {
+            for (SObjectField field : byField.keySet()) {
+                this.deferredValues.add(new DeferredValue(row, field, byField.get(field)));
+            }
+        }
+    }
+
+    public List<DeferredValue> deferredValues() {
+        return this.deferredValues;
+    }
+
     // Children - from XFTY_DummySObjectProvider.with(...) / withChildren(...) ----------------
     //
     // A child relationship field can carry more than one sub-bundle (one per

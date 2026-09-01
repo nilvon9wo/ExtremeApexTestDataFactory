@@ -40,7 +40,17 @@ Every `Case` now carries the shared Account's `OwnerId`. See
 
 ## Child value up onto a parent
 
-Reading *up* — a parent field derived from a generated child — is not supported
-yet. See [roadmap/descendant-value-reads.md](../../roadmap/descendant-value-reads.md).
+`XFTY_CopyFromDescendant(childLookupField, sourceField)` copies a value *up* from
+a generated child — under `DEFERRED` (or `.depthBatched()`), resolved at
+`flush()`:
+
+```apex
+// on the Account Provider
+.put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department))
+```
+
+Any other insert mode throws — the whole graph has to exist first. See
+[context-aware-values.md](../context-aware-values.md#reading-up-from-a-child) and
+[roadmap/descendant-value-reads.md](../../roadmap/descendant-value-reads.md).
 
 ▶ Runnable: `XFTY_Ex_Adv_MatchingValuesTest` _(pending — Pass B)_

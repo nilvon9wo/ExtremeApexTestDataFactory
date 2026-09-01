@@ -2,7 +2,7 @@
 
 Most [value strategies](value-strategies.md) generate a field in isolation. A
 **context-aware** value sees the rest of the record — a field copied from a
-sibling, or from a generated parent.
+sibling, from a generated parent, or (under `DEFERRED`) from a generated child.
 
 `XFTY_ContextAwareValueIntf` is a separate interface from
 `XFTY_DummyDefaultValueIntf` (a context-aware value has no meaningful no-argument
@@ -93,8 +93,36 @@ a not-yet-generated one throws.)
 
 An override-template value still wins over a context-aware strategy.
 
-Reading a field on a generated **child** (up-flowing) is not supported — the
-child does not exist when the parent is built. See
+---
+
+## Reading up from a child
+
+`XFTY_CopyFromDescendant` copies a field from a generated **child** — the record
+that references this one through the given lookup field:
+
+```apex
+// on an Account Provider, so a validation rule comparing the two passes
+.put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department))
+```
+
+The child does not exist when the parent is built, so this needs the whole graph
+in memory first: **it only works under `DEFERRED` (or `.depthBatched()`)** and is
+resolved when `XFTY_DeferredInserter.flush()` runs. A Provider that carries one
+of these in any other insert mode **throws** — it does not silently leave the
+field `null`.
+
+```apex
+new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)   // Contact pulls in the Account
+    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .supply();
+XFTY_DeferredInserter.flush();   // the Account's Site is filled here
+```
+
+Works whether the child is a generated ancestor's requesting child or one of a
+parent's `withChildren` rows. With more than one matching child the **first** is
+read; with none, the value is `null`. Multi-hop paths and aggregates across
+children are not built — see
 [roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
 
 ---

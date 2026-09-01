@@ -70,6 +70,7 @@ Each component has a single responsibility.
 | `XFTY_LookupWiring` | Phase: point each record's lookup fields at its generated parents. |
 | `XFTY_PlainValueFiller` | Phase: fill the plain (`XFTY_DummyDefaultValueIntf`) values. |
 | `XFTY_ContextAwareValuePass` | Phase: run the `XFTY_ContextAwareValueIntf` strategies, one field at a time. |
+| `XFTY_DescendantValuePass` / `XFTY_DeferredGraph` | Up-flow value pass at the top of the `DEFERRED` flush: fill each `XFTY_DeferredValueIntf` (`XFTY_CopyFromDescendant`) from that record's now-generated children, read through the collected parent links. |
 | `XFTY_ValueFieldPass` | The narrowest scope — one context-aware field + the set of sibling context-aware fields not yet generated (drives `context.siblingValue`'s loud guard). |
 | `XFTY_RelationshipForcer` | Applies `includeOptional(...)` / `put(path,...)` relationship-prefix paths to a per-call copy of the Master Template. |
 | `XFTY_PathValue` / `XFTY_PathValueApplier` | A `put(List<SObjectField>, value)` override targeted at a generated ancestor; the applier lands the at-target ones on the level's template. |
@@ -82,7 +83,7 @@ Each component has a single responsibility.
 | `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |
 | `XFTY_DeferredInserter` / `XFTY_DeferredInsertBuffer` | The `DEFERRED` registry and its bundle-walk; `flush()` runs `XFTY_DepthBatchedInserter` over the union. |
 | `XFTY_DummySObjectBundle` | Represents the generated graph. |
-| `XFTY_DummyDefaultValueIntf` / `XFTY_ContextAwareValueIntf` | Strategy interfaces for generating field values (plain / context-aware). |
+| `XFTY_DummyDefaultValueIntf` / `XFTY_ContextAwareValueIntf` / `XFTY_DeferredValueIntf` | Strategy interfaces for generating field values (plain / context-aware / up-flow). |
 | `XFTY_DummyDefaultRelationshipIntf` / `XFTY_DummyDefaultRelationship` / `XFTY_SharedRelationshipIntf` / `XFTY_SharedAncestor` | Strategy interfaces + implementations for generating related records. |
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` / `XFTY_RecordTypeLookupKey` / `XFTY_FlavouredLookupKey` / `XFTY_FieldPredicate` | Identify a Provider variant. |
 | `XFTY_IdMocker` | Generates realistic Salesforce Ids without DML. |
@@ -253,11 +254,16 @@ For one Provider's records:
    child's lookup fields at them.
 4. **Plain value pass** (`XFTY_PlainValueFiller`).
 5. **Context-aware value pass** (`XFTY_ContextAwareValuePass`) — below.
+6. **Up-flow value pass** (`XFTY_DescendantValuePass`) — only under `DEFERRED` /
+   `.depthBatched()`, at the top of the flush, once every record exists. Fields
+   with an `XFTY_DeferredValueIntf` strategy are left unresolved by phase 5 and
+   filled here from that record's collected children. A non-batched build that
+   carries one throws in phase 5 instead.
 
 ## Value passes
 
-Field values are filled in **two passes**, so a strategy can be aware of the rest
-of the record:
+Field values are filled in **two in-line passes plus one deferred pass**, so a
+strategy can be aware of the rest of the record:
 
 1. **Plain values** - the `XFTY_DummyDefaultValueIntf` strategies (Master Template
    `defaultBySObjectFieldMap`), in the order the fields were `put` (the template
@@ -274,9 +280,18 @@ context-aware value `put` before it. Reading a *later* context-aware value, or a
 circular pair, throws from `context.siblingValue(field)` - naming both fields and
 the `put` order that fixes it - rather than returning a silent wrong `null`;
 the not-yet-reached set is what separates that case from a sibling that was
-genuinely generated to `null`. A field on a generated *child* cannot be read at
-all (it does not exist yet - that would need a deferred pass; see
-[roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md)).
+genuinely generated to `null`.
+
+3. **Up-flow values** - the `XFTY_DeferredValueIntf` strategies (a third map,
+   `deferredValueBySObjectFieldMap`). A field on a generated *child* cannot be
+   read in-line - the child does not exist yet - so these are left unresolved
+   and filled by `XFTY_DescendantValuePass` at the top of the `DEFERRED` flush,
+   reading the child through `XFTY_DeferredGraph.childrenOf(index, field)` over
+   the parent links `XFTY_DeferredInsertBuffer` collected. A build that is not
+   `DEFERRED` / `.depthBatched()` and carries one throws - the forest never
+   exists otherwise. See
+   [roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
+
 Design rationale: [roadmap/context-aware-values.md](../roadmap/context-aware-values.md).
 
 ---
@@ -308,8 +323,9 @@ The context also carries the `put(List<SObjectField>, value)` path values
 paths, and `withInclusivity(...)` for generating a forced ancestor fully formed.
 The shared-ancestor pre-phase takes its insert mode from the `supply*()` call
 that triggers it (or from `XFTY_SharedAncestor.resolveNow(lookup, mode)` when a
-test resolves one before any call). A descendant (up-flowing) value pass is
-still a plug-in point — see
+test resolves one before any call). The up-flow value pass
+(`XFTY_DescendantValuePass`) runs at the top of that same flush, over the parent
+links the buffer collected — see
 [roadmap/descendant-value-reads.md](../roadmap/descendant-value-reads.md).
 
 ---

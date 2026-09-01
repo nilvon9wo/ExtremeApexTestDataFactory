@@ -68,7 +68,9 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_CopyFromSibling(SObjectField source)` | copy another field on the same record |
 | `XFTY_CopyFromAncestor(SObjectField rel, SObjectField source)` | copy from a generated parent |
 | `XFTY_CopyFromAncestor(List<SObjectField> path)` | multi-hop |
+| `XFTY_CopyFromDescendant(SObjectField childLookupField, SObjectField source)` | copy **up** from a generated child — `DEFERRED` / `.depthBatched()` only, resolved at `flush()` |
 | implement `XFTY_ContextAwareValueIntf` | `Object get(XFTY_GenerationContext)`; read siblings via `context.siblingValue(field)` |
+| implement `XFTY_DeferredValueIntf` | `Object get(XFTY_DeferredGraph, Integer recordIndex)` — an up-flow value; `graph.childrenOf(index, field)` |
 
 ## Relationships
 

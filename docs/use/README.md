@@ -20,7 +20,7 @@ example and builds up.
 
 Then, as needed:
 
-- [context-aware-values](context-aware-values.md) — a field derived from a sibling or ancestor
+- [context-aware-values](context-aware-values.md) — a field derived from a sibling, an ancestor, or (under `DEFERRED`) a child
 - [per-call-relationships](per-call-relationships.md) — one-off `includeOptional` / `excludeRelationship` / `put(path, value)` into an ancestor
 - [child-records](child-records.md) — `with` / `withChildren`: generate the records *below* a primary
 - [shared-ancestors](shared-ancestors.md) — many children under one parent (flat or deep, auto-detected)
@@ -45,8 +45,9 @@ examples compile and behave as documented.
 | `removeFromMasterTemplate` | [override-templates](override-templates.md) | _(pending)_ |
 | `put(field, strategy)`, implicit literal | [value-strategies](value-strategies.md) | _(pending)_ |
 | the 6 bundled `XFTY_DummyDefaultValue*` strategies | [value-strategies](value-strategies.md) | _(pending)_ |
-| `XFTY_CopyFromSibling` / `XFTY_CopyFromAncestor` | [context-aware-values](context-aware-values.md) | _(pending)_ |
-| custom `XFTY_ContextAwareValueIntf` + `context.siblingValue` | [context-aware-values](context-aware-values.md) | _(pending)_ |
+| `XFTY_CopyFromSibling` / `XFTY_CopyFromAncestor` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
+| `XFTY_CopyFromDescendant` — up-flow, `DEFERRED` only | [context-aware-values](context-aware-values.md) | `XFTY_CopyFromDescendantTest` |
+| custom `XFTY_ContextAwareValueIntf` + `context.siblingValue` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
 | `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | _(pending)_ |
 | `PREVENT_CASCADE` | [relationships](relationships.md) | _(pending)_ |
 | `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | _(pending)_ |

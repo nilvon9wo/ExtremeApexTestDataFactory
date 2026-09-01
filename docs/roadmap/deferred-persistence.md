@@ -143,11 +143,13 @@ it never reorders the caller's own intent.
 
 ### Not done yet
 
-- **Shared ancestors** - refused, same as `.depthBatched()`. The design once hoped
-  `DEFERRED` would give a shared ancestor a consistent Id across `MOCK`-then-`NOW`,
-  but the walk assumes no shared instances.
+- **Shared ancestors** - supported. Each is resolved in its own pre-phase before
+  the `DEFERRED` build and carries a real / mock Id by flush time, so the walk
+  treats it as an anchor. (Earlier this was refused; see
+  [shared-ancestors.md](shared-ancestors.md).)
 - **`@TestSetup`** - not supported (resets statics). Documented, not worked around.
-- **A value pass inside `flush()`** for descendant/up-flowing reads (below).
+- **A value pass inside `flush()`** for descendant/up-flowing reads — **built**
+  (`XFTY_DescendantValuePass`, [descendant-value-reads.md](descendant-value-reads.md)).
 
 ---
 

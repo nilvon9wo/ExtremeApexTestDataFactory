@@ -1,10 +1,10 @@
 # Design: Context-Aware Value Generation
 
-Status: **sibling + ancestor reads shipped** (with a loud ordering guard —
-[use/context-aware-values.md](../use/context-aware-values.md)); descendant
-(up-flowing) reads still proposed —
-[descendant-value-reads.md](descendant-value-reads.md). This page is the design
-record. Builds on `XFTY_GenerationContext`
+Status: **all three directions shipped** — sibling + ancestor reads (with a loud
+ordering guard — [use/context-aware-values.md](../use/context-aware-values.md)),
+and descendant (up-flowing) reads via `XFTY_CopyFromDescendant`
+([descendant-value-reads.md](descendant-value-reads.md), option B). This page is
+the design record. Builds on `XFTY_GenerationContext`
 ([architecture.md - The Generation Context](../contribute/architecture.md#the-generation-context)).
 
 ---

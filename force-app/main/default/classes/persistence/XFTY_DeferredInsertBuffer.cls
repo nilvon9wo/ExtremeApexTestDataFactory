@@ -9,8 +9,12 @@
  *
  * Each bundle is a tree - the engine clones every template and generates a
  * distinct parent per child row - so a record never appears twice and the walk
- * needs no identity tracking. Shared ancestors would break that and are refused
- * during generation.
+ * needs no identity tracking. A shared ancestor already carries a real / mock Id
+ * by this point (resolved in its own pre-phase), so the inserter treats it as an
+ * anchor and does not re-insert it.
+ *
+ * Just before the insert, the up-flow value pass ({@link XFTY_DescendantValuePass})
+ * fills any {@link XFTY_CopyFromDescendant} field from its now-generated children.
  */
 @IsTest
 public class XFTY_DeferredInsertBuffer {
@@ -18,6 +22,7 @@ public class XFTY_DeferredInsertBuffer {
     private final List<XFTY_DepthBatchedInserter.ParentLink> pendingLinks =
             new List<XFTY_DepthBatchedInserter.ParentLink>();
     private final List<SObject> pendingRecords = new List<SObject>();
+    private final List<XFTY_PendingDeferredValue> pendingDeferredValues = new List<XFTY_PendingDeferredValue>();
 
     public static void insertGraph(XFTY_DummySObjectBundle bundle) {
         XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
@@ -34,12 +39,20 @@ public class XFTY_DeferredInsertBuffer {
     }
 
     public void insertAll() {
+        this.resolveUpFlowValues();
         XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks);
     }
 
     /** Depth-batched resolution of every buffered bundle honouring `mode` (NOW / MOCK / NEVER). */
     public void resolveAll(XFTY_InsertModeEnum mode) {
+        this.resolveUpFlowValues();
         XFTY_DepthBatchedInserter.resolveAll(this.pendingRecords, this.pendingLinks, mode);
+    }
+
+    /** Fill every {@link XFTY_CopyFromDescendant} value from its now-generated descendants. */
+    private void resolveUpFlowValues() {
+        new XFTY_DescendantValuePass(this.pendingRecords, this.pendingLinks, this.pendingDeferredValues)
+                .complete();
     }
 
     private List<XFTY_IndexedRecord> collect(XFTY_DummySObjectBundle bundle) {
@@ -48,9 +61,20 @@ public class XFTY_DeferredInsertBuffer {
             return new List<XFTY_IndexedRecord>();
         }
         List<XFTY_IndexedRecord> theseRecords = this.append(primaries);
+        this.captureDeferredValues(bundle, theseRecords);
         this.linkToParents(bundle, theseRecords);
         this.linkToChildCollections(bundle, theseRecords);
         return theseRecords;
+    }
+
+    /** An up-flow strategy on this bundle becomes a pending value keyed by the record's flat index. */
+    private void captureDeferredValues(XFTY_DummySObjectBundle bundle, List<XFTY_IndexedRecord> primaries) {
+        for (XFTY_DummySObjectBundle.DeferredValue deferred : bundle.deferredValues()) {
+            Integer recordIndex = primaries[deferred.primaryRow].index;
+            this.pendingDeferredValues.add(
+                    new XFTY_PendingDeferredValue(recordIndex, deferred.field, deferred.strategy)
+            );
+        }
     }
 
     /** Downward children (`with(...)` / `withChildren(...)`): each child row points at its primary row. */

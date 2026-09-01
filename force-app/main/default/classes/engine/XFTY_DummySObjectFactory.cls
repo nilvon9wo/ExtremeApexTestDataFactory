@@ -37,8 +37,28 @@ public class XFTY_DummySObjectFactory {
                 .wire();
         new XFTY_ContextAwareValuePass(bundle, this.context, this.template)
                 .complete();
+        this.registerDeferredValues(bundle);
         this.persist(records);
         return bundle;
+    }
+
+    /**
+     * Up-flowing values ({@link XFTY_CopyFromDescendant}) are left unresolved and
+     * handed to the bundle for the `DEFERRED` flush to fill. In any other mode the
+     * whole forest never exists, so it is a loud error, not a silent `null`.
+     */
+    private void registerDeferredValues(XFTY_DummySObjectBundle bundle) {
+        if (this.template.deferredValueBySObjectFieldMap.isEmpty()) {
+            return;
+        }
+        if (!this.context.batchedInsertPending) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'A value that reads up from a generated child (XFTY_CopyFromDescendant) needs the DEFERRED '
+                            + 'insert mode - the child must exist before it can be read. Use '
+                            + 'setInsertMode(XFTY_InsertModeEnum.DEFERRED) and call XFTY_DeferredInserter.flush().'
+            );
+        }
+        bundle.deferValues(this.template.deferredValueBySObjectFieldMap);
     }
 
     private void persist(List<SObject> records) {

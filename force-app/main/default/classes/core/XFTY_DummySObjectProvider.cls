@@ -242,6 +242,14 @@ public class XFTY_DummySObjectProvider {
         return this;
     }
 
+    /** An up-flowing value ({@link XFTY_CopyFromDescendant}); needs the DEFERRED insert mode. */
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DeferredValueIntf deferredValue) {
+        this.masterTemplate.remove(sObjectField);
+        this.masterTemplate.put(sObjectField, deferredValue);
+        this.hasCustomMasterTemplate = true;
+        return this;
+    }
+
     public XFTY_DummySObjectProvider putRequired(SObjectField sObjectField, XFTY_DummyDefaultRelationshipIntf relationshipTemplate) {
         this.masterTemplate.remove(sObjectField);
         this.masterTemplate.putRequired(sObjectField, relationshipTemplate);
@@ -263,6 +271,9 @@ public class XFTY_DummySObjectProvider {
      * use `putRequired(...)` / `putOptional(...)`.
      */
     public XFTY_DummySObjectProvider put(SObjectField sObjectField, Object value) {
+        if (value instanceof XFTY_DeferredValueIntf) {
+            return this.put(sObjectField, (XFTY_DeferredValueIntf) value);
+        }
         if (value instanceof XFTY_ContextAwareValueIntf) {
             return this.put(sObjectField, (XFTY_ContextAwareValueIntf) value);
         }
