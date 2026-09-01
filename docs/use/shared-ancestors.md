@@ -8,8 +8,9 @@ whole hierarchy converging on one root — use `XFTY_SharedAncestor`.
 
 ## One API — resolution is automatic
 
-There is nothing to declare, register, or opt into. You configure a shared
-ancestor once and reference it; XFTY works out how to resolve it.
+There is nothing to declare or opt into. A shared ancestor is registered once —
+by the [lookup that ships the Providers](#packaged-defaults) for the common case,
+or by the test — and referenced anywhere; XFTY works out how to resolve it.
 
 Before a Provider generates anything, every shared ancestor configured in the
 current test method is resolved in one place, each honouring the call's insert
@@ -28,7 +29,7 @@ per test method.
 ## The simplest case
 
 ```apex
-// configure once, somewhere central (a *LookupKeys-style constants class is ideal)
+// register once - centrally for shipped Providers (see "Packaged defaults"), or in the test
 XFTY_SharedAncestor.put('acme-hq', new Account(Name = 'ACME HQ'));
 
 // reference it from any Master Template, any field, required or optional
@@ -157,6 +158,46 @@ that would *set a value on* a shared ancestor
 shared ancestor **in** as a relationship value —
 `putRequired(new List<SObjectField>{ Contact.AccountId, Account.OwnerId }, XFTY_SharedAncestor.get('mr-smith'))` —
 is fine.
+
+---
+
+## Packaged defaults
+
+A Provider you ship should work without every consuming test knowing its shared
+ancestors' names. Put the defaults on the **lookup** — the package boundary a
+consumer already depends on.
+
+The quick form: pass them alongside the Provider map.
+
+```apex
+XFTY_ProviderLookups.of(
+    new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+        XFTY_LookupKey.get(Account.SObjectType) => new MyAccountProvider(),
+        XFTY_LookupKey.get(Contact.SObjectType) => new MyContactProvider()   // references get('acme-hq')
+    },
+    new Map<String, SObject>{ 'acme-hq' => new Account(Name = 'ACME HQ') }
+);
+```
+
+A hand-written lookup implements the companion interface
+**`XFTY_SharedAncestorDefaultsIntf`** — one method:
+
+```apex
+public class MyProjectLookup implements XFTY_DummySObjectProviderLookupIntf, XFTY_SharedAncestorDefaultsIntf {
+    // ... the usual get / keysFor ...
+    public void registerSharedAncestorDefaults() {
+        XFTY_SharedAncestor.putIfAbsent('acme-hq', new Account(Name = 'ACME HQ'));
+        XFTY_SharedAncestor.putIfAbsent('primary-price-book', new Pricebook2(Name = 'Standard'));
+    }
+}
+```
+
+XFTY calls it before each `supply*()` resolves shared ancestors. Because it uses
+**`putIfAbsent`**, a test that wants a different shared record just registers it
+first — the default is skipped. A lookup with no shared ancestors does not
+implement the interface.
+
+▶ Runnable: `XFTY_SharedAncestorHierarchyTest.aLookupSuppliesTheSharedAncestorSoNoTestRegistrationIsNeeded`
 
 ---
 

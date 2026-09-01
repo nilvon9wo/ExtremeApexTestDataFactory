@@ -84,8 +84,9 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_SharedAncestor.put(name, SObject)` | register — Id present → fixed value, no Id → override template (logs; `putAsTemplate` / `putAsValue` force it) |
 | `XFTY_SharedAncestor.put(name, key)` · `.fromVariant(key)` · `.copyingRelatedField(field)` | pin the variant / chain a variant onto a template / copy a field instead of the Id |
 | `XFTY_SharedAncestor.put(name, XFTY_DummySObjectProvider)` | full generation API for the shared record — value strategies, its own ancestors, variant (not with the template/key forms) |
-| `XFTY_SharedAncestor.putIfAbsent(name, template \| key)` | register only if `name` is not registered yet this test |
+| `XFTY_SharedAncestor.putIfAbsent(name, record \| key)` | register only if `name` is not registered yet this test |
 | `XFTY_SharedAncestor.getId(name)` · `.get(name).resolveNow(lookup, mode)` | read the Id / resolve (and fix the mode) before any `supply*()` call |
+| implement `XFTY_SharedAncestorDefaultsIntf` on a lookup (`registerSharedAncestorDefaults()`) | ship a shared ancestor's default so consuming tests need not register it — or `XFTY_ProviderLookups.of(providerMap, Map<String,SObject> defaults)` |
 
 ---
 
@@ -100,7 +101,7 @@ One line per public entry point. Follow the links for detail.
 
 | implement `XFTY_DummySobjectProviderIntf` | `getPrimaryTargetField()` · `getMasterTemplate()` · `createBundle(context, templates)` |
 | implement `XFTY_DummySObjectProviderLookupIntf` | `get(SObjectType)` · `get(XFTY_LookupKeyIntf)` · `keysFor(SObject)` |
-| `XFTY_ProviderLookups.get/keysFor/resolve/of/ofTypes` | the lookup mechanics |
+| `XFTY_ProviderLookups.get/keysFor/resolve/of/of(map, defaults)/ofTypes` | the lookup mechanics; `of(map, defaults)` also ships shared-ancestor defaults |
 | `new XFTY_DummySObjectMasterTemplate(primaryTargetField)` | `.put` · `.putRequired` · `.putOptional` |
 | `XFTY_DummySObjectFactory.createBundle(context, masterTemplate, templates)` | the engine entry point |
 

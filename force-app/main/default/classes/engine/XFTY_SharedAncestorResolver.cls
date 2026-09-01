@@ -33,9 +33,22 @@ public class XFTY_SharedAncestorResolver {
         if (running) {
             return;
         }
+        applyLookupDefaults(lookup);
         List<XFTY_SharedAncestor> configured = XFTY_SharedAncestor.configuredUnresolved();
         if (!configured.isEmpty()) {
             new XFTY_SharedAncestorResolver(lookup, callMode).resolve(configured);
+        }
+    }
+
+    /**
+     * Let a lookup that implements {@link XFTY_SharedAncestorDefaultsIntf}
+     * register its shared-ancestor defaults - so a Provider that references one
+     * works without the test registering it. `putIfAbsent` in the callback means
+     * a test's own registration still wins.
+     */
+    public static void applyLookupDefaults(XFTY_DummySObjectProviderLookupIntf lookup) {
+        if (lookup instanceof XFTY_SharedAncestorDefaultsIntf) {
+            ((XFTY_SharedAncestorDefaultsIntf) lookup).registerSharedAncestorDefaults();
         }
     }
 

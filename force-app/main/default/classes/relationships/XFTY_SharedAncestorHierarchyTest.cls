@@ -186,6 +186,45 @@ private class XFTY_SharedAncestorHierarchyTest {
         Assert.areEqual('First', [SELECT Name FROM Account].Name, 'the second putIfAbsent was ignored');
     }
 
+    // Lookup-provided defaults -----------------------------------------
+
+    @IsTest
+    static void aLookupSuppliesTheSharedAncestorSoNoTestRegistrationIsNeeded() {
+        // Arrange - the lookup carries the 'hq' default; the test registers nothing
+        XFTY_DummySObjectProviderLookupIntf lookup = contactsUnderWithDefault('hq', new Account(Name = 'Packaged HQ'));
+
+        // Act
+        Contact leaf;
+        Test.startTest();
+        leaf = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('Packaged HQ', [SELECT Name FROM Account].Name, 'the Provider worked out of the box');
+        Assert.areEqual([SELECT Id FROM Account].Id, leaf.AccountId);
+    }
+
+    @IsTest
+    static void aTestRegistrationWinsOverTheLookupDefault() {
+        // Arrange - the test registers 'hq' first; the lookup default must not clobber it
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Test Override HQ'));
+        XFTY_DummySObjectProviderLookupIntf lookup = contactsUnderWithDefault('hq', new Account(Name = 'Packaged HQ'));
+
+        // Act
+        Test.startTest();
+        new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('Test Override HQ', [SELECT Name FROM Account].Name, 'putIfAbsent left the test registration alone');
+    }
+
     // Cycles ---------------------------------------------------------
 
     @IsTest
@@ -589,6 +628,16 @@ private class XFTY_SharedAncestorHierarchyTest {
                 XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
                 XFTY_LookupKey.get(Contact.SObjectType) => childProvider(Contact.Id, Contact.AccountId, Contact.LastName, sharedName)
         });
+    }
+
+    private static XFTY_DummySObjectProviderLookupIntf contactsUnderWithDefault(String sharedName, Account theDefault) {
+        return XFTY_ProviderLookups.of(
+                new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                        XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                        XFTY_LookupKey.get(Contact.SObjectType) => childProvider(Contact.Id, Contact.AccountId, Contact.LastName, sharedName)
+                },
+                new Map<String, SObject>{ sharedName => theDefault }
+        );
     }
 
     private static XFTY_DummySObjectProviderLookupIntf deepChainLookup() {

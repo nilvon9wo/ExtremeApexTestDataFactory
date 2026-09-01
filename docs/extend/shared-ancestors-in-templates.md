@@ -32,10 +32,16 @@ XFTY_SharedAncestor.put('root', new MyHierarchyObj__c())
     .fromVariant(XFTY_RecordTypeLookupKey.get(MyHierarchyObj__c.SObjectType, 'Root'));
 ```
 
-XFTY decides which by inspecting the ancestor's Provider's Master Template. A
-test that configures a shared ancestor it never references still resolves it, so
-document which shared ancestors a shipped Provider expects the test to configure
-(or have the Provider's own `*LookupKeys`-style setup call `putIfAbsent(...)`).
+XFTY decides which by inspecting the ancestor's Provider's Master Template.
+
+**Ship the default with the lookup, not the test.** A Provider that references a
+shared ancestor should work out of the box: put the default on the lookup that
+ships alongside it — the `XFTY_ProviderLookups.of(providerMap, defaults)`
+overload, or implement `XFTY_SharedAncestorDefaultsIntf` on a hand-written lookup
+and call `XFTY_SharedAncestor.putIfAbsent(...)` in its
+`registerSharedAncestorDefaults()`. See
+[use/shared-ancestors → Packaged defaults](../use/shared-ancestors.md#packaged-defaults).
+A test still overrides by registering its own record first.
 
 ---
 

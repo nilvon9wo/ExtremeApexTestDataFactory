@@ -532,6 +532,11 @@ So a shared ancestor is always generated fresh within the test that needs it -
 5. ~~`put(name, record)` / `putIfAbsent(name, ...)`~~ — **done**. Docs — **done**
    ([use/shared-ancestors.md](../use/shared-ancestors.md),
    `XFTY_SharedAncestorTest` + `XFTY_SharedAncestorHierarchyTest`).
+6. ~~Packaged defaults so a shipped Provider's shared ancestors work without the
+   test registering them~~ — **done**. `XFTY_SharedAncestorDefaultsIntf` on the
+   lookup (or `XFTY_ProviderLookups.of(providerMap, defaults)`);
+   `XFTY_SharedAncestorResolver.applyLookupDefaults` calls it before resolution,
+   `putIfAbsent` so a test still overrides.
    The deep-record-type-hierarchy worked example needs `test-support` metadata
    (custom SObject + ≥10 record types + singleton trigger) — **not created**; the
    mechanics are covered by `XFTY_SharedAncestorHierarchyTest` on

@@ -129,11 +129,11 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
         return ancestor;
     }
 
-    /** `putAsTemplate`, applied only if `name` is not registered yet (for a setup helper that may run twice). */
-    public static XFTY_SharedAncestor putIfAbsent(String name, SObject template) {
+    /** `put(name, record)` (same Id-disambiguation), applied only if `name` is not registered yet. */
+    public static XFTY_SharedAncestor putIfAbsent(String name, SObject record) {
         XFTY_SharedAncestor ancestor = get(name);
         if (ancestor.isUnregistered()) {
-            putAsTemplate(name, template);
+            put(name, record);
         }
         return ancestor;
     }
@@ -207,6 +207,7 @@ public class XFTY_SharedAncestor implements XFTY_SharedRelationshipIntf {
     /** Resolve now - e.g. to read `getId(name)` before any `supply*()` call. */
     public XFTY_SharedAncestor resolveNow(XFTY_DummySObjectProviderLookupIntf lookup, XFTY_InsertModeEnum insertMode) {
         if (this.resolvedRecord == null) {
+            XFTY_SharedAncestorResolver.applyLookupDefaults(lookup);
             new XFTY_SharedAncestorResolver(lookup, insertMode).resolve(new List<XFTY_SharedAncestor>{ this });
         }
         return this;
