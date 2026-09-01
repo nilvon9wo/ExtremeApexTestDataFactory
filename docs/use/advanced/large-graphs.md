@@ -46,4 +46,4 @@ see [reference/volume-and-limits](../../reference/volume-and-limits.md) for the
 observed ceilings (short version: ~1,000–1,500 primaries per `NOW` / `DEFERRED`
 transaction, a few thousand for `MOCK`). Model your own volume assertions on it.
 
-▶ Runnable: `XFTY_Ex_Adv_LargeGraphsTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_Adv_LargeGraphsTest`

@@ -63,6 +63,6 @@ context-aware value, or a relationship. That is a value concern, so it lives
 with the other `put` forms:
 [value-strategies → setting a value on a generated ancestor](value-strategies.md#setting-a-value-on-a-generated-ancestor).
 
-▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` _(pending — Pass B)_ · `XFTY_PathValueTest`
+▶ Runnable: `XFTY_Ex_PerCallRelationshipsTest` · `XFTY_PathValueTest`
 
 See also: [relationships](relationships.md) · [provider-variants](provider-variants.md)

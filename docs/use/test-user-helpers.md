@@ -45,6 +45,6 @@ test, query for it first
 (`[SELECT Id FROM UserRole WHERE DeveloperName = :name]`) rather than catching
 the exception.
 
-▶ Runnable: `XFTY_Ex_TestUserHelpersTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_TestUserHelpersTest` (`TEST_ADMIN_USER`) · `XFTY_DefaultDataProviderTest` (`profileIdFor` / `roleIdFor`, org-only)
 
 See also: [extend/bundled-providers](../extend/bundled-providers.md)

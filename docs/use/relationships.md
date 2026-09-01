@@ -109,4 +109,4 @@ minimal; use `PREVENT_CASCADE` for deep or circular trees; use `NONE` only when
 the test wants total control. For large graphs, see
 [advanced/large-graphs](advanced/large-graphs.md).
 
-▶ Runnable: `XFTY_Ex_RelationshipsTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_RelationshipsTest`

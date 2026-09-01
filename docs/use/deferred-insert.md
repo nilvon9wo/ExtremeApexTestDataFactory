@@ -79,6 +79,6 @@ should leave it off.
 - A lookup cycle (A → B, B → A) cannot be one `insert` order and throws
   `XFTY_DepthBatchedInserter.CyclicGraphException`.
 
-▶ Runnable: `XFTY_Ex_DeferredInsertTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_DeferredInsertTest`
 
 See also: [insert-modes](insert-modes.md) · [advanced/deep-setup-chains](advanced/deep-setup-chains.md)

@@ -62,6 +62,6 @@ the relationship:
 Without an explicit key, the parent's variant is derived from the override
 template the relationship carries.
 
-▶ Runnable: `XFTY_Ex_ProviderVariantsTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_ProviderVariantsTest` (flavour keys) · `XFTY_RecordTypeRealRtTest` (record types, org-only)
 
 See also: [extend/provider-variants](../extend/provider-variants.md) · [relationships](relationships.md)

@@ -131,4 +131,4 @@ Design rationale: [roadmap/context-aware-values.md](../roadmap/context-aware-val
 Writing custom strategies as a distributable extension:
 [extend/custom-value-strategies.md](../extend/custom-value-strategies.md).
 
-▶ Runnable: `XFTY_Ex_ContextAwareTest` _(pending — Pass B)_
+▶ Runnable: `XFTY_Ex_ContextAwareTest`

@@ -7,13 +7,20 @@
       Run: sf apex run test --suite-names XFTY_Examples
     -->
     <testClassName>XFTY_Ex_Adv_DeepSetupChainsTest</testClassName>
+    <testClassName>XFTY_Ex_Adv_LargeGraphsTest</testClassName>
     <testClassName>XFTY_Ex_Adv_MatchingValuesTest</testClassName>
     <testClassName>XFTY_Ex_Adv_StaticDeferredFixtureTest</testClassName>
     <testClassName>XFTY_Ex_Adv_UnitVsIntegrationTest</testClassName>
     <testClassName>XFTY_Ex_BundlesTest</testClassName>
+    <testClassName>XFTY_Ex_ContextAwareTest</testClassName>
+    <testClassName>XFTY_Ex_DeferredInsertTest</testClassName>
     <testClassName>XFTY_Ex_Extend_CustomValueStrategiesTest</testClassName>
     <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>
     <testClassName>XFTY_Ex_InsertModesTest</testClassName>
     <testClassName>XFTY_Ex_OverrideTemplatesTest</testClassName>
+    <testClassName>XFTY_Ex_PerCallRelationshipsTest</testClassName>
+    <testClassName>XFTY_Ex_ProviderVariantsTest</testClassName>
+    <testClassName>XFTY_Ex_RelationshipsTest</testClassName>
+    <testClassName>XFTY_Ex_TestUserHelpersTest</testClassName>
     <testClassName>XFTY_Ex_ValueStrategiesTest</testClassName>
 </ApexTestSuite>

@@ -48,18 +48,20 @@ examples compile and behave as documented.
 | `XFTY_CopyFromSibling` / `XFTY_CopyFromAncestor` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
 | `XFTY_CopyFromDescendant` — up-flow, `DEFERRED` only | [context-aware-values](context-aware-values.md) | `XFTY_CopyFromDescendantTest` |
 | custom `XFTY_ContextAwareValueIntf` + `context.siblingValue` | [context-aware-values](context-aware-values.md) | `XFTY_ContextAwareValueTest` |
-| `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | _(pending)_ |
-| `PREVENT_CASCADE` | [relationships](relationships.md) | _(pending)_ |
-| `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | _(pending)_ |
+| `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |
+| `PREVENT_CASCADE`, self-referential cycle guard | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |
+| `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | `XFTY_Ex_PerCallRelationshipsTest` |
 | `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_ChildGenerationTest` |
 | `put(List<SObjectField>, value)` — path-scoped ancestor values (literal / strategy / context-aware / relationship) | [value-strategies](value-strategies.md#setting-a-value-on-a-generated-ancestor) | `XFTY_PathValueTest` |
 | `XFTY_SharedAncestor` — `get` / `of` / `getOrElse` / `put` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
 | insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
-| `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | _(pending)_ |
-| `withVariant` / lookup-key ctor / record-type template | [provider-variants](provider-variants.md) | _(pending)_ |
-| `TEST_ADMIN_USER` / `profileIdFor` / `roleIdFor` | [test-user-helpers](test-user-helpers.md) | _(pending)_ |
+| `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | `XFTY_Ex_DeferredInsertTest` |
+| `withVariant` / lookup-key ctor (flavour keys) | [provider-variants](provider-variants.md) | `XFTY_Ex_ProviderVariantsTest` |
+| record-type override template | [provider-variants](provider-variants.md) | `XFTY_RecordTypeRealRtTest` (org-only) |
+| `TEST_ADMIN_USER` | [test-user-helpers](test-user-helpers.md) | `XFTY_Ex_TestUserHelpersTest` |
+| `profileIdFor` / `roleIdFor` | [test-user-helpers](test-user-helpers.md) | `XFTY_DefaultDataProviderTest` (org-only) |
 
 Runnable tests live in `test-support/main/default/classes/examples/` and run as
 the `XFTY_Examples` suite — see
