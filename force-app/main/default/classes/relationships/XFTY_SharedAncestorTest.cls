@@ -8,14 +8,16 @@
  */
 @IsTest
 private class XFTY_SharedAncestorTest {
+
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
     static void manyChildrenShareOneGeneratedParent() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
-        List<SObject> contacts;
+        // Act
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -27,25 +29,25 @@ private class XFTY_SharedAncestorTest {
                     .supplyBundle();
             Test.stopTest();
         }
-        contacts = bundle.getList(Contact.Id);
 
+        // Assert
+        List<SObject> contacts = bundle.getList(Contact.Id);
         Assert.areEqual(5, contacts.size());
         Assert.areEqual(5, bundle.getList(Contact.AccountId).size());
         Set<Id> accountIds = new Set<Id>();
-        for (SObject c : contacts) {
-            accountIds.add((Id) c.get(Contact.AccountId));
+        for (SObject contactRecord : contacts) {
+            accountIds.add((Id) contactRecord.get(Contact.AccountId));
         }
         Assert.areEqual(1, accountIds.size(), 'every Contact points at the one shared Account');
-        Assert.areEqual(
-                bundle.getList(Contact.AccountId)[0].Id,
-                accountIds.iterator().next()
-        );
+        Assert.areEqual(bundle.getList(Contact.AccountId)[0].Id, accountIds.iterator().next());
     }
 
     @IsTest
     static void nowModeInsertsTheSharedParentOnce() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
+        // Act
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
@@ -57,6 +59,7 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(1, [SELECT COUNT() FROM Account], 'one shared Account inserted');
         Assert.areEqual(4, [SELECT COUNT() FROM Contact]);
         Assert.areEqual(1, [SELECT COUNT(Id) FROM Contact GROUP BY AccountId].size(),
@@ -65,8 +68,10 @@ private class XFTY_SharedAncestorTest {
 
     @IsTest
     static void theSharedRecordAppearsInBothTheListAndTheSubBundle() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
+        // Act
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -78,6 +83,7 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual('Shared HQ', bundle.getList(Contact.AccountId)[0].get(Account.Name));
         Assert.isNotNull(bundle.getBundle(Contact.AccountId), 'the shared ancestor has a sub-bundle');
         Assert.areEqual('Shared HQ',
@@ -86,43 +92,48 @@ private class XFTY_SharedAncestorTest {
 
     @IsTest
     static void referencingAMockResolvedSharedAncestorFromANowCallThrows() {
+        // Arrange - resolve 'hq' in MOCK mode first, so it has a mock (not real) Id
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
-
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            // first: resolve it in MOCK mode -> mock Id, not persisted
             new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                     .setInsertMode(XFTY_InsertModeEnum.MOCK)
                     .supply();
-            // then: a NOW call that would carry that mock Id onto inserted Contacts
+
+            // Act - a NOW call that would carry the mock Id onto inserted Contacts
+            XFTY_DummySObjectFtyProviderException thrown;
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                         .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.NOW)
                         .supply();
-                Assert.fail('Expected an exception');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('consistent insert mode'), ex.getMessage());
+                thrown = ex;
             }
             Test.stopTest();
+
+            // Assert
+            Assert.isNotNull(thrown, 'a MOCK-then-NOW mix must throw, not drift a mock Id into real DML');
+            Assert.isTrue(thrown.getMessage().contains('consistent insert mode'), thrown.getMessage());
         }
     }
 
     @IsTest
     static void putAnInsertedRecordAndItAcceptsNowReferences() {
+        // Arrange - the test inserts its own HQ and registers it
         Account inserted = new Account(Name = 'Real HQ');
         System.runAs(TEST_ADMIN) {
             insert inserted;
         }
         XFTY_SharedAncestor.put('hq', inserted);
 
-        List<SObject> contacts;
+        // Act
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            contacts = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
                     .setQuantityPerTemplate(3)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
@@ -131,13 +142,16 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(3, [SELECT COUNT() FROM Contact WHERE AccountId = :inserted.Id]);
     }
 
     @IsTest
     static void aPutRecordIsAvailableThroughGetBundleNotJustGetList() {
+        // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Supplied HQ'));
 
+        // Act
         XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -149,6 +163,7 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.isNotNull(bundle.getBundle(Contact.AccountId),
                 'getBundle is populated even for a put(...) record');
         Assert.areEqual('Supplied HQ',
@@ -161,84 +176,86 @@ private class XFTY_SharedAncestorTest {
 
     @IsTest
     static void theSameSharedAncestorIsReusedAcrossSeparateSupplyCalls() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
-        Id firstRunAccountId;
-        Id secondRunAccountId;
+        // Act - two independent supply calls
+        Contact fromFirstCall;
+        Contact fromSecondCall;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            firstRunAccountId = (Id) ((Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply()).AccountId;
-            secondRunAccountId = (Id) ((Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply()).AccountId;
+            fromFirstCall = supplyOneContactUnderHq();
+            fromSecondCall = supplyOneContactUnderHq();
             Test.stopTest();
         }
 
-        Assert.areEqual(firstRunAccountId, secondRunAccountId, 'the shared record survives between supply() calls');
+        // Assert
+        Assert.areEqual(fromFirstCall.AccountId, fromSecondCall.AccountId,
+                'the shared record survives between supply() calls');
     }
 
     @IsTest
     static void getIdReturnsTheResolvedRecordsId() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
 
+        // Act
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply();
+            result = supplyOneContactUnderHq();
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(result.AccountId, XFTY_SharedAncestor.getId('hq'));
     }
 
     @IsTest
     static void getIdBeforeResolutionThrows() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'x'));
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         try {
             XFTY_SharedAncestor.getId('hq');
-            Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('not resolved yet'), ex.getMessage());
+            thrown = ex;
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'getId before resolution must throw');
+        Assert.isTrue(thrown.getMessage().contains('not resolved yet'), thrown.getMessage());
     }
 
     @IsTest
     static void putRegistersATestSuppliedRecord() {
-        Account preMade = new Account(Name = 'Pre Made');
-        preMade.Id = XFTY_IdMocker.generateId(Account.SObjectType);
+        // Arrange
+        Account preMade = new Account(Name = 'Pre Made', Id = XFTY_IdMocker.generateId(Account.SObjectType));
         XFTY_SharedAncestor.put('hq', preMade);
 
+        // Act
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply();
+            result = supplyOneContactUnderHq();
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(preMade.Id, result.AccountId, 'the pre-made record is used, nothing generated');
         Assert.areEqual(0, [SELECT COUNT() FROM Account]);
     }
 
     @IsTest
     static void copyingRelatedFieldCopiesThatFieldInsteadOfTheId() {
+        // Arrange
         XFTY_SharedAncestor.get('hq')
                 .of(new Account(Name = 'Named HQ'))
                 .copyingRelatedField(Account.Name);
 
+        // Act
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -251,15 +268,18 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual('Named HQ', result.Description);
     }
 
     @IsTest
     static void withKeyPinsTheProviderVariant() {
+        // Arrange
         XFTY_SharedAncestor.get('acct')
                 .of(new Account())
                 .withKey(XFTY_LookupKey.get(Account.SObjectType));
 
+        // Act
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -271,15 +291,21 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.isNotNull(result.AccountId);
     }
 
     @IsTest
     static void aSharedAncestorExposesItsNameAndConfiguredTemplate() {
+        // Arrange
+        // nothing to arrange - configuration is the act
+
+        // Act
         XFTY_SharedAncestor ancestor = XFTY_SharedAncestor.get('hq')
                 .of(new Account(Name = 'Configured'))
                 .copyingRelatedField(Account.Name);
 
+        // Assert
         Assert.areEqual('hq', ancestor.getSharedName());
         Assert.areEqual('Configured', (String) ancestor.getOverrideTemplate().get(Account.Name));
         Assert.areEqual(Account.Name, ancestor.getRelatedField());
@@ -289,16 +315,29 @@ private class XFTY_SharedAncestorTest {
 
     @IsTest
     static void getRejectsABlankName() {
+        // Arrange
+        // nothing to arrange - the blank name is the act
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         try {
             XFTY_SharedAncestor.get('   ');
-            Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('non-blank name'), ex.getMessage());
+            thrown = ex;
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a blank name must be rejected');
+        Assert.isTrue(thrown.getMessage().contains('non-blank name'), thrown.getMessage());
     }
 
     @IsTest
     static void anUnconfiguredSharedAncestorThrowsWhenGenerated() {
+        // Arrange
+        // nothing to arrange - 'never-configured' is referenced but never given a template
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         System.runAs(TEST_ADMIN) {
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
@@ -306,16 +345,22 @@ private class XFTY_SharedAncestorTest {
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.MOCK)
                         .supply();
-                Assert.fail('Expected an exception');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().contains('never configured'), ex.getMessage());
+                thrown = ex;
             }
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'an unconfigured shared ancestor must throw when generation reaches it');
+        Assert.isTrue(thrown.getMessage().contains('never configured'), thrown.getMessage());
     }
 
     @IsTest
     static void depthBatchedResolvesTheSharedAncestorUpFront() {
+        // Arrange
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Shared HQ'));
+
+        // Act
         Contact result;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
@@ -328,33 +373,37 @@ private class XFTY_SharedAncestorTest {
             Test.stopTest();
         }
 
+        // Assert
         Assert.areEqual(1, [SELECT COUNT() FROM Account], 'the shared ancestor was resolved once, up front');
         Assert.areEqual(XFTY_SharedAncestor.getId('hq'), result.AccountId);
     }
 
     @IsTest
     static void reconfiguringAResolvedSharedAncestorThrows() {
+        // Arrange - resolve 'hq', then try to reconfigure it
         XFTY_SharedAncestor.get('hq').of(new Account(Name = 'First'));
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply();
+            supplyOneContactUnderHq();
             Test.stopTest();
         }
 
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         try {
             XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Second'));
-            Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('already resolved'), ex.getMessage());
+            thrown = ex;
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'reconfiguring a resolved shared ancestor must throw');
+        Assert.isTrue(thrown.getMessage().contains('already resolved'), thrown.getMessage());
     }
 
     @IsTest
     static void aSelfReferentialSharedAncestorThrowsInsteadOfRecursing() {
+        // Arrange - the 'loop' Account's own ParentId is the 'loop' shared ancestor
         XFTY_SharedAncestor.get('loop').of(new Account(Name = 'Loop'));
         XFTY_DummySObjectProviderLookupIntf loopy = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -363,6 +412,8 @@ private class XFTY_SharedAncestorTest {
                 }
         );
 
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         System.runAs(TEST_ADMIN) {
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, loopy)
@@ -370,22 +421,25 @@ private class XFTY_SharedAncestorTest {
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.MOCK)
                         .supply();
-                Assert.fail('Expected a self-reference exception');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().containsIgnoreCase('cycle'), ex.getMessage());
+                thrown = ex;
             }
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a self-referential shared ancestor must throw, not stack-overflow');
+        Assert.isTrue(thrown.getMessage().containsIgnoreCase('cycle'), thrown.getMessage());
     }
 
     @IsTest
     static void anIndirectCycleRoundThreeSharedAncestorsThrows() {
+        // Arrange - tom -> dick -> harry -> tom
         XFTY_LookupKeyIntf tomKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'tom');
         XFTY_LookupKeyIntf dickKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'dick');
         XFTY_LookupKeyIntf harryKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'harry');
         XFTY_SharedAncestor.get('tom').of(new Account(Name = 'Tom')).withKey(tomKey);
         XFTY_SharedAncestor.get('dick').of(new Account(Name = 'Dick')).withKey(dickKey);
         XFTY_SharedAncestor.get('harry').of(new Account(Name = 'Harry')).withKey(harryKey);
-
         XFTY_DummySObjectProviderLookupIntf ring = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
                         tomKey => new ParentedAccountProvider('dick'),
@@ -395,6 +449,8 @@ private class XFTY_SharedAncestorTest {
                 }
         );
 
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
         System.runAs(TEST_ADMIN) {
             try {
                 new XFTY_DummySObjectProvider(Contact.SObjectType, ring)
@@ -402,11 +458,42 @@ private class XFTY_SharedAncestorTest {
                         .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                         .setInsertMode(XFTY_InsertModeEnum.MOCK)
                         .supply();
-                Assert.fail('Expected a cycle exception - tom -> dick -> harry -> tom');
             } catch (XFTY_DummySObjectFtyProviderException ex) {
-                Assert.isTrue(ex.getMessage().containsIgnoreCase('cycle'), ex.getMessage());
+                thrown = ex;
             }
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a three-way shared-ancestor cycle must throw');
+        Assert.isTrue(thrown.getMessage().containsIgnoreCase('cycle'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void putOverAResolvedDifferentRecordWarnsButSucceeds() {
+        // Arrange - resolve 'hq', then put a different record over it
+        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Generated'));
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            supplyOneContactUnderHq();
+            Test.stopTest();
+        }
+        Account replacement = new Account(Name = 'Replacement', Id = XFTY_IdMocker.generateId(Account.SObjectType));
+
+        // Act
+        XFTY_SharedAncestor.put('hq', replacement);   // logs a WARN, does not throw
+
+        // Assert
+        Assert.areEqual(replacement.Id, XFTY_SharedAncestor.getId('hq'));
+    }
+
+    // Fixture ------------------------------------------------------------
+
+    private static Contact supplyOneContactUnderHq() {
+        return (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supply();
     }
 
     private class SelfReferencingAccountProvider implements XFTY_DummySobjectProviderIntf {
@@ -448,25 +535,5 @@ private class XFTY_SharedAncestorTest {
         public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
             return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
         }
-    }
-
-    @IsTest
-    static void putOverAResolvedDifferentRecordWarnsButSucceeds() {
-        XFTY_SharedAncestor.get('hq').of(new Account(Name = 'Generated'));
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supply();
-            Test.stopTest();
-        }
-
-        Account replacement = new Account(Name = 'Replacement');
-        replacement.Id = XFTY_IdMocker.generateId(Account.SObjectType);
-        XFTY_SharedAncestor.put('hq', replacement); // logs a WARN, does not throw
-
-        Assert.areEqual(replacement.Id, XFTY_SharedAncestor.getId('hq'));
     }
 }
