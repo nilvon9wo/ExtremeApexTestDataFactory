@@ -31,7 +31,7 @@ public class XFTY_HierarchyKeys {
 
         private Level(XFTY_LookupKeyIntf parentKey) {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Level'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Level'))
                     .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
             if (parentKey != null) {
                 this.template.putRequired(

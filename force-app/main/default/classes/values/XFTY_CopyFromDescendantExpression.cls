@@ -4,7 +4,7 @@
  *
  * ```apex
  * // an Account Provider, so a validation rule comparing the two passes
- * .put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department))
+ * .put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department))
  * ```
  *
  * Needs the `DEFERRED` insert mode (or `.depthBatched()`) - the child must exist
@@ -15,15 +15,15 @@
  * See docs/roadmap/descendant-value-reads.md.
  */
 @IsTest
-public class XFTY_CopyFromDescendant implements XFTY_DeferredValueIntf {
+public class XFTY_CopyFromDescendantExpression implements XFTY_DeferredExpressionIntf {
 
     private final SObjectField childLookupField;
     private final SObjectField sourceField;
 
-    public XFTY_CopyFromDescendant(SObjectField childLookupField, SObjectField sourceField) {
+    public XFTY_CopyFromDescendantExpression(SObjectField childLookupField, SObjectField sourceField) {
         if (childLookupField == null || sourceField == null) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'XFTY_CopyFromDescendant needs the child lookup field and the field to read from the child.'
+                    'XFTY_CopyFromDescendantExpression needs the child lookup field and the field to read from the child.'
             );
         }
         this.childLookupField = childLookupField;

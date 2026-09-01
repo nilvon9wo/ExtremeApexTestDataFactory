@@ -1,6 +1,6 @@
 /**
  * The whole in-memory forest a `DEFERRED` flush has collected - every generated
- * record and every parent link - presented for an {@link XFTY_DeferredValueIntf}
+ * record and every parent link - presented for an {@link XFTY_DeferredExpressionIntf}
  * to read a value up from a descendant.
  */
 @IsTest

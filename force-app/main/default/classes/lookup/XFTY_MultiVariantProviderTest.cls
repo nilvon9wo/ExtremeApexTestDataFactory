@@ -108,7 +108,7 @@ private class XFTY_MultiVariantProviderTest {
     private class EnterpriseAccountProvider extends BaseProvider {
         private EnterpriseAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Enterprise Account'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Enterprise Account'))
                     .put(Account.Industry, 'Enterprise');
         }
     }
@@ -116,7 +116,7 @@ private class XFTY_MultiVariantProviderTest {
     private class SmbAccountProvider extends BaseProvider {
         private SmbAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('SMB Account'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('SMB Account'))
                     .put(Account.Industry, 'SMB');
         }
     }
@@ -124,7 +124,7 @@ private class XFTY_MultiVariantProviderTest {
     private class EnterpriseParentedContactProvider extends BaseProvider {
         private EnterpriseParentedContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Variant Contact'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Variant Contact'))
                     .putRequired(
                             Contact.AccountId,
                             // The relationship pins the same shared key the lookup registers.

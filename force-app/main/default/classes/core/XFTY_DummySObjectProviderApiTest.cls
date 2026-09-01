@@ -212,7 +212,7 @@ private class XFTY_DummySObjectProviderApiTest {
         Contact result;
         Test.startTest();
         result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, (Object) new XFTY_DummyDefaultValueExact('RoutedStrategy'))
+                .put(Contact.FirstName, (Object) new XFTY_LiteralExpression('RoutedStrategy'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -226,7 +226,7 @@ private class XFTY_DummySObjectProviderApiTest {
         Test.startTest();
         result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .put(Contact.FirstName, 'Source')
-                .put(Contact.Department, (Object) new XFTY_CopyFromSibling(Contact.FirstName))
+                .put(Contact.Department, (Object) new XFTY_CopyFromSiblingExpression(Contact.FirstName))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -419,7 +419,7 @@ private class XFTY_DummySObjectProviderApiTest {
         Contact result;
         Test.startTest();
         result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_DummyDefaultValueExact('DeliberateName'))
+                .put(Contact.FirstName, new XFTY_LiteralExpression('DeliberateName'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -460,7 +460,7 @@ private class XFTY_DummySObjectProviderApiTest {
         // a customization on one provider must not affect a later, separate one.
         Test.startTest();
         new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_DummyDefaultValueExact('Customized'))
+                .put(Contact.FirstName, new XFTY_LiteralExpression('Customized'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
 
@@ -480,7 +480,7 @@ private class XFTY_DummySObjectProviderApiTest {
         Contact result;
         Test.startTest();
         result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_DummyDefaultValueExact('FromPut'))
+                .put(Contact.FirstName, new XFTY_LiteralExpression('FromPut'))
                 .setOverrideTemplate(new Contact(FirstName = 'FromOverride'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();

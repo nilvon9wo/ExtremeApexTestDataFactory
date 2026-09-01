@@ -1,7 +1,7 @@
 /**
  * Runnable proof for docs/use/context-aware-values.md - a value that sees the
  * rest of the record: a sibling copy, an ancestor copy (one hop and multi-hop),
- * a custom XFTY_ContextAwareValueIntf, the put-order rule, and an up-flowing
+ * a custom XFTY_ContextAwareExpressionIntf, the put-order rule, and an up-flowing
  * read from a child. Every `@IsTest` method is one example from that page.
  */
 @IsTest
@@ -20,7 +20,7 @@ private class XFTY_Ex_ContextAwareTest {
         Test.startTest();
         result = (Account) new XFTY_DummySObjectProvider(Account.SObjectType, DEFAULT_LOOKUP)
                 .put(Account.ShippingCity, 'Berlin')
-                .put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
+                .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();
         Test.stopTest();
@@ -99,8 +99,8 @@ private class XFTY_Ex_ContextAwareTest {
     static void readingALaterContextAwareValueThrowsNamingBothFields() {
         // Arrange - BillingCity reads ShippingCity, but ShippingCity is put AFTER it
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, DEFAULT_LOOKUP)
-                .put(Account.BillingCity, new XFTY_CopyFromSibling(Account.ShippingCity))
-                .put(Account.ShippingCity, new XFTY_CopyFromSibling(Account.Site))
+                .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
+                .put(Account.ShippingCity, new XFTY_CopyFromSiblingExpression(Account.Site))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
         // Act
@@ -145,7 +145,7 @@ private class XFTY_Ex_ContextAwareTest {
 
     private static final XFTY_LookupKeyIntf TOP_ACCOUNT = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'top');
 
-    private class IsAdultFlag implements XFTY_ContextAwareValueIntf {
+    private class IsAdultFlag implements XFTY_ContextAwareExpressionIntf {
         public Object get(XFTY_GenerationContext context) {
             Date birthdate = (Date) context.siblingValue(Contact.Birthdate);
             return String.valueOf(birthdate != null && birthdate.addYears(18) <= Date.today());
@@ -168,7 +168,7 @@ private class XFTY_Ex_ContextAwareTest {
     private class AccountWithSite extends BaseProvider {
         private AccountWithSite() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'))
                     .put(Account.Site, 'HQ-SITE');
         }
     }
@@ -176,9 +176,9 @@ private class XFTY_Ex_ContextAwareTest {
     private class ContactReadingAccountSite extends BaseProvider {
         private ContactReadingAccountSite() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('CA'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('CA'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
-                    .put(Contact.Department, new XFTY_CopyFromAncestor(Contact.AccountId, Account.Site));
+                    .put(Contact.Department, new XFTY_CopyFromAncestorExpression(Contact.AccountId, Account.Site));
         }
     }
 
@@ -192,7 +192,7 @@ private class XFTY_Ex_ContextAwareTest {
     private class AccountWithTopParent extends BaseProvider {
         private AccountWithTopParent() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Mid'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Mid'))
                     .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(TOP_ACCOUNT, new Account()));
         }
     }
@@ -200,9 +200,9 @@ private class XFTY_Ex_ContextAwareTest {
     private class ContactReadingGrandparentName extends BaseProvider {
         private ContactReadingGrandparentName() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('CG'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('CG'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
-                    .put(Contact.Description, new XFTY_CopyFromAncestor(new List<SObjectField>{
+                    .put(Contact.Description, new XFTY_CopyFromAncestorExpression(new List<SObjectField>{
                             Contact.AccountId, Account.ParentId, Account.Name
                     }));
         }
@@ -211,7 +211,7 @@ private class XFTY_Ex_ContextAwareTest {
     private class ContactUnderAccount extends BaseProvider {
         private ContactUnderAccount() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('CU'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('CU'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
@@ -219,8 +219,8 @@ private class XFTY_Ex_ContextAwareTest {
     private class AccountReadingChildDepartment extends BaseProvider {
         private AccountReadingChildDepartment() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('ACD'))
-                    .put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('ACD'))
+                    .put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department));
         }
     }
 }

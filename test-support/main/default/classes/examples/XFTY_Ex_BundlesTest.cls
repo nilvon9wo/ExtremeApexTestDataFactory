@@ -155,7 +155,7 @@ private class XFTY_Ex_BundlesTest {
 
     private class ContactUnderNestedAccount implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Leaf'))
                 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(MID_ACCOUNT_KEY, new Account()));
 
         public SObjectField getPrimaryTargetField() {
@@ -171,7 +171,7 @@ private class XFTY_Ex_BundlesTest {
 
     private class AccountWithParent implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'))
                 .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account()));
 
         public SObjectField getPrimaryTargetField() {

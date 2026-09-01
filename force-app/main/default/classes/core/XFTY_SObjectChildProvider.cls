@@ -61,14 +61,14 @@ public class XFTY_SObjectChildProvider {
         return this;
     }
 
-    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_DummyDefaultValueIntf valueStrategy) {
+    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ValueExpressionIntf valueStrategy) {
         PendingPut pendingPut = new PendingPut(field);
         pendingPut.valueStrategy = valueStrategy;
         this.pendingPuts.add(pendingPut);
         return this;
     }
 
-    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ContextAwareValueIntf contextAwareValue) {
+    public XFTY_SObjectChildProvider put(SObjectField field, XFTY_ContextAwareExpressionIntf contextAwareValue) {
         PendingPut pendingPut = new PendingPut(field);
         pendingPut.contextAwareValue = contextAwareValue;
         this.pendingPuts.add(pendingPut);
@@ -205,8 +205,8 @@ public class XFTY_SObjectChildProvider {
 
     private class PendingPut {
         final SObjectField field;
-        XFTY_DummyDefaultValueIntf valueStrategy;
-        XFTY_ContextAwareValueIntf contextAwareValue;
+        XFTY_ValueExpressionIntf valueStrategy;
+        XFTY_ContextAwareExpressionIntf contextAwareValue;
         XFTY_DummyDefaultRelationshipIntf requiredRelationship;
         XFTY_DummyDefaultRelationshipIntf optionalRelationship;
         Object literal;

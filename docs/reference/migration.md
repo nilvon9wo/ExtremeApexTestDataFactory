@@ -115,6 +115,31 @@ on `null`.
 `IndeterminateSObjectTypeException` and its guards were removed after being proven
 unreachable. If you caught it, you can drop the catch.
 
+## 8. Value strategies renamed to value expressions
+
+The value-producing types dropped their `DummyDefault` prefix and took an
+`Expression` suffix. Mechanical rename - the behaviour is unchanged:
+
+| before | after |
+|---|---|
+| `XFTY_DummyDefaultValueIntf` | `XFTY_ValueExpressionIntf` |
+| `XFTY_ContextAwareValueIntf` | `XFTY_ContextAwareExpressionIntf` |
+| `XFTY_DeferredValueIntf` | `XFTY_DeferredExpressionIntf` |
+| `XFTY_DummyDefaultValueExact` | `XFTY_LiteralExpression` |
+| `XFTY_DummyDefaultValueIncrementingString` | `XFTY_IncrementingStringExpression` |
+| `XFTY_DummyDefaultValueUniqueString` | `XFTY_UniqueStringExpression` |
+| `XFTY_DummyDefaultValueUniqueStringLength` | `XFTY_UniqueStringOfLengthExpression` |
+| `XFTY_DummyDefaultValueUniqueEmail` | `XFTY_UniqueEmailExpression` |
+| `XFTY_DummyDefaultIncrementingDecimal` | `XFTY_IncrementingDecimalExpression` |
+| `XFTY_CopyFromSibling` | `XFTY_CopyFromSiblingExpression` |
+| `XFTY_CopyFromAncestor` | `XFTY_CopyFromAncestorExpression` |
+| `XFTY_CopyFromDescendant` | `XFTY_CopyFromDescendantExpression` |
+
+`XFTY_DummyDefaultRelationship` is a relationship, not a value expression, and is
+**unchanged**. The doc page moved: `use/value-strategies.md` →
+`use/value-expressions.md`, `extend/custom-value-strategies.md` →
+`extend/custom-value-expressions.md`.
+
 ---
 
 ## New things you may want
@@ -123,10 +148,10 @@ Not required, but available:
 
 | Feature | Where |
 |---------|-------|
-| `put(field, 'literal')` - implicit `XFTY_DummyDefaultValueExact` | [use/value-strategies](../use/value-strategies.md#implicit-exact-values) |
+| `put(field, 'literal')` - implicit `XFTY_LiteralExpression` | [use/value-expressions](../use/value-expressions.md#implicit-exact-values) |
 | `withVariant(key)` / lookup-key constructor / template constructor | [use/provider-variants](../use/provider-variants.md), [use/generating-records](../use/generating-records.md#shorthand-constructors) |
 | Record-type / flavour Provider variants (`XFTY_RecordTypeLookupKey`, `XFTY_FlavouredLookupKey`, `XFTY_FieldPredicate`) | [extend/provider-variants](../extend/provider-variants.md) |
-| Context-aware values (`XFTY_CopyFromSibling`, `XFTY_CopyFromAncestor`, `XFTY_ContextAwareValueIntf`) | [use/context-aware-values](../use/context-aware-values.md) |
+| Context-aware values (`XFTY_CopyFromSiblingExpression`, `XFTY_CopyFromAncestorExpression`, `XFTY_ContextAwareExpressionIntf`) | [use/context-aware-values](../use/context-aware-values.md) |
 | `context.siblingValue(field)` for custom context-aware strategies - guarded sibling read, throws instead of returning a misleading `null` | [use/context-aware-values](../use/context-aware-values.md) |
 | Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [use/per-call-relationships](../use/per-call-relationships.md) |
 | Shared ancestors (`XFTY_SharedAncestor` - many children under one generated parent) | [use/shared-ancestors](../use/shared-ancestors.md) |

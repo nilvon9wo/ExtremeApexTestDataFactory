@@ -17,16 +17,16 @@ public class XFTY_PathValue {
 
     public final List<SObjectField> path;
     public final Kind kind;
-    private final XFTY_DummyDefaultValueIntf valueStrategy;
-    private final XFTY_ContextAwareValueIntf contextAwareValue;
+    private final XFTY_ValueExpressionIntf valueStrategy;
+    private final XFTY_ContextAwareExpressionIntf contextAwareValue;
     private final Object literal;
     private final XFTY_DummyDefaultRelationshipIntf relationship;
 
     private XFTY_PathValue(
             List<SObjectField> path,
             Kind kind,
-            XFTY_DummyDefaultValueIntf valueStrategy,
-            XFTY_ContextAwareValueIntf contextAwareValue,
+            XFTY_ValueExpressionIntf valueStrategy,
+            XFTY_ContextAwareExpressionIntf contextAwareValue,
             Object literal,
             XFTY_DummyDefaultRelationshipIntf relationship
     ) {
@@ -39,11 +39,11 @@ public class XFTY_PathValue {
         this.relationship = relationship;
     }
 
-    public static XFTY_PathValue ofStrategy(List<SObjectField> path, XFTY_DummyDefaultValueIntf strategy) {
+    public static XFTY_PathValue ofStrategy(List<SObjectField> path, XFTY_ValueExpressionIntf strategy) {
         assertUsablePath(path);
         return new XFTY_PathValue(path, Kind.VALUE_STRATEGY, strategy, null, null, null);
     }
-    public static XFTY_PathValue ofContextAware(List<SObjectField> path, XFTY_ContextAwareValueIntf contextAware) {
+    public static XFTY_PathValue ofContextAware(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAware) {
         assertUsablePath(path);
         return new XFTY_PathValue(path, Kind.CONTEXT_AWARE, null, contextAware, null, null);
     }

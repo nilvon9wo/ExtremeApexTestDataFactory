@@ -39,17 +39,17 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
     private static final SObjectField PRIMARY_TARGET_FIELD = User.Id;
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
             = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-                    .put(User.Alias, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_ALIAS_PREFIX))
-                    .put(User.EmailEncodingKey, new XFTY_DummyDefaultValueExact(DEFAULT_EMAIL_ENCODING))
-                    .put(User.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
-                    .put(User.FederationIdentifier, new XFTY_DummyDefaultValueUniqueString(DEFAULT_FEDERATION_ID_PREFIX))
-                    .put(User.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
-                    .put(User.LanguageLocaleKey, new XFTY_DummyDefaultValueExact(DEFAULT_LANGUAGE_LOCAL))
-                    .put(User.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
-                    .put(User.LocaleSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_LOCALE_SID))
-                    .put(User.ProfileId, new XFTY_DummyDefaultValueExact(profileIdFor(SYSTEM_ADMIN)))
-                    .put(User.TimeZoneSidKey, new XFTY_DummyDefaultValueExact(DEFAULT_TIME_ZONE))
-                    .put(User.Username, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_USERNAME_PREFIX));
+                    .put(User.Alias, new XFTY_IncrementingStringExpression(DEFAULT_ALIAS_PREFIX))
+                    .put(User.EmailEncodingKey, new XFTY_LiteralExpression(DEFAULT_EMAIL_ENCODING))
+                    .put(User.Email, new XFTY_UniqueEmailExpression(DEFAULT_EMAIL_PREFIX))
+                    .put(User.FederationIdentifier, new XFTY_UniqueStringExpression(DEFAULT_FEDERATION_ID_PREFIX))
+                    .put(User.FirstName, new XFTY_IncrementingStringExpression(DEFAULT_FIRST_NAME_PREFIX))
+                    .put(User.LanguageLocaleKey, new XFTY_LiteralExpression(DEFAULT_LANGUAGE_LOCAL))
+                    .put(User.LastName, new XFTY_IncrementingStringExpression(DEFAULT_LAST_NAME_PREFIX))
+                    .put(User.LocaleSidKey, new XFTY_LiteralExpression(DEFAULT_LOCALE_SID))
+                    .put(User.ProfileId, new XFTY_LiteralExpression(profileIdFor(SYSTEM_ADMIN)))
+                    .put(User.TimeZoneSidKey, new XFTY_LiteralExpression(DEFAULT_TIME_ZONE))
+                    .put(User.Username, new XFTY_UniqueEmailExpression(DEFAULT_USERNAME_PREFIX));
 
     private static final XFTY_DummySObjectProviderLookupIntf DEFAULT_SOBJECT_PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 

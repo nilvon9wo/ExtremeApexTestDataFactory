@@ -61,7 +61,7 @@ private class XFTY_AncestorCycleTest {
 
     private class SelfReferringContactProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Mgr'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Mgr'))
                 .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()));
 
         public SObjectField getPrimaryTargetField() {

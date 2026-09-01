@@ -43,7 +43,7 @@ public class XFTY_DummySObjectFactory {
     }
 
     /**
-     * Up-flowing values ({@link XFTY_CopyFromDescendant}) are left unresolved and
+     * Up-flowing values ({@link XFTY_CopyFromDescendantExpression}) are left unresolved and
      * handed to the bundle for the `DEFERRED` flush to fill. In any other mode the
      * whole forest never exists, so it is a loud error, not a silent `null`.
      */
@@ -53,7 +53,7 @@ public class XFTY_DummySObjectFactory {
         }
         if (!this.context.batchedInsertPending) {
             throw new XFTY_DummySObjectFtyProviderException(
-                    'A value that reads up from a generated child (XFTY_CopyFromDescendant) needs the DEFERRED '
+                    'A value that reads up from a generated child (XFTY_CopyFromDescendantExpression) needs the DEFERRED '
                             + 'insert mode - the child must exist before it can be read. Use '
                             + 'setInsertMode(XFTY_InsertModeEnum.DEFERRED) and call XFTY_DeferredInserter.flush().'
             );

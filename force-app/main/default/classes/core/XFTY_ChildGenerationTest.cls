@@ -434,7 +434,7 @@ private class XFTY_ChildGenerationTest {
     /** Case that needs a Contact (which in turn needs its own Account). */
     private class CaseProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Case.Id)
-                .put(Case.Subject, new XFTY_DummyDefaultValueIncrementingString('Case'))
+                .put(Case.Subject, new XFTY_IncrementingStringExpression('Case'))
                 .putRequired(Case.ContactId, new XFTY_DummyDefaultRelationship(new Contact()));
 
         public SObjectField getPrimaryTargetField() {

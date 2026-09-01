@@ -93,7 +93,7 @@ Provider call can do, each on its own page:
 
 | You want to… | Page |
 |---|---|
-| control the field values (strategies, overrides, precedence) | [value-strategies](value-strategies.md), [override-templates](override-templates.md) |
+| control the field values (strategies, overrides, precedence) | [value-expressions](value-expressions.md), [override-templates](override-templates.md) |
 | derive a value from a sibling, an ancestor, or a child | [context-aware-values](context-aware-values.md) |
 | generate the **parent** records a record needs (and how deep) | [relationships](relationships.md) |
 | force or exclude a specific relationship for this one call | [per-call-relationships](per-call-relationships.md) |

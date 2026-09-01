@@ -20,7 +20,7 @@ Legend: ✅ built &nbsp;·&nbsp; 📋 designed, not built. Everything ✅ is on
 | Governor-limit warnings + volume tests | ✅ | [../reference/volume-and-limits.md](../reference/volume-and-limits.md) |
 | Downward generation — `with` / `withChildren` / `XFTY_SObjectChildProvider` (nested, DEFERRED-aware) | ✅ | [../use/child-records.md](../use/child-records.md) |
 | Shared ancestors — deep chains / batched resolution / `.depthBatched()` + `DEFERRED` | ✅ (per-sub-graph depth-batch — not one pass across all; resolves every configured ancestor, not just the reachable ones; no decision-3 load data yet) | [shared-ancestors.md](shared-ancestors.md), [../use/shared-ancestors.md](../use/shared-ancestors.md) |
-| Descendant (up-flowing) value reads — `XFTY_CopyFromDescendant` | ✅ (`DEFERRED` / `.depthBatched()` only; single child, single hop) | [descendant-value-reads.md](descendant-value-reads.md), [../use/context-aware-values.md](../use/context-aware-values.md) |
+| Descendant (up-flowing) value reads — `XFTY_CopyFromDescendantExpression` | ✅ (`DEFERRED` / `.depthBatched()` only; single child, single hop) | [descendant-value-reads.md](descendant-value-reads.md), [../use/context-aware-values.md](../use/context-aware-values.md) |
 | Path-scoped value overrides — `put(List<SObjectField>, value)` into an ancestor | ✅ | [path-scoped-values.md](path-scoped-values.md) |
 | Sandbox data seeding | 📋 | [sandbox-seeding.md](sandbox-seeding.md) |
 | Namespace / AppExchange listing | 📋 | [namespace-appexchange.md](namespace-appexchange.md) |
@@ -50,7 +50,7 @@ list are **done** — `142c6d9`, and the commit after it.)
    `.depthBatched()` / `DEFERRED` now work (resolved up front, honouring the
    real mode).
 4. ~~Descendant (up-flowing) value reads — option B~~ — **done.**
-   `XFTY_CopyFromDescendant`, resolved by `XFTY_DescendantValuePass` over the
+   `XFTY_CopyFromDescendantExpression`, resolved by `XFTY_DescendantValuePass` over the
    whole `DEFERRED` forest before the depth-batched insert; a non-`DEFERRED`
    build with one throws. **Still open:** a multi-hop path form; aggregates
    across children; the never-`flush()` loud error.

@@ -1,6 +1,6 @@
 /**
  * The up-flow value pass: runs over the whole `DEFERRED` forest, just before the
- * depth-batched insert, and fills every field an {@link XFTY_DeferredValueIntf}
+ * depth-batched insert, and fills every field an {@link XFTY_DeferredExpressionIntf}
  * left unresolved by reading it from that record's generated descendants.
  */
 @IsTest

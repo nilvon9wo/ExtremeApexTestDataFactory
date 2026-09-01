@@ -22,7 +22,7 @@ matrix (every feature → its page → the runnable test that proves its example
 - [Getting Started](use/getting-started.md) — the guided tour
 - Generating & customizing: [generating-records](use/generating-records.md) ·
   [override-templates](use/override-templates.md) ·
-  [value-strategies](use/value-strategies.md) ·
+  [value-expressions](use/value-expressions.md) ·
   [context-aware-values](use/context-aware-values.md)
 - Relationships: [relationships](use/relationships.md) ·
   [per-call-relationships](use/per-call-relationships.md) ·
@@ -38,7 +38,7 @@ matrix (every feature → its page → the runnable test that proves its example
 - [Providers](extend/providers.md) — support a new `SObject` type
 - [Provider Lookups](extend/provider-lookups.md) — your project's registry
 - [Provider Variants](extend/provider-variants.md) — record-type / flavour keys
-- [Custom Value Strategies](extend/custom-value-strategies.md)
+- [Custom Value Strategies](extend/custom-value-expressions.md)
 - [Shared Ancestors in a Master Template](extend/shared-ancestors-in-templates.md)
 - [The Bundled Providers](extend/bundled-providers.md) — copy-and-adjust
 

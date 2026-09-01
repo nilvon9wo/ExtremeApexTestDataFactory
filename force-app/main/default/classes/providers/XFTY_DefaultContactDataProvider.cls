@@ -11,9 +11,9 @@ public class XFTY_DefaultContactDataProvider implements XFTY_DummySobjectProvide
             .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account(
                     Description = DEFAULT_ACCOUNT_DESCRIPTION
             )))
-            .put(Contact.Email, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX))
-            .put(Contact.FirstName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_FIRST_NAME_PREFIX))
-            .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX));
+            .put(Contact.Email, new XFTY_UniqueEmailExpression(DEFAULT_EMAIL_PREFIX))
+            .put(Contact.FirstName, new XFTY_IncrementingStringExpression(DEFAULT_FIRST_NAME_PREFIX))
+            .put(Contact.LastName, new XFTY_IncrementingStringExpression(DEFAULT_LAST_NAME_PREFIX));
 
     public SObjectField getPrimaryTargetField() {
         return PRIMARY_TARGET_FIELD;

@@ -107,14 +107,14 @@ private class XFTY_Ex_Adv_LargeGraphsTest {
     private class PlainAccount extends BaseProvider {
         private PlainAccount() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('LG Acct'));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('LG Acct'));
         }
     }
 
     private class ParentlessContact extends BaseProvider {
         private ParentlessContact() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('LG Contact'));
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('LG Contact'));
         }
     }
 }

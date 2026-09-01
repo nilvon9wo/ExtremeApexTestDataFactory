@@ -26,8 +26,8 @@ Every kind plain `put` / `putRequired` / `putOptional` accept:
 | Call | Effect on the ancestor's field |
 |---|---|
 | `put(path, Object literal)` | a constant |
-| `put(path, XFTY_DummyDefaultValueIntf)` | a value strategy (runs once per generated ancestor) |
-| `put(path, XFTY_ContextAwareValueIntf)` | evaluated against the ancestor as `recordBeingBuilt` — `XFTY_CopyFromSibling` / `XFTY_CopyFromAncestor` etc. work relative to that ancestor |
+| `put(path, XFTY_ValueExpressionIntf)` | a value strategy (runs once per generated ancestor) |
+| `put(path, XFTY_ContextAwareExpressionIntf)` | evaluated against the ancestor as `recordBeingBuilt` — `XFTY_CopyFromSiblingExpression` / `XFTY_CopyFromAncestorExpression` etc. work relative to that ancestor |
 | `putRequired(path, XFTY_DummyDefaultRelationshipIntf)` | the ancestor's own lookup gets a generated parent |
 | `putOptional(path, XFTY_DummyDefaultRelationshipIntf)` | …optional on the ancestor |
 
@@ -66,7 +66,7 @@ forced ancestor's own inclusivity to `REQUIRED` when the call asked for `NONE`.
 
 - `includeOptional(...)` gained the same "force regardless of inclusivity, fully
   formed" behavior in the same change — one rule for both.
-- Mirror on the read side is already there — `XFTY_CopyFromAncestor(path)`.
+- Mirror on the read side is already there — `XFTY_CopyFromAncestorExpression(path)`.
 - Shared ancestors:
   - `put(path, literal | strategy | contextAware)` or `putRequired(path, plainRel)`
     that would **set a value on** a shared ancestor **throws** — the shared

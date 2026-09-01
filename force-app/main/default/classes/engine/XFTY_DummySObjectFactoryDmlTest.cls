@@ -224,7 +224,7 @@ private class XFTY_DummySObjectFactoryDmlTest {
         private final XFTY_DummySObjectMasterTemplate template;
         private LeafProvider(SObjectField idField, SObjectField nameField) {
             this.template = new XFTY_DummySObjectMasterTemplate(idField)
-                    .put(nameField, new XFTY_DummyDefaultValueIncrementingString('Leaf'));
+                    .put(nameField, new XFTY_IncrementingStringExpression('Leaf'));
         }
         public SObjectField getPrimaryTargetField() {
             return this.template.primaryTargetField;
@@ -239,7 +239,7 @@ private class XFTY_DummySObjectFactoryDmlTest {
 
     private class OneParentTaskProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Task.Id)
-                .put(Task.Subject, new XFTY_DummyDefaultValueIncrementingString('One Parent Task'))
+                .put(Task.Subject, new XFTY_IncrementingStringExpression('One Parent Task'))
                 .putRequired(Task.WhatId, new XFTY_DummyDefaultRelationship(new Account()));
         public SObjectField getPrimaryTargetField() {
             return Task.Id;
@@ -254,7 +254,7 @@ private class XFTY_DummySObjectFactoryDmlTest {
 
     private class TwoParentTaskProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Task.Id)
-                .put(Task.Subject, new XFTY_DummyDefaultValueIncrementingString('Two Parent Task'))
+                .put(Task.Subject, new XFTY_IncrementingStringExpression('Two Parent Task'))
                 .putRequired(Task.WhatId, new XFTY_DummyDefaultRelationship(new Account()))
                 .putRequired(Task.WhoId, new XFTY_DummyDefaultRelationship(new Contact()));
         public SObjectField getPrimaryTargetField() {

@@ -41,7 +41,7 @@ uses for the inner loop only and does not endorse or depend on — see
 
 ```bash
 nimbus test "*"                                   # everything
-nimbus test "XFTY_ContextAwareValueTest"          # one class
+nimbus test "XFTY_ContextAwareExpressionTest"          # one class
 nimbus exec path/to/scratch.apex                  # anonymous Apex
 ```
 

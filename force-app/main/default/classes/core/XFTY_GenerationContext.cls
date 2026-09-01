@@ -14,7 +14,7 @@
  *   see {@link #forRelated};
  * - carries the `includeOptional(...)` paths down the graph;
  * - is what a context-aware value strategy reads (see
- *   {@link XFTY_ContextAwareValueIntf}, docs/roadmap/context-aware-values.md).
+ *   {@link XFTY_ContextAwareExpressionIntf}, docs/roadmap/context-aware-values.md).
  *
  * `recordBeingBuilt` / `bundleSoFar` / `rowIndex` are populated only for the
  * per-record value pass (via {@link #forRecord}); everywhere else they are
@@ -279,7 +279,7 @@ public class XFTY_GenerationContext {
 
     /**
      * The final value of a sibling field on {@link #recordBeingBuilt}, for a
-     * context-aware strategy (see {@link XFTY_CopyFromSibling}). A returned `null`
+     * context-aware strategy (see {@link XFTY_CopyFromSiblingExpression}). A returned `null`
      * means the sibling was genuinely generated to `null`.
      *
      * Throws when `siblingField` is itself a context-aware value that has not been

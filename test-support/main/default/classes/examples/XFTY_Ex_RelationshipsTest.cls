@@ -191,14 +191,14 @@ private class XFTY_Ex_RelationshipsTest {
     private class PlainAccount extends BaseProvider {
         private PlainAccount() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'));
         }
     }
 
     private class ContactRequiredAccountOptionalOwner extends BaseProvider {
         private ContactRequiredAccountOptionalOwner() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Rel'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Rel'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()))
                     .putOptional(Contact.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
@@ -207,7 +207,7 @@ private class XFTY_Ex_RelationshipsTest {
     private class ContactRequiresAccount extends BaseProvider {
         private ContactRequiresAccount() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Casc'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Casc'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
@@ -215,7 +215,7 @@ private class XFTY_Ex_RelationshipsTest {
     private class AccountRequiresTopParent extends BaseProvider {
         private AccountRequiresTopParent() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Mid'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Mid'))
                     .putRequired(Account.ParentId, new XFTY_DummyDefaultRelationship(TOP_ACCOUNT, new Account()));
         }
     }
@@ -223,14 +223,14 @@ private class XFTY_Ex_RelationshipsTest {
     private class TopAccount extends BaseProvider {
         private TopAccount() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Top'));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Top'));
         }
     }
 
     private class AccountParentsItself extends BaseProvider {
         private AccountParentsItself() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Self'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Self'))
                     .putOptional(Account.ParentId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }

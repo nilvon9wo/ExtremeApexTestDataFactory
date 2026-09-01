@@ -498,7 +498,7 @@ private class XFTY_SharedAncestorTest {
 
     private class SelfReferencingAccountProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Loop'))
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Loop'))
                 .putRequired(Account.ParentId, XFTY_SharedAncestor.get('loop'));
 
         public SObjectField getPrimaryTargetField() {
@@ -520,7 +520,7 @@ private class XFTY_SharedAncestorTest {
 
         private ParentedAccountProvider(String parentSharedName) {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Ring'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Ring'))
                     .putRequired(Account.ParentId, XFTY_SharedAncestor.get(parentSharedName));
         }
 

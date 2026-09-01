@@ -259,14 +259,14 @@ private class XFTY_DummySObjectFactoryTest {
     private class LeafAccountProvider extends BaseProvider {
         private LeafAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Leaf Account'));
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Leaf Account'));
         }
     }
 
     private class OptionalParentContactProvider extends BaseProvider {
         private OptionalParentContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Optional Parent Contact'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Optional Parent Contact'))
                     .putOptional(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
@@ -274,7 +274,7 @@ private class XFTY_DummySObjectFactoryTest {
     private class DeepAccountProvider extends BaseProvider {
         private DeepAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Deep Account'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Deep Account'))
                     .putRequired(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
     }
@@ -282,7 +282,7 @@ private class XFTY_DummySObjectFactoryTest {
     private class DeepContactProvider extends BaseProvider {
         private DeepContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Deep Contact'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Deep Contact'))
                     .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
         }
     }
@@ -290,7 +290,7 @@ private class XFTY_DummySObjectFactoryTest {
     private class RelatedFieldContactProvider extends BaseProvider {
         private RelatedFieldContactProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                    .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Related Field Contact'))
+                    .put(Contact.LastName, new XFTY_IncrementingStringExpression('Related Field Contact'))
                     .putRequired(
                             Contact.Description,
                             new XFTY_DummyDefaultRelationship(new Account(Name = 'Wired From Parent'), Account.Name)
@@ -301,7 +301,7 @@ private class XFTY_DummySObjectFactoryTest {
     private class OptionalOwnerAccountProvider extends BaseProvider {
         private OptionalOwnerAccountProvider() {
             this.template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                    .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Opt Owner Account'))
+                    .put(Account.Name, new XFTY_IncrementingStringExpression('Opt Owner Account'))
                     .putOptional(Account.OwnerId, new XFTY_DummyDefaultRelationship(new User()));
         }
     }

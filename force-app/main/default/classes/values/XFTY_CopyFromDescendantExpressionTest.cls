@@ -1,11 +1,11 @@
 /**
- * `XFTY_CopyFromDescendant` - a parent field copied up from a generated child,
+ * `XFTY_CopyFromDescendantExpression` - a parent field copied up from a generated child,
  * resolved in the `DEFERRED` flush once the whole forest exists.
  *
  * See docs/roadmap/descendant-value-reads.md.
  */
 @IsTest
-private class XFTY_CopyFromDescendantTest {
+private class XFTY_CopyFromDescendantExpressionExpressionTest {
 
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final String CHILD_DEPARTMENT = 'Field Ops';
@@ -133,7 +133,7 @@ private class XFTY_CopyFromDescendantTest {
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
         try {
-            new XFTY_CopyFromDescendant(null, Contact.Department);
+            new XFTY_CopyFromDescendantExpression(null, Contact.Department);
         } catch (XFTY_DummySObjectFtyProviderException ex) {
             thrown = ex;
         }
@@ -163,8 +163,8 @@ private class XFTY_CopyFromDescendantTest {
     /** An Account whose Site is copied up from the Contact that references it. */
     private class AccountReadingChildDepartment implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Account.Id)
-                .put(Account.Name, new XFTY_DummyDefaultValueIncrementingString('Acct'))
-                .put(Account.Site, new XFTY_CopyFromDescendant(Contact.AccountId, Contact.Department));
+                .put(Account.Name, new XFTY_IncrementingStringExpression('Acct'))
+                .put(Account.Site, new XFTY_CopyFromDescendantExpression(Contact.AccountId, Contact.Department));
 
         public SObjectField getPrimaryTargetField() {
             return Account.Id;
@@ -182,7 +182,7 @@ private class XFTY_CopyFromDescendantTest {
     /** A Contact that pulls in the reading Account. */
     private class ContactUnderReadingAccount implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Contact.Id)
-                .put(Contact.LastName, new XFTY_DummyDefaultValueIncrementingString('Leaf'))
+                .put(Contact.LastName, new XFTY_IncrementingStringExpression('Leaf'))
                 .putRequired(Contact.AccountId, new XFTY_DummyDefaultRelationship(new Account()));
 
         public SObjectField getPrimaryTargetField() {

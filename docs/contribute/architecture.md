@@ -68,9 +68,9 @@ Each component has a single responsibility.
 | `XFTY_DummySObjectFactory` | Thin coordinator — drives the phase classes below. |
 | `XFTY_AncestorGenerator` | Phase: generate one level of related (ancestor) records. |
 | `XFTY_LookupWiring` | Phase: point each record's lookup fields at its generated parents. |
-| `XFTY_PlainValueFiller` | Phase: fill the plain (`XFTY_DummyDefaultValueIntf`) values. |
-| `XFTY_ContextAwareValuePass` | Phase: run the `XFTY_ContextAwareValueIntf` strategies, one field at a time. |
-| `XFTY_DescendantValuePass` / `XFTY_DeferredGraph` | Up-flow value pass at the top of the `DEFERRED` flush: fill each `XFTY_DeferredValueIntf` (`XFTY_CopyFromDescendant`) from that record's now-generated children, read through the collected parent links. |
+| `XFTY_PlainValueFiller` | Phase: fill the plain (`XFTY_ValueExpressionIntf`) values. |
+| `XFTY_ContextAwareValuePass` | Phase: run the `XFTY_ContextAwareExpressionIntf` strategies, one field at a time. |
+| `XFTY_DescendantValuePass` / `XFTY_DeferredGraph` | Up-flow value pass at the top of the `DEFERRED` flush: fill each `XFTY_DeferredExpressionIntf` (`XFTY_CopyFromDescendantExpression`) from that record's now-generated children, read through the collected parent links. |
 | `XFTY_ValueFieldPass` | The narrowest scope — one context-aware field + the set of sibling context-aware fields not yet generated (drives `context.siblingValue`'s loud guard). |
 | `XFTY_RelationshipForcer` | Applies `includeOptional(...)` / `put(path,...)` relationship-prefix paths to a per-call copy of the Master Template. |
 | `XFTY_PathValue` / `XFTY_PathValueApplier` | A `put(List<SObjectField>, value)` override targeted at a generated ancestor; the applier lands the at-target ones on the level's template. |
@@ -83,7 +83,7 @@ Each component has a single responsibility.
 | `XFTY_DepthBatchedInserter` | Kahn-style layered insert: one `insert` per dependency depth. |
 | `XFTY_DeferredInserter` / `XFTY_DeferredInsertBuffer` | The `DEFERRED` registry and its bundle-walk; `flush()` runs `XFTY_DepthBatchedInserter` over the union. |
 | `XFTY_DummySObjectBundle` | Represents the generated graph. |
-| `XFTY_DummyDefaultValueIntf` / `XFTY_ContextAwareValueIntf` / `XFTY_DeferredValueIntf` | Strategy interfaces for generating field values (plain / context-aware / up-flow). |
+| `XFTY_ValueExpressionIntf` / `XFTY_ContextAwareExpressionIntf` / `XFTY_DeferredExpressionIntf` | Strategy interfaces for generating field values (plain / context-aware / up-flow). |
 | `XFTY_DummyDefaultRelationshipIntf` / `XFTY_DummyDefaultRelationship` / `XFTY_SharedRelationshipIntf` / `XFTY_SharedAncestor` | Strategy interfaces + implementations for generating related records. |
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` / `XFTY_RecordTypeLookupKey` / `XFTY_FlavouredLookupKey` / `XFTY_FieldPredicate` | Identify a Provider variant. |
 | `XFTY_IdMocker` | Generates realistic Salesforce Ids without DML. |
@@ -112,7 +112,7 @@ Providers instead declare *what* should exist.
 ```apex
 new XFTY_DummySObjectMasterTemplate(Account.Id)
     .put(Account.Name,
-         new XFTY_DummyDefaultValueIncrementingString("Account"))
+         new XFTY_IncrementingStringExpression("Account"))
     .putRequired(Account.OwnerId,
          new XFTY_DummyDefaultRelationship(
              new User()
@@ -256,7 +256,7 @@ For one Provider's records:
 5. **Context-aware value pass** (`XFTY_ContextAwareValuePass`) — below.
 6. **Up-flow value pass** (`XFTY_DescendantValuePass`) — only under `DEFERRED` /
    `.depthBatched()`, at the top of the flush, once every record exists. Fields
-   with an `XFTY_DeferredValueIntf` strategy are left unresolved by phase 5 and
+   with an `XFTY_DeferredExpressionIntf` strategy are left unresolved by phase 5 and
    filled here from that record's collected children. A non-batched build that
    carries one throws in phase 5 instead.
 
@@ -265,10 +265,10 @@ For one Provider's records:
 Field values are filled in **two in-line passes plus one deferred pass**, so a
 strategy can be aware of the rest of the record:
 
-1. **Plain values** - the `XFTY_DummyDefaultValueIntf` strategies (Master Template
+1. **Plain values** - the `XFTY_ValueExpressionIntf` strategies (Master Template
    `defaultBySObjectFieldMap`), in the order the fields were `put` (the template
    keeps an explicit order list - Apex `Map` iteration order is not guaranteed).
-2. **Context-aware values** - the `XFTY_ContextAwareValueIntf` strategies (a
+2. **Context-aware values** - the `XFTY_ContextAwareExpressionIntf` strategies (a
    separate map, `contextAwareBySObjectFieldMap`), after the ancestor records
    exist and lookups are wired. Each is handed a `XFTY_GenerationContext` scoped
    to its record (`recordBeingBuilt`, `bundleSoFar`, `rowIndex`) and to the one
@@ -282,7 +282,7 @@ the `put` order that fixes it - rather than returning a silent wrong `null`;
 the not-yet-reached set is what separates that case from a sibling that was
 genuinely generated to `null`.
 
-3. **Up-flow values** - the `XFTY_DeferredValueIntf` strategies (a third map,
+3. **Up-flow values** - the `XFTY_DeferredExpressionIntf` strategies (a third map,
    `deferredValueBySObjectFieldMap`). A field on a generated *child* cannot be
    read in-line - the child does not exist yet - so these are left unresolved
    and filled by `XFTY_DescendantValuePass` at the top of the `DEFERRED` flush,
@@ -337,7 +337,7 @@ Rather than storing literal values, Master Templates store **strategies** for ge
 Every value provider implements:
 
 ```apex
-XFTY_DummyDefaultValueIntf
+XFTY_ValueExpressionIntf
 ```
 
 This allows generated values to be:

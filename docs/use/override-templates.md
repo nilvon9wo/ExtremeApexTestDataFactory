@@ -41,7 +41,7 @@ Master Template  →  put(...)  →  Override Template
 If more than one customization touches a field, **the override template wins.**
 
 ```apex
-.put(Contact.FirstName, new XFTY_DummyDefaultValueExact('Generated'))
+.put(Contact.FirstName, new XFTY_LiteralExpression('Generated'))
 .setOverrideTemplate(new Contact(FirstName = 'Alice'))
 // -> "Alice", not "Generated"
 ```
@@ -52,7 +52,7 @@ An override value also wins over a [context-aware strategy](context-aware-values
 
 ## Override template vs `put(...)`
 
-| Use an override template when… | Use [`put(...)`](value-strategies.md) when… |
+| Use an override template when… | Use [`put(...)`](value-expressions.md) when… |
 |--------------------------------|--------------------------------------------|
 | customizing one or two records | every generated record should differ |
 | supplying an exact value | replacing the *generation strategy* |
@@ -78,4 +78,4 @@ another value. For relationships, use
 
 ▶ Runnable: `XFTY_Ex_OverrideTemplatesTest`
 
-See also: [generating-records](generating-records.md) · [value-strategies](value-strategies.md)
+See also: [generating-records](generating-records.md) · [value-expressions](value-expressions.md)

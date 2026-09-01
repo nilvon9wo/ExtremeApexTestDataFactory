@@ -277,7 +277,7 @@ private class XFTY_SharedAncestorHierarchyTest {
                 accountProvider()
                         .setOverrideTemplate(new Account(Name = 'HQ Ltd'))
                         .put(Account.Site, 'Berlin')
-                        .put(Account.Description, new XFTY_CopyFromSibling(Account.Name))
+                        .put(Account.Description, new XFTY_CopyFromSiblingExpression(Account.Name))
         );
 
         // Act
@@ -633,7 +633,7 @@ private class XFTY_SharedAncestorHierarchyTest {
             this.template = new XFTY_DummySObjectMasterTemplate(primaryField)
                     .putRequired(lookupField, XFTY_SharedAncestor.get(sharedName));
             if (requiredLabelField != null) {
-                this.template.put(requiredLabelField, new XFTY_DummyDefaultValueIncrementingString('X'));
+                this.template.put(requiredLabelField, new XFTY_IncrementingStringExpression('X'));
             }
         }
 

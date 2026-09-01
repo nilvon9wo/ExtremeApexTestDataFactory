@@ -19,7 +19,7 @@ public class XFTY_LoadProviders {
 
     private class TaskProvider implements XFTY_DummySobjectProviderIntf {
         private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Task.Id)
-                .put(Task.Subject, new XFTY_DummyDefaultValueIncrementingString('Load Task'));
+                .put(Task.Subject, new XFTY_IncrementingStringExpression('Load Task'));
 
         public SObjectField getPrimaryTargetField() {
             return Task.Id;

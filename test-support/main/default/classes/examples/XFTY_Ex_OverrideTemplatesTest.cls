@@ -36,7 +36,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
         Contact result;
         Test.startTest();
         result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, PROVIDER_LOOKUP)
-                .put(Contact.FirstName, new XFTY_DummyDefaultValueExact('Generated'))
+                .put(Contact.FirstName, new XFTY_LiteralExpression('Generated'))
                 .setOverrideTemplate(new Contact(FirstName = 'Alice'))
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .supply();

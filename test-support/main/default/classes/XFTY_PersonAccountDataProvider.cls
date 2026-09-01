@@ -16,10 +16,10 @@ public class XFTY_PersonAccountDataProvider implements XFTY_DummySobjectProvider
 
     private static final XFTY_DummySObjectMasterTemplate MASTER_TEMPLATE
             = new XFTY_DummySObjectMasterTemplate(PRIMARY_TARGET_FIELD)
-                    .put(Account.RecordTypeId, new XFTY_DummyDefaultValueExact(
+                    .put(Account.RecordTypeId, new XFTY_LiteralExpression(
                             XFTY_RecordTypeMatching.idFor(Account.SObjectType, RECORD_TYPE_DEVELOPER_NAME)))
-                    .put(Account.LastName, new XFTY_DummyDefaultValueIncrementingString(DEFAULT_LAST_NAME_PREFIX))
-                    .put(Account.PersonEmail, new XFTY_DummyDefaultValueUniqueEmail(DEFAULT_EMAIL_PREFIX));
+                    .put(Account.LastName, new XFTY_IncrementingStringExpression(DEFAULT_LAST_NAME_PREFIX))
+                    .put(Account.PersonEmail, new XFTY_UniqueEmailExpression(DEFAULT_EMAIL_PREFIX));
 
     public SObjectField getPrimaryTargetField() {
         return PRIMARY_TARGET_FIELD;

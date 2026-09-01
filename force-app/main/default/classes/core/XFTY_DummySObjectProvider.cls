@@ -228,22 +228,22 @@ public class XFTY_DummySObjectProvider {
     // Use these when static templates are insufficient (e.g. because unique values are required).
     // WARNING: You can use both override templates and include methods, but in the event of conflicting values, override values will win!
 
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DummyDefaultValueIntf valueTemplate) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ValueExpressionIntf valueTemplate) {
         this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, valueTemplate);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ContextAwareValueIntf contextAwareValue) {
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_ContextAwareExpressionIntf contextAwareValue) {
         this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, contextAwareValue);
         this.hasCustomMasterTemplate = true;
         return this;
     }
 
-    /** An up-flowing value ({@link XFTY_CopyFromDescendant}); needs the DEFERRED insert mode. */
-    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DeferredValueIntf deferredValue) {
+    /** An up-flowing value ({@link XFTY_CopyFromDescendantExpression}); needs the DEFERRED insert mode. */
+    public XFTY_DummySObjectProvider put(SObjectField sObjectField, XFTY_DeferredExpressionIntf deferredValue) {
         this.masterTemplate.remove(sObjectField);
         this.masterTemplate.put(sObjectField, deferredValue);
         this.hasCustomMasterTemplate = true;
@@ -267,25 +267,25 @@ public class XFTY_DummySObjectProvider {
     /**
      * Convenience overload mirroring `XFTY_DummySObjectMasterTemplate.put(SObjectField, Object)`:
      * a context-aware strategy, a plain value strategy, or (anything else) a bare
-     * literal wrapped in `XFTY_DummyDefaultValueExact`. Relationships are rejected -
+     * literal wrapped in `XFTY_LiteralExpression`. Relationships are rejected -
      * use `putRequired(...)` / `putOptional(...)`.
      */
     public XFTY_DummySObjectProvider put(SObjectField sObjectField, Object value) {
-        if (value instanceof XFTY_DeferredValueIntf) {
-            return this.put(sObjectField, (XFTY_DeferredValueIntf) value);
+        if (value instanceof XFTY_DeferredExpressionIntf) {
+            return this.put(sObjectField, (XFTY_DeferredExpressionIntf) value);
         }
-        if (value instanceof XFTY_ContextAwareValueIntf) {
-            return this.put(sObjectField, (XFTY_ContextAwareValueIntf) value);
+        if (value instanceof XFTY_ContextAwareExpressionIntf) {
+            return this.put(sObjectField, (XFTY_ContextAwareExpressionIntf) value);
         }
-        if (value instanceof XFTY_DummyDefaultValueIntf) {
-            return this.put(sObjectField, (XFTY_DummyDefaultValueIntf) value);
+        if (value instanceof XFTY_ValueExpressionIntf) {
+            return this.put(sObjectField, (XFTY_ValueExpressionIntf) value);
         }
         if (value instanceof XFTY_DummyDefaultRelationshipIntf) {
             throw new XFTY_DummySObjectFtyProviderException(
                     'Relationships must be added with putRequired(...) or putOptional(...), not put(...).'
             );
         }
-        return this.put(sObjectField, new XFTY_DummyDefaultValueExact(value));
+        return this.put(sObjectField, new XFTY_LiteralExpression(value));
     }
 
     //noinspection ApexUnusedDeclaration
@@ -338,13 +338,13 @@ public class XFTY_DummySObjectProvider {
     private final List<XFTY_PathValue> pathValues = new List<XFTY_PathValue>();
 
     /** `put([Opportunity.Pricebook2Id, Pricebook2.Name], strategy)` - set a field on a generated ancestor. */
-    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_DummyDefaultValueIntf valueStrategy) {
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ValueExpressionIntf valueStrategy) {
         this.pathValues.add(XFTY_PathValue.ofStrategy(path, valueStrategy));
         return this;
     }
 
     /** `put([...path], contextAwareValue)` - the ancestor field is evaluated by a context-aware strategy. */
-    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ContextAwareValueIntf contextAwareValue) {
+    public XFTY_DummySObjectProvider put(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAwareValue) {
         this.pathValues.add(XFTY_PathValue.ofContextAware(path, contextAwareValue));
         return this;
     }

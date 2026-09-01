@@ -10,7 +10,7 @@
  *
  * See docs/roadmap/descendant-value-reads.md.
  */
-public interface XFTY_DeferredValueIntf {
+public interface XFTY_DeferredExpressionIntf {
 
     /** The value for `records[recordIndex]`'s field, read from its descendants via `graph`. */
     Object get(XFTY_DeferredGraph graph, Integer recordIndex);
