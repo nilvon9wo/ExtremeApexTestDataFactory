@@ -69,7 +69,7 @@ public class XFTY_DeferredInsertBuffer {
 
     /** An up-flow strategy on this bundle becomes a pending value keyed by the record's flat index. */
     private void captureDeferredValues(XFTY_DummySObjectBundle bundle, List<XFTY_IndexedRecord> primaries) {
-        for (XFTY_DummySObjectBundle.DeferredValue deferred : bundle.deferredValues()) {
+        for (XFTY_DeferredValueQueue.Entry deferred : bundle.deferredValues()) {
             Integer recordIndex = primaries[deferred.primaryRow].index;
             this.pendingDeferredValues.add(
                     new XFTY_PendingDeferredValue(recordIndex, deferred.field, deferred.strategy)
