@@ -31,61 +31,19 @@ public class XFTY_DummySObjectBundle {
     }
 
     /**
-     * Walk an ancestor path and read one field, without the caller holding on to
-     * every intermediate bundle and list.
-     *
-     * `path` is one or more relationship fields then the field to read -
+     * Read one field several relationship hops up the generated ancestor graph -
      * `{ Contact.AccountId, Account.OwnerId }` reads the generated Account's
-     * OwnerId for the Contact at `rowIndex`. Each leading relationship field is a
-     * `getBundle(...)` step down; the last relationship field selects the parent
-     * list, aligned 1:1 with this bundle's primaries.
-     *
-     * Returns `null` if any hop was not generated (an optional relationship the
-     * current inclusivity skipped) or `rowIndex` is out of range. Only walks
-     * generated ancestors - child relationships are not followed.
+     * OwnerId for the primary at `rowIndex`. Null when a hop was not generated or
+     * the row is out of range; throws only on a malformed path. See
+     * `XFTY_AncestorPathWalker`.
      */
     public Object getValue(List<SObjectField> path, Integer rowIndex) {
-        rejectMalformed(path);
-        SObjectField lastRelationshipField = path[path.size() - 2];
-        SObjectField fieldToRead = path[path.size() - 1];
-
-        XFTY_DummySObjectBundle owningBundle = this.descendTo(path);
-        if (owningBundle == null || rowIndex == null || rowIndex < 0) {
-            return null;
-        }
-
-        List<SObject> parents = owningBundle.getList(lastRelationshipField);
-        if (parents == null || rowIndex >= parents.size() || parents[rowIndex] == null) {
-            return null;
-        }
-        return parents[rowIndex].get(fieldToRead);
+        return XFTY_AncestorPathWalker.read(this, path, rowIndex);
     }
 
     /** `getValue(path, 0)` - for a single-primary bundle. */
     public Object getValue(List<SObjectField> path) {
-        return this.getValue(path, 0);
-    }
-
-    /** Follow every relationship hop except the last, which `getValue` reads as a list. */
-    private XFTY_DummySObjectBundle descendTo(List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = this;
-        for (Integer hop = 0; hop < path.size() - 2; hop++) {
-            bundle = (bundle == null) ? null : bundle.getBundle(path[hop]);
-        }
-        return bundle;
-    }
-
-    private static void rejectMalformed(List<SObjectField> path) {
-        if (path == null || path.size() < 2) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'getValue needs a path of at least one relationship field then the field to read.'
-            );
-        }
-        for (SObjectField step : path) {
-            if (step == null) {
-                throw new XFTY_DummySObjectFtyProviderException('getValue path steps cannot be null.');
-            }
-        }
+        return XFTY_AncestorPathWalker.read(this, path, 0);
     }
 
     /** Record the primary records and the field they belong to. */

@@ -84,13 +84,12 @@ private class XFTY_DummySObjectBundleTest {
         Assert.isNull(missing);
     }
 
-    // getValue - walk a path without holding the intermediate bundles --
+    // getValue - delegates to XFTY_AncestorPathWalker (walk behaviour proven in XFTY_AncestorPathWalkerTest)
 
     @IsTest
-    static void testGetValue_forAOneHopAncestorFieldAndARow_readsTheAlignedParentValue() {
-        // Arrange - two Contacts, each with its own parent Account carrying a distinct name
+    static void testGetValue_withARowIndex_walksFromThisBundleAtThatRow() {
+        // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact(), new Contact() });
         bundle.put(Contact.AccountId, new List<SObject>{
                 new Account(Name = 'Row Zero'), new Account(Name = 'Row One')
         });
@@ -101,76 +100,22 @@ private class XFTY_DummySObjectBundleTest {
         Test.stopTest();
 
         // Assert
-        Assert.areEqual('Row One', rowOneName, 'the parent aligned with row 1');
+        Assert.areEqual('Row One', rowOneName);
     }
 
     @IsTest
-    static void testGetValue_forAMultiHopPath_descendsThroughEveryLeadingRelationship() {
-        // Arrange - Contact -> Account (sub-bundle) -> parent Account (list), only the deepest name set
-        XFTY_DummySObjectBundle accountBundle = new XFTY_DummySObjectBundle();
-        accountBundle.put(Account.ParentId, new List<SObject>{ new Account(Name = 'Grandparent') });
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        bundle.put(Contact.AccountId, accountBundle);
-
-        // Act
-        Test.startTest();
-        Object grandparentName = bundle.getValue(
-                new List<SObjectField>{ Contact.AccountId, Account.ParentId, Account.Name }
-        );
-        Test.stopTest();
-
-        // Assert
-        Assert.areEqual('Grandparent', grandparentName);
-    }
-
-    @IsTest
-    static void testGetValue_whenAHopWasNotGenerated_returnsNull() {
-        // Arrange - the relationship the path asks for was never put
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact() });
-
-        // Act
-        Test.startTest();
-        Object missing = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
-        Test.stopTest();
-
-        // Assert
-        Assert.isNull(missing, 'an ungenerated ancestor reads as null, it does not throw');
-    }
-
-    @IsTest
-    static void testGetValue_whenTheRowIndexIsOutOfRange_returnsNull() {
-        // Arrange - one parent, ask for row 5
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        bundle.put(Contact.AccountId, new List<SObject>{ new Account(Name = 'Only') });
-
-        // Act
-        Test.startTest();
-        Object outOfRange = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name }, 5);
-        Test.stopTest();
-
-        // Assert
-        Assert.isNull(outOfRange);
-    }
-
-    @IsTest
-    static void testGetValue_whenThePathIsTooShortToWalk_throws() {
+    static void testGetValue_withoutARowIndex_walksFromRowZero() {
         // Arrange
-        List<SObjectField> justAField = new List<SObjectField>{ Account.Name };
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.put(Contact.AccountId, new List<SObject>{ new Account(Name = 'First') });
 
         // Act
-        XFTY_DummySObjectFtyProviderException thrown;
         Test.startTest();
-        try {
-            bundle.getValue(justAField);
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
+        Object firstName = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
         Test.stopTest();
 
         // Assert
-        Assert.isNotNull(thrown, 'a path needs at least one relationship hop then the field to read');
+        Assert.areEqual('First', firstName);
     }
 
     // childRecordsOf - one primary's slice of the children -----------
