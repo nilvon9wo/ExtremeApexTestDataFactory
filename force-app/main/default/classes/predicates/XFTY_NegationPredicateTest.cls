@@ -5,8 +5,6 @@
 @IsTest
 private class XFTY_NegationPredicateTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-
     @IsTest
     static void testIsSatisfiedBy_whenTheInnerPredicateIsSatisfied_returnsFalse() {
         testIsSatisfiedBy(new Account(Type = 'Prospect'), false);
@@ -24,15 +22,13 @@ private class XFTY_NegationPredicateTest {
 
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            try {
-                XFTY_NegationPredicate.of(null);
-            } catch (XFTY_DummySObjectFtyProviderException ex) {
-                thrown = ex;
-            }
-            Test.stopTest();
+        Test.startTest();
+        try {
+            XFTY_NegationPredicate.of(null);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
 
         // Assert
         Assert.isNotNull(thrown, 'a null inner predicate must be rejected');
@@ -45,12 +41,9 @@ private class XFTY_NegationPredicateTest {
                 XFTY_NegationPredicate.of(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect'));
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

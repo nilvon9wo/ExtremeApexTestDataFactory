@@ -7,7 +7,6 @@
 @IsTest
 private class XFTY_ValueComparisonTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final Datetime NOON = Datetime.newInstanceGmt(2024, 1, 1, 12, 0, 0);
     private static final Date MILLENNIUM = Date.newInstance(2000, 1, 1);
 
@@ -81,12 +80,9 @@ private class XFTY_ValueComparisonTest {
         // Arrange - the caller supplies the pair to order
 
         // Act
-        Integer actualSign;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualSign = XFTY_ValueComparison.compare(left, right);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Integer actualSign = XFTY_ValueComparison.compare(left, right);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedSign, actualSign);
@@ -96,12 +92,9 @@ private class XFTY_ValueComparisonTest {
         // Arrange - the caller supplies the record and comparison value
 
         // Act
-        Integer actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = XFTY_ValueComparison.fieldToValue(record, Account.NumberOfEmployees, comparisonValue);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Integer actualResult = XFTY_ValueComparison.fieldToValue(record, Account.NumberOfEmployees, comparisonValue);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

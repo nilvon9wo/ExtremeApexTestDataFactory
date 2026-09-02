@@ -7,8 +7,6 @@
 @IsTest
 private class XFTY_FieldGreaterThanPredicateTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldExceedsTheValue_returnsTrue() {
         testIsSatisfiedBy(100, new Account(NumberOfEmployees = 900), true);
@@ -44,12 +42,9 @@ private class XFTY_FieldGreaterThanPredicateTest {
         XFTY_SObjectPredicateIntf predicate = XFTY_FieldGreaterThanPredicate.of(Account.NumberOfEmployees, threshold);
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

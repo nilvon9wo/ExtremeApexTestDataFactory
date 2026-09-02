@@ -4,12 +4,11 @@
  * directly, and `XFTY_DummySObjectProvider` end to end.
  *
  * The non-throwing `reconcile` cases delegate Arrange / Act / Assert to
- * `testReconcile`.
+ * `testReconcile`. Nothing here does DML (MOCK mode), so no `System.runAs`.
  */
 @IsTest
 private class XFTY_VariantResolutionTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final XFTY_FlavouredLookupKey BIG =
             (XFTY_FlavouredLookupKey) XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big')
                     .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000));
@@ -54,15 +53,13 @@ private class XFTY_VariantResolutionTest {
 
         // Act
         XFTY_ProviderLookups.LookupException thrown;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            try {
-                XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account(NumberOfEmployees = 2));
-            } catch (XFTY_ProviderLookups.LookupException ex) {
-                thrown = ex;
-            }
-            Test.stopTest();
+        Test.startTest();
+        try {
+            XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account(NumberOfEmployees = 2));
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
 
         // Assert
         Assert.isNotNull(thrown, 'a template matching a different variant must be rejected');
@@ -81,15 +78,13 @@ private class XFTY_VariantResolutionTest {
 
         // Act
         XFTY_ProviderLookups.LookupException thrown;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            try {
-                provider.supply();
-            } catch (XFTY_ProviderLookups.LookupException ex) {
-                thrown = ex;
-            }
-            Test.stopTest();
+        Test.startTest();
+        try {
+            provider.supply();
+        } catch (XFTY_ProviderLookups.LookupException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
 
         // Assert
         Assert.isNotNull(thrown, 'withVariant contradicting the template must throw');
@@ -105,12 +100,9 @@ private class XFTY_VariantResolutionTest {
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
         // Act
-        Account result;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            result = (Account) provider.supply();
-            Test.stopTest();
-        }
+        Test.startTest();
+        Account result = (Account) provider.supply();
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(5000, result.NumberOfEmployees);
@@ -123,12 +115,9 @@ private class XFTY_VariantResolutionTest {
         XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
 
         // Act
-        XFTY_LookupKeyIntf resolved;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
-            Test.stopTest();
-        }
+        Test.startTest();
+        XFTY_LookupKeyIntf resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedHash, resolved?.getHashKey());

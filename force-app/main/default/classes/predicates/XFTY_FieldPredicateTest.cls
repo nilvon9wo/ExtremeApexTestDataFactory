@@ -8,8 +8,6 @@
 @IsTest
 private class XFTY_FieldPredicateTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-
     @IsTest
     static void testEqualTo_whenTheFieldMatches_returnsTrue() {
         testIsSatisfiedBy(XFTY_FieldPredicate.equalTo(Account.Industry, 'Technology'),
@@ -66,12 +64,9 @@ private class XFTY_FieldPredicateTest {
         // Arrange - the caller supplies the facade-built predicate and the record
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

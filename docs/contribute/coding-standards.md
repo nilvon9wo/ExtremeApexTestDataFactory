@@ -200,10 +200,14 @@ More than **~250 lines** is a strong smell that the class does too much.
   too much.
 - **The Act is exactly one statement.** Declare the result variable in Arrange,
   assign it in Act, read it in Assert. Nothing acts in Assert.
-- **Every test runs its Act inside `System.runAs(TEST_ADMIN) { Test.startTest();
-  … ; Test.stopTest(); }`** — even pure-logic tests — so the result is identical
-  however the test is launched (IDE, CLI, UI). `TEST_ADMIN` is
-  `XFTY_DefaultUserDataProvider.TEST_ADMIN_USER`.
+- **Wrap the Act in `Test.startTest()` / `Test.stopTest()`** — always; it costs
+  nothing and demarcates the code under test. **Add `System.runAs(TEST_ADMIN)
+  { … }` around it only when the test does DML or SOQL, or the code under test
+  reads the running user** (FLS/CRUD enforcement, sharing, `UserInfo`,
+  `OwnerId`/`CreatedById`). A pure `Boolean` on an in-memory SObject needs no
+  `runAs` — see `XFTY_LookupKeyTest`. `TEST_ADMIN` is
+  `XFTY_DefaultUserDataProvider.TEST_ADMIN_USER`; it re-inserts a User per test
+  method, so it is not free.
 - **Names:** `test<MethodUnderTest>_when<Condition>_<expectedOutcome>` —
   `testIsSatisfiedBy_whenTheFieldIsBlank_returnsFalse`,
   `testOf_whenTheListIsNull_throws`.
@@ -219,7 +223,8 @@ More than **~250 lines** is a strong smell that the class does too much.
   `XFTY_DummySObjectProviderLookupIntf` inner classes — use
   `XFTY_ProviderLookups.of(map)` behind a named fixture helper. Collapse
   near-identical Provider doubles into one parameterised inner class.
-- **The gold-standard shape:** class-level constants (incl. `TEST_ADMIN`), thin
+- **The gold-standard shape:** class-level constants (incl. `TEST_ADMIN` where
+  it is needed), thin
   data-row `@IsTest` methods, one `// Arrange` / `// Act` / `// Assert` helper,
   and `create…` / `assert…` helpers at the bottom.
 - Everything in `## Style` applies: `Assert` calls broken off chained builders,

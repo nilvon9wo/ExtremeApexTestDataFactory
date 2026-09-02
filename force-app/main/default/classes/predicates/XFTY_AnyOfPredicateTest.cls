@@ -6,8 +6,6 @@
 @IsTest
 private class XFTY_AnyOfPredicateTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-
     @IsTest
     static void testIsSatisfiedBy_whenOneMemberIsSatisfied_returnsTrue() {
         testIsSatisfiedBy(bigOrTechPredicates(), new Account(NumberOfEmployees = 10, Industry = 'Technology'), true);
@@ -30,15 +28,13 @@ private class XFTY_AnyOfPredicateTest {
 
         // Act
         XFTY_DummySObjectFtyProviderException thrown;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            try {
-                XFTY_AnyOfPredicate.of(null);
-            } catch (XFTY_DummySObjectFtyProviderException ex) {
-                thrown = ex;
-            }
-            Test.stopTest();
+        Test.startTest();
+        try {
+            XFTY_AnyOfPredicate.of(null);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
 
         // Assert
         Assert.isNotNull(thrown, 'a null member list must be rejected');
@@ -57,12 +53,9 @@ private class XFTY_AnyOfPredicateTest {
         XFTY_SObjectPredicateIntf predicate = XFTY_AnyOfPredicate.of(members);
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

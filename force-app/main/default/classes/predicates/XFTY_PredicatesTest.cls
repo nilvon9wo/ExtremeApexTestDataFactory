@@ -7,8 +7,6 @@
 @IsTest
 private class XFTY_PredicatesTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-
     // Facade delegation ------------------------------------------------
 
     @IsTest
@@ -58,12 +56,9 @@ private class XFTY_PredicatesTest {
         // Arrange - the caller supplies the facade-built predicate and the record
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);
@@ -79,12 +74,9 @@ private class XFTY_PredicatesTest {
                 .matching(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = strategic.isInstanceOf(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = strategic.isInstanceOf(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

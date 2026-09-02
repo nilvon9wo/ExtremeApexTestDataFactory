@@ -5,7 +5,6 @@
 @IsTest
 private class XFTY_FieldInSetPredicateTest {
 
-    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final Set<Object> FINANCE_OR_TECH = new Set<Object>{ 'Finance', 'Technology' };
 
     @IsTest
@@ -33,12 +32,9 @@ private class XFTY_FieldInSetPredicateTest {
         XFTY_SObjectPredicateIntf predicate = XFTY_FieldInSetPredicate.of(Account.Industry, acceptedValues);
 
         // Act
-        Boolean actualResult;
-        System.runAs(TEST_ADMIN) {
-            Test.startTest();
-            actualResult = predicate.isSatisfiedBy(record);
-            Test.stopTest();
-        }
+        Test.startTest();
+        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);
