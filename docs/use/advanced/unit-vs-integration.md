@@ -69,8 +69,9 @@ that, and none of them are bugs XFTY can remove:
    come back to whatever a real `insert` (plus recalculation) produces — often
    `null` or a different value — and the test fails in the *opposite* direction
    from the cases above: the unit test is green, the integration test is red.
-   XFTY does not do this today; if a value only exists because the test forced
-   it, that test is inherently `MOCK`-only.
+   `bundle.inject(field, config)` / `injectAll` and `XFTY_SObjectInjector`
+   ([enrichment](../enrichment.md)) do exactly this, on purpose — a value that
+   only exists because it was forced in makes that test inherently `MOCK`-only.
 
 The takeaway: default to `MOCK`, and treat a `NOW` run as its own thing that has
 to be *kept* green, not as a switch that is guaranteed to stay flipped.
