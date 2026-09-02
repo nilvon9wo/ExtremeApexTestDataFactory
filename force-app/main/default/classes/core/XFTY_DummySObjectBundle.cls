@@ -244,35 +244,6 @@ public class XFTY_DummySObjectBundle {
         if (bundles.size() == 1) {
             return bundles[0];
         }
-        return mergedFrom(bundles);
-    }
-
-    private static XFTY_DummySObjectBundle mergedFrom(List<XFTY_DummySObjectBundle> bundles) {
-        XFTY_DummySObjectBundle merged = new XFTY_DummySObjectBundle();
-        SObjectField primaryField = bundles[0].primaryTargetField;
-        List<SObject> allPrimaries = new List<SObject>();
-        for (XFTY_DummySObjectBundle childBundle : bundles) {
-            List<SObject> primaries = childBundle.primaryRecords();
-            if (primaries != null) {
-                allPrimaries.addAll(primaries);
-            }
-            for (SObjectField parentField : childBundle.relationshipFields()) {
-                XFTY_DummySObjectBundle parentBundle = childBundle.getBundle(parentField);
-                XFTY_DummySObjectBundle mergedParent = merged.getBundle(parentField);
-                if (mergedParent == null) {
-                    merged.put(parentField, parentBundle);
-                } else {
-                    List<SObject> combined = new List<SObject>(mergedParent.primaryRecords());
-                    combined.addAll(parentBundle.primaryRecords());
-                    XFTY_DummySObjectBundle rebuilt = new XFTY_DummySObjectBundle();
-                    rebuilt.putPrimaries(parentBundle.primaryTargetField, combined);
-                    merged.put(parentField, rebuilt);
-                }
-            }
-        }
-        if (primaryField != null) {
-            merged.putPrimaries(primaryField, allPrimaries);
-        }
-        return merged;
+        return XFTY_BundleMerger.combine(bundles);
     }
 }
