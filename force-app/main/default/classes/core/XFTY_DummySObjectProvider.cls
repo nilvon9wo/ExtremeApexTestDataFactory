@@ -111,13 +111,12 @@ public class XFTY_DummySObjectProvider {
      * `withVariant(...)` therefore rejects a late call.
      */
     private XFTY_LookupKeyIntf resolveVariantKey() {
-        if (this.explicitVariantKey != null) {
-            return this.explicitVariantKey;
-        }
-        if (this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty()) {
-            return XFTY_ProviderLookups.resolve(this.sObjectProviderLookup, this.overrideTemplateList[0]);
-        }
-        return XFTY_LookupKey.get(this.sObjectType);
+        SObject firstTemplate = (this.overrideTemplateList != null && !this.overrideTemplateList.isEmpty())
+                ? this.overrideTemplateList[0]
+                : null;
+        XFTY_LookupKeyIntf key = XFTY_ProviderLookups.reconcile(
+                this.sObjectProviderLookup, this.explicitVariantKey, firstTemplate);
+        return (key != null) ? key : XFTY_LookupKey.get(this.sObjectType);
     }
 
     private final XFTY_DummySObjectMasterTemplate masterTemplate {
@@ -444,18 +443,17 @@ public class XFTY_DummySObjectProvider {
         if (this.childProviders.isEmpty()) {
             return;
         }
-        List<SObject> primaries = bundle.getList(this.factoryOutlet.getPrimaryTargetField());
         for (XFTY_SObjectChildProvider childProvider : this.childProviders) {
-            this.generateOneChildCollection(bundle, primaries, childProvider, structural);
+            this.generateOneChildCollection(bundle, childProvider, structural);
         }
     }
 
     private void generateOneChildCollection(
             XFTY_DummySObjectBundle bundle,
-            List<SObject> primaries,
             XFTY_SObjectChildProvider childProvider,
             Boolean structural
     ) {
+        List<SObject> primaries = bundle.getList(this.factoryOutlet.getPrimaryTargetField());
         List<SObject> childTemplates = new List<SObject>();
         List<Integer> parentRowByChildRow = new List<Integer>();
         for (Integer parentRow = 0; parentRow < primaries.size(); parentRow++) {

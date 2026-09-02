@@ -108,6 +108,43 @@ public class XFTY_ProviderLookups {
         return best;
     }
 
+    /**
+     * The single variant key to generate from, given an optional explicit key and
+     * an optional override template - the two ways a caller can name a variant.
+     *
+     * - explicit key only: that key.
+     * - template only: {@link #resolve} on the template (plain type key if
+     *   nothing refined matches).
+     * - both: the explicit key, unless the template independently matches a
+     *   *different* refined variant - that is a contradiction and throws, rather
+     *   than silently letting the explicit key win over a template that says
+     *   otherwise (e.g. `withVariant(PERSON_ACCOUNT)` with a business-record-type
+     *   template).
+     * - neither: `null` (the caller supplies its own default, usually the plain
+     *   type key).
+     */
+    public static XFTY_LookupKeyIntf reconcile(
+            XFTY_DummySObjectProviderLookupIntf providerLookup,
+            XFTY_LookupKeyIntf explicitKey,
+            SObject overrideTemplate
+    ) {
+        if (explicitKey == null) {
+            return (overrideTemplate == null) ? null : resolve(providerLookup, overrideTemplate);
+        }
+        if (overrideTemplate != null) {
+            XFTY_LookupKeyIntf fromTemplate = resolve(providerLookup, overrideTemplate);
+            if (fromTemplate.getSpecificity() > 0
+                    && fromTemplate.getHashKey() != explicitKey.getHashKey()) {
+                throw new LookupException(
+                        'Explicit variant ' + explicitKey.getHashKey()
+                                + ' contradicts the override template, which matches '
+                                + fromTemplate.getHashKey() + '. Supply only one.'
+                );
+            }
+        }
+        return explicitKey;
+    }
+
     // Ready-made map-backed lookups ---------------------------------------
 
     /** A lookup over a complete map of already-constructed Providers. */

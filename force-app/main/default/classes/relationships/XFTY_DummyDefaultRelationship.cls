@@ -52,9 +52,8 @@ public class XFTY_DummyDefaultRelationship implements XFTY_DummyDefaultRelations
 
     public XFTY_LookupKeyIntf resolveLookupKey(XFTY_DummySObjectProviderLookupIntf providerLookup) {
         if (this.resolvedLookupKey == null) {
-            this.resolvedLookupKey = (this.explicitLookupKey != null)
-                    ? this.explicitLookupKey
-                    : XFTY_ProviderLookups.resolve(providerLookup, this.overrideTemplate);
+            this.resolvedLookupKey = XFTY_ProviderLookups.reconcile(
+                    providerLookup, this.explicitLookupKey, this.overrideTemplate);
         }
         return this.resolvedLookupKey;
     }
