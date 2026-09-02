@@ -14,10 +14,14 @@ All notable changes to XFTY are recorded here. The format follows
 
 ### Changed
 
-- **Predicate internals split out.** `XFTY_FieldPredicate` is now a thin facade;
-  the comparison and set-membership logic moved to the top-level, directly
-  usable `XFTY_FieldComparisonPredicate` and `XFTY_FieldInSetPredicate`. The
-  facade's method names are unchanged (`equalTo` / `greaterThan` / `inSet` / …).
+- **Predicate internals split out.** `XFTY_FieldPredicate` and `XFTY_Predicates`
+  are now thin facades over one small, directly-usable class per condition:
+  `XFTY_FieldEqualToPredicate`, `XFTY_FieldGreaterThanPredicate`,
+  `XFTY_FieldLessThanPredicate`, `XFTY_FieldInSetPredicate` (sharing
+  `XFTY_ValueComparison`), and `XFTY_AllOfPredicate` / `XFTY_AnyOfPredicate` /
+  `XFTY_NegationPredicate`. No inner classes, no operator enum, no `switch`;
+  `notEqualTo` / `isNotNull` are a negated `equalTo`. Facade method names are
+  unchanged (`equalTo` / `greaterThan` / `inSet` / …).
 - **Explicit variant vs. override template are now reconciled.** Supplying both
   `withVariant(key)` (or a relationship's explicit key) *and* an override
   template that independently matches a *different* refined variant now throws

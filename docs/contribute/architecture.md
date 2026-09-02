@@ -86,7 +86,7 @@ Each component has a single responsibility.
 | `XFTY_ValueExpressionIntf` / `XFTY_ContextAwareExpressionIntf` / `XFTY_DeferredExpressionIntf` | Expression interfaces for generating field values (plain / context-aware / up-flow). |
 | `XFTY_DummyDefaultRelationshipIntf` / `XFTY_DummyDefaultRelationship` / `XFTY_SharedRelationshipIntf` / `XFTY_SharedAncestor` | Interfaces + implementations for generating related records. |
 | `XFTY_LookupKeyIntf` / `XFTY_LookupKey` / `XFTY_RecordTypeLookupKey` / `XFTY_FlavouredLookupKey` | Identify a Provider variant. |
-| `XFTY_SObjectPredicateIntf` / `XFTY_FieldComparisonPredicate` / `XFTY_FieldInSetPredicate` / `XFTY_FieldPredicate` (facade) / `XFTY_Predicates` (AND/OR/NOT) | Conditions a flavoured key matches a record against. |
+| `XFTY_SObjectPredicateIntf` + `XFTY_Field{EqualTo,GreaterThan,LessThan,InSet}Predicate` / `XFTY_ValueComparison` / `XFTY_{AllOf,AnyOf,Negation}Predicate` / `XFTY_FieldPredicate` + `XFTY_Predicates` (facades) | Conditions a flavoured key matches a record against - one small class per operator, no branching. |
 | `XFTY_IdMocker` | Generates realistic Salesforce Ids without DML. |
 
 Keeping these responsibilities separate makes each component relatively small and easy to reason about.

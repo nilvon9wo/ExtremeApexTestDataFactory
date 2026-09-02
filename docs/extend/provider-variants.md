@@ -38,8 +38,10 @@ predicates are *not* part of its identity); add its predicates with
 | `isNull(field)` / `isNotNull(field)` | `field` is / is not null |
 | `inSet(field, Set<Object>)` | `field` is one of the set (null set → matches nothing) |
 
-(`XFTY_FieldPredicate` is a thin facade over `XFTY_FieldComparisonPredicate` and
-`XFTY_FieldInSetPredicate`, which you can use directly.)
+(`XFTY_FieldPredicate` is a thin facade — each factory wires up a purpose-built
+class such as `XFTY_FieldGreaterThanPredicate` or `XFTY_FieldInSetPredicate`, and
+`notEqualTo` / `isNotNull` are a negated `equalTo`. Use those classes directly if
+you prefer.)
 
 **AND / OR / NOT** — `XFTY_Predicates`, for anything beyond the implicit AND:
 
