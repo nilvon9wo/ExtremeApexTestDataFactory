@@ -7,7 +7,10 @@ Two tiers:
 * **Whole-tree, always** — things that do not compile on a real Salesforce org
   (the local runtime lets them through):
     - an identifier longer than 40 characters (class file names);
-    - `@IsTest` on an `interface`.
+    - `@IsTest` on an `interface`;
+    - an Apex reserved word (`not`, `inner`, `like`, `outer`, …) used as an
+      identifier - a field/local declaration, a method name, or a `.method()`
+      call. The local runtime accepts several of these; a real org does not.
 
 * **Changed files only** — the project's test-style rules, applied to the `.cls`
   files a push / PR actually touches, so new code must comply without forcing a
@@ -37,6 +40,13 @@ SOBJECTS = (
     "Account Contact Case Opportunity Lead User Task Event Group Profile "
     "Pricebook2 Product2 Asset Order Contract Campaign Attachment Document "
     "Folder Site Organization Territory Note Idea"
+).split()
+
+# Apex reserved words that are NOT also words the local Nimbus runtime rejects
+# as identifiers. Kept to the ones a person might reach for as a variable or
+# method name; `class`, `return`, `new`, … are not worth listing.
+RESERVED_WORDS = (
+    "not inner outer like asc desc having hint join sort when"
 ).split()
 
 failures = []
@@ -87,6 +97,12 @@ def strip_block_comments(src: str) -> str:
     return src
 
 
+def strip_strings(src: str) -> str:
+    """Blank out Apex string literals so a reserved word inside `'strategic-not'`
+    is not mistaken for an identifier. Leaves the quotes and length alone."""
+    return re.sub(r"'(?:[^'\\]|\\.)*'", lambda m: "'" + " " * (len(m.group(0)) - 2) + "'", src)
+
+
 def method_bodies(src: str):
     """Yield (name, params_text, body) for every @IsTest method."""
     for m in re.finditer(
@@ -117,6 +133,15 @@ def check_tree():
         src = strip_block_comments(open(path, encoding="utf-8").read())
         if re.search(r"@IsTest\s+(?:(?:public|global)\s+)*interface\b", src):
             fail(path, "@IsTest on an interface (Salesforce rejects it; use //@IsTest)")
+
+        code = strip_strings(src)
+        for word in RESERVED_WORDS:
+            for m in re.finditer(
+                rf"(?:\b[A-Za-z_]\w*(?:<[^>;{{}}]*>)?\s+|\.\s*){word}\s*(?:[=;,)]|\()",
+                code,
+            ):
+                line = code[: m.start()].count("\n") + 1
+                fail(path, f"line {line}: `{word}` is an Apex reserved word - cannot be an identifier")
 
 
 # ---- changed-file checks --------------------------------------------------
