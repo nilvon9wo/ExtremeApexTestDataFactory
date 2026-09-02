@@ -6,7 +6,7 @@
 @IsTest
 private class XFTY_RecordTypeMatchingTest {
 
-    private static final Id FABRICATED_RT_ID = XFTY_IdMocker.generateId(RecordType.SObjectType);
+    private static final Id FABRICATED_RT_ID = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
 
     // developerNameOf(record) ------------------------------------------
 

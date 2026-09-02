@@ -51,10 +51,10 @@ XFTY_FlavouredLookupKey.get(Account.SObjectType, 'strategic')
                 XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000),
                 XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 5000)
         }))
-        .matching(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
+        .matching(XFTY_Predicates.negate(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
 ```
 
-`allOf(list)` / `anyOf(list)` / `not(one)` return an `XFTY_SObjectPredicateIntf`,
+`allOf(list)` / `anyOf(list)` / `negate(one)` return an `XFTY_SObjectPredicateIntf`,
 so they nest. An empty `allOf` is vacuously true; an empty `anyOf` is never
 satisfied.
 

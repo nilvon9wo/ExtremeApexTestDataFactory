@@ -1,6 +1,6 @@
 /**
  * Proves the {@link XFTY_Predicates} combinator facade wires `allOf` / `anyOf` /
- * `not` to the right implementation, and that a combinator tree works as the
+ * `negate` to the right implementation, and that a combinator tree works as the
  * predicate of an `XFTY_FlavouredLookupKey` (the docs/extend/provider-variants.md
  * "strategic" example).
  */
@@ -28,8 +28,8 @@ private class XFTY_PredicatesTest {
     }
 
     @IsTest
-    static void testNot_whenTheInnerPredicateIsNotSatisfied_returnsTrue() {
-        testIsSatisfiedBy(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')),
+    static void testNegate_whenTheInnerPredicateIsNotSatisfied_returnsTrue() {
+        testIsSatisfiedBy(XFTY_Predicates.negate(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')),
                 new Account(Type = 'Customer'), true);
     }
 
@@ -71,7 +71,7 @@ private class XFTY_PredicatesTest {
                         XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000),
                         XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 5000)
                 }))
-                .matching(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
+                .matching(XFTY_Predicates.negate(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
 
         // Act
         Test.startTest();

@@ -8,20 +8,20 @@
 @IsTest
 public class XFTY_NegationPredicate implements XFTY_SObjectPredicateIntf {
 
-    private final XFTY_SObjectPredicateIntf inner;
+    private final XFTY_SObjectPredicateIntf negated;
 
-    private XFTY_NegationPredicate(XFTY_SObjectPredicateIntf inner) {
-        this.inner = inner;
+    private XFTY_NegationPredicate(XFTY_SObjectPredicateIntf negated) {
+        this.negated = negated;
     }
 
-    public static XFTY_NegationPredicate of(XFTY_SObjectPredicateIntf inner) {
-        if (inner == null) {
+    public static XFTY_NegationPredicate of(XFTY_SObjectPredicateIntf predicate) {
+        if (predicate == null) {
             throw new XFTY_DummySObjectFtyProviderException('A predicate to negate is required.');
         }
-        return new XFTY_NegationPredicate(inner);
+        return new XFTY_NegationPredicate(predicate);
     }
 
     public Boolean isSatisfiedBy(SObject record) {
-        return !this.inner.isSatisfiedBy(record);
+        return !this.negated.isSatisfiedBy(record);
     }
 }

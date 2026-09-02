@@ -67,7 +67,7 @@ private class XFTY_RecordTypeRealRtTest {
     static void testMatches_whenTheDeveloperNamesDiffer_fallsBackToTheIdComparisonAndReturnsFalse() {
         // Arrange - the record carries an unrecognised record type Id, so developerNameOf(...)
         // returns null and the name check fails, forcing the Id-comparison fallback
-        Id staleRtId = XFTY_IdMocker.generateId(RecordType.SObjectType);
+        Id staleRtId = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
         XFTY_HierarchyNode__c record = new XFTY_HierarchyNode__c(RecordTypeId = staleRtId);
 
         // Act

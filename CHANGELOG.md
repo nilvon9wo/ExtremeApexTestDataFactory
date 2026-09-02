@@ -9,7 +9,7 @@ All notable changes to XFTY are recorded here. The format follows
 ### Added
 
 - **Predicate combinators** — `XFTY_Predicates.allOf(list)` / `anyOf(list)` /
-  `not(one)` build AND / OR / NOT trees of `XFTY_SObjectPredicateIntf` for a
+  `negate(one)` build AND / OR / NOT trees of `XFTY_SObjectPredicateIntf` for a
   flavoured lookup key, beyond the implicit AND of repeated `.matching(...)`.
 
 ### Changed

@@ -10,7 +10,7 @@
  *         XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000),
  *         XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 5000)
  *     }))
- *     .matching(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')))
+ *     .matching(XFTY_Predicates.negate(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')))
  * ```
  *
  * Each result is itself an `XFTY_SObjectPredicateIntf`, so they nest. The
@@ -31,8 +31,8 @@ public class XFTY_Predicates {
         return XFTY_AnyOfPredicate.of(predicates);
     }
 
-    /** Satisfied exactly when `predicate` is not. */
-    public static XFTY_SObjectPredicateIntf not(XFTY_SObjectPredicateIntf predicate) {
+    /** Satisfied exactly when `predicate` is not. (`not` is an Apex reserved word.) */
+    public static XFTY_SObjectPredicateIntf negate(XFTY_SObjectPredicateIntf predicate) {
         return XFTY_NegationPredicate.of(predicate);
     }
 }
