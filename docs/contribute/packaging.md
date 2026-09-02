@@ -6,8 +6,9 @@ under `force-app/`.
 `force-app/main/default/classes/` is organised by area — `core/` (the public
 types), `engine/` (the generation pipeline), `persistence/` (Id assignment,
 deferred / depth-batched insert), `values/`, `relationships/`, `lookup/`,
-`providers/`. **Each class's test sits in the same folder as the class it
-tests** — `XFTY_Foo.cls` and `XFTY_FooTest.cls` side by side. The `test-support/`
+`predicates/` (the reusable `XFTY_SObjectPredicateIntf` conditions a flavoured
+lookup key matches on), `providers/`. **Each class's test sits in the same folder
+as the class it tests** — `XFTY_Foo.cls` and `XFTY_FooTest.cls` side by side. The `test-support/`
 package directory holds examples that need an org feature the published package
 must not require — currently a Person Account Provider, its variant test, the
 "real record type" tests, and the `XFTY_Ex_*` doc examples — and is **not** part

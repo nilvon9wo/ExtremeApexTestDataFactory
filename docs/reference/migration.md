@@ -25,7 +25,8 @@ Nothing here changes what a generated record *is* — only the API used to ask f
 
 XFTY is now a Salesforce DX **source-format** project. Classes live under
 `force-app/main/default/classes/<area>/` (`core`, `engine`, `persistence`,
-`values`, `relationships`, `lookup`, `providers`), each class's test beside it.
+`values`, `relationships`, `lookup`, `predicates`, `providers`), each class's
+test beside it.
 If you vendored XFTY's `src/classes`, re-vendor from `force-app`. Deploy is
 unchanged (`sf project deploy start`).
 
