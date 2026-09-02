@@ -1,11 +1,10 @@
 /**
- * Coverage for reconciling the two ways a caller can name a Provider variant -
- * an explicit lookup key and an override template - via
- * `XFTY_ProviderLookups.reconcile` and end to end through
- * `XFTY_DummySObjectProvider`.
+ * Proves how the two ways to name a Provider variant - an explicit lookup key
+ * and an override template - are reconciled: `XFTY_ProviderLookups.reconcile`
+ * directly, and `XFTY_DummySObjectProvider` end to end.
  *
- * Each `@IsTest` checks one behaviour; the non-throwing `reconcile` cases
- * delegate their Arrange / Act / Assert to `assertReconciledHash`.
+ * The non-throwing `reconcile` cases delegate Arrange / Act / Assert to
+ * `testReconcile`.
  */
 @IsTest
 private class XFTY_VariantResolutionTest {
@@ -28,27 +27,27 @@ private class XFTY_VariantResolutionTest {
     // XFTY_ProviderLookups.reconcile -------------------------------------------
 
     @IsTest
-    static void reconcileReturnsNullWhenGivenNeitherKeyNorTemplate() {
-        assertReconciledHash(null, null, null);
+    static void testReconcile_whenGivenNeitherKeyNorTemplate_returnsNull() {
+        testReconcile(null, null, null);
     }
 
     @IsTest
-    static void reconcileDerivesFromTheTemplateWhenNoKeyIsGiven() {
-        assertReconciledHash(null, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
+    static void testReconcile_whenGivenOnlyATemplate_derivesTheKeyFromIt() {
+        testReconcile(null, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
     }
 
     @IsTest
-    static void reconcileKeepsTheExplicitKeyWhenTheTemplateAgrees() {
-        assertReconciledHash(BIG, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
+    static void testReconcile_whenTheTemplateAgreesWithTheExplicitKey_keepsTheExplicitKey() {
+        testReconcile(BIG, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
     }
 
     @IsTest
-    static void reconcileKeepsTheExplicitKeyWhenTheTemplateCarriesNoDiscriminator() {
-        assertReconciledHash(BIG, new Account(), 'Account::flavour=big');
+    static void testReconcile_whenTheTemplateCarriesNoDiscriminator_keepsTheExplicitKey() {
+        testReconcile(BIG, new Account(), 'Account::flavour=big');
     }
 
     @IsTest
-    static void reconcileThrowsWhenTheTemplateMatchesADifferentRefinedVariant() {
+    static void testReconcile_whenTheTemplateMatchesADifferentRefinedVariant_throws() {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
 
@@ -65,7 +64,7 @@ private class XFTY_VariantResolutionTest {
     // End to end through XFTY_DummySObjectProvider ---------------------------
 
     @IsTest
-    static void withVariantAndAContradictingOverrideTemplateThrows() {
+    static void testSupply_whenWithVariantContradictsTheOverrideTemplate_throws() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
                 .withVariant(BIG)
@@ -83,7 +82,7 @@ private class XFTY_VariantResolutionTest {
     }
 
     @IsTest
-    static void withVariantAndAnAgreeingOverrideTemplateStillAppliesTheTemplate() {
+    static void testSupply_whenWithVariantAgreesWithTheOverrideTemplate_stillAppliesTheTemplate() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
                 .withVariant(BIG)
@@ -99,11 +98,13 @@ private class XFTY_VariantResolutionTest {
 
     // Helpers -----------------------------------------------------------
 
-    static void assertReconciledHash(XFTY_LookupKeyIntf explicitKey, SObject template, String expectedHash) {
+    static void testReconcile(XFTY_LookupKeyIntf explicitKey, SObject template, String expectedHash) {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
+
         // Act
         XFTY_LookupKeyIntf resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
+
         // Assert
         Assert.areEqual(expectedHash, resolved?.getHashKey());
     }

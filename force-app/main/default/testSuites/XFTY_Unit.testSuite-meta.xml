@@ -20,7 +20,16 @@
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>
     <testClassName>XFTY_FtyProviderExceptionTest</testClassName>
+    <testClassName>XFTY_AllOfPredicateTest</testClassName>
+    <testClassName>XFTY_AnyOfPredicateTest</testClassName>
+    <testClassName>XFTY_FieldEqualToPredicateTest</testClassName>
+    <testClassName>XFTY_FieldGreaterThanPredicateTest</testClassName>
+    <testClassName>XFTY_FieldInSetPredicateTest</testClassName>
+    <testClassName>XFTY_FieldLessThanPredicateTest</testClassName>
     <testClassName>XFTY_FieldPredicateTest</testClassName>
+    <testClassName>XFTY_NegationPredicateTest</testClassName>
+    <testClassName>XFTY_PredicatesTest</testClassName>
+    <testClassName>XFTY_ValueComparisonTest</testClassName>
     <testClassName>XFTY_GenerationContextTest</testClassName>
     <testClassName>XFTY_IdMockerTest</testClassName>
     <testClassName>XFTY_LookupKeyTest</testClassName>

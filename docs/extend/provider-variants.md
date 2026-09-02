@@ -71,7 +71,7 @@ public class CreatedThisFiscalYearPredicate implements XFTY_SObjectPredicateIntf
 }
 ```
 
-▶ Runnable: `XFTY_FieldPredicateTest`
+▶ Runnable: `XFTY_PredicatesTest` (the tree above) · `XFTY_FieldEqualToPredicateTest` / `XFTY_FieldGreaterThanPredicateTest` / `XFTY_FieldInSetPredicateTest` / `XFTY_ValueComparisonTest` (the field conditions)
 
 ---
 
