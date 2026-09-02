@@ -20,6 +20,7 @@
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>
     <testClassName>XFTY_FtyProviderExceptionTest</testClassName>
+    <testClassName>XFTY_FieldPredicateTest</testClassName>
     <testClassName>XFTY_GenerationContextTest</testClassName>
     <testClassName>XFTY_IdMockerTest</testClassName>
     <testClassName>XFTY_LookupKeyTest</testClassName>
