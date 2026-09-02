@@ -8,5 +8,6 @@
     -->
     <testClassName>XFTY_DeferredLoadTest</testClassName>
     <testClassName>XFTY_LoadTest</testClassName>
+    <testClassName>XFTY_EnrichmentLoadTest</testClassName>
     <testClassName>XFTY_SharedAncestorLoadTest</testClassName>
 </ApexTestSuite>
