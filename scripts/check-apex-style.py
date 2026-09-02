@@ -54,6 +54,15 @@ def all_cls():
                     yield os.path.join(dp, f)
 
 
+def is_single_call(body: str) -> bool:
+    """True when the method body is one call statement and nothing else -
+    `helperName(arg, arg, ...);` possibly spread over several lines."""
+    code = re.sub(r"//[^\n]*", "", body).strip()
+    # one identifier, one parenthesised argument list (no ';' inside - args never
+    # carry statements), one trailing ';', nothing else.
+    return re.fullmatch(r"[A-Za-z_]\w*\s*\([^;]*\)\s*;", code, flags=re.S) is not None
+
+
 def split_params(param_text: str):
     """Split a parameter list on top-level commas only - commas inside the angle
     brackets of a generic type (`Map<Id, Account>`) do not separate parameters."""
@@ -139,6 +148,10 @@ def check_changed(paths):
 
         if path.endswith("Test.cls") or "/tests/" in path.replace(os.sep, "/"):
             for name, _params, body in method_bodies(raw):
+                if is_single_call(body):
+                    # A parameterised test that delegates to a shared helper -
+                    # the // Arrange / // Act / // Assert live in the helper.
+                    continue
                 if not (
                     re.search(r"//\s*Arrange", body)
                     and re.search(r"//\s*Act", body)

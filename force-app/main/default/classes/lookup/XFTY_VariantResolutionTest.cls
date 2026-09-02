@@ -3,6 +3,9 @@
  * an explicit lookup key and an override template - via
  * `XFTY_ProviderLookups.reconcile` and end to end through
  * `XFTY_DummySObjectProvider`.
+ *
+ * Each `@IsTest` checks one behaviour; the non-throwing `reconcile` cases
+ * delegate their Arrange / Act / Assert to `assertReconciledHash`.
  */
 @IsTest
 private class XFTY_VariantResolutionTest {
@@ -25,54 +28,23 @@ private class XFTY_VariantResolutionTest {
     // XFTY_ProviderLookups.reconcile -------------------------------------------
 
     @IsTest
-    static void reconcileReturnsNullWithNeitherKeyNorTemplate() {
-        // Arrange
-        XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
-
-        // Act
-        XFTY_LookupKeyIntf resolved = XFTY_ProviderLookups.reconcile(providerLookup, null, null);
-
-        // Assert
-        Assert.isNull(resolved, 'the caller supplies its own default');
+    static void reconcileReturnsNullWhenGivenNeitherKeyNorTemplate() {
+        assertReconciledHash(null, null, null);
     }
 
     @IsTest
     static void reconcileDerivesFromTheTemplateWhenNoKeyIsGiven() {
-        // Arrange
-        XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
-
-        // Act
-        XFTY_LookupKeyIntf resolved =
-                XFTY_ProviderLookups.reconcile(providerLookup, null, new Account(NumberOfEmployees = 5000));
-
-        // Assert
-        Assert.areEqual('Account::flavour=big', resolved.getHashKey());
+        assertReconciledHash(null, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
     }
 
     @IsTest
     static void reconcileKeepsTheExplicitKeyWhenTheTemplateAgrees() {
-        // Arrange
-        XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
-
-        // Act
-        XFTY_LookupKeyIntf resolved =
-                XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account(NumberOfEmployees = 5000));
-
-        // Assert
-        Assert.areEqual(BIG.getHashKey(), resolved.getHashKey());
+        assertReconciledHash(BIG, new Account(NumberOfEmployees = 5000), 'Account::flavour=big');
     }
 
     @IsTest
     static void reconcileKeepsTheExplicitKeyWhenTheTemplateCarriesNoDiscriminator() {
-        // Arrange
-        XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
-
-        // Act
-        XFTY_LookupKeyIntf resolved =
-                XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account());
-
-        // Assert
-        Assert.areEqual(BIG.getHashKey(), resolved.getHashKey(), 'a neutral template does not contradict');
+        assertReconciledHash(BIG, new Account(), 'Account::flavour=big');
     }
 
     @IsTest
@@ -111,7 +83,7 @@ private class XFTY_VariantResolutionTest {
     }
 
     @IsTest
-    static void withVariantAndAnAgreeingOverrideTemplateIsFine() {
+    static void withVariantAndAnAgreeingOverrideTemplateStillAppliesTheTemplate() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
                 .withVariant(BIG)
@@ -122,6 +94,17 @@ private class XFTY_VariantResolutionTest {
         Account result = (Account) provider.supply();
 
         // Assert
-        Assert.areEqual(5000, result.NumberOfEmployees, 'the override template still applied');
+        Assert.areEqual(5000, result.NumberOfEmployees);
+    }
+
+    // Helpers -----------------------------------------------------------
+
+    static void assertReconciledHash(XFTY_LookupKeyIntf explicitKey, SObject template, String expectedHash) {
+        // Arrange
+        XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
+        // Act
+        XFTY_LookupKeyIntf resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
+        // Assert
+        Assert.areEqual(expectedHash, resolved?.getHashKey());
     }
 }
