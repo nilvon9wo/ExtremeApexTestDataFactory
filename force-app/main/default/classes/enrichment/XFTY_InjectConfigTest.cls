@@ -157,20 +157,19 @@ private class XFTY_InjectConfigTest {
     }
 
     @IsTest
-    static void testInjectValue_withAPathValue_addsToTheAncestorValues() {
+    static void testInjectValue_withAPathAndValue_addsAnAncestorValue() {
         // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.nothing();
-        XFTY_PathValue pathValue = XFTY_PathValue.ofLiteral(
-                new List<SObjectField>{ Contact.AccountId, Account.Name }, 'Forced'
-        );
+        List<SObjectField> pathToField = new List<SObjectField>{ Contact.AccountId, Account.Name };
 
         // Act
         Test.startTest();
-        config.injectValue(pathValue);
+        config.injectValue(pathToField, 'Forced');
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(pathValue, config.ancestorValues[0]);
+        Assert.areEqual('Forced', config.ancestorValues[0].value);
+        Assert.areEqual(Account.Name, config.ancestorValues[0].targetField());
     }
 
     @IsTest

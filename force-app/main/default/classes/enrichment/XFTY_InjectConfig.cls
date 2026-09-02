@@ -9,7 +9,8 @@
  *   breadth start;
  * - `injectValue(field, value)` - a scalar on the working record itself
  *   (formula / roll-up / system / read-only);
- * - `injectValue(XFTY_PathValue)` - a scalar on a record several hops up;
+ * - `injectValue(path, value)` - a scalar on a record several hops up, where
+ *   `path` is the relationship hops then the target field;
  * - `parentDepth(n)` / `childDepth(n)` - cap the climb (default: the SOQL
  *   limit);
  * - `breakSoqlLimits()` - lift the ceiling on the depths and the path lengths.
@@ -31,7 +32,30 @@ public class XFTY_InjectConfig {
     public final List<List<SObjectField>> excludedParentPaths = new List<List<SObjectField>>();
     public final List<List<SObjectField>> excludedChildPaths = new List<List<SObjectField>>();
     public final Map<SObjectField, Object> onRecordValues = new Map<SObjectField, Object>();
-    public final List<XFTY_PathValue> ancestorValues = new List<XFTY_PathValue>();
+    public final List<AncestorValue> ancestorValues = new List<AncestorValue>();
+
+    /** A forced scalar on a record several relationship hops up. `path` is the hops then the target field. */
+    public class AncestorValue {
+        public final List<SObjectField> path;
+        public final Object value;
+
+        public AncestorValue(List<SObjectField> path, Object value) {
+            this.path = path;
+            this.value = value;
+        }
+
+        public List<SObjectField> relationshipPrefix() {
+            List<SObjectField> prefix = new List<SObjectField>();
+            for (Integer i = 0; i < this.path.size() - 1; i++) {
+                prefix.add(this.path[i]);
+            }
+            return prefix;
+        }
+
+        public SObjectField targetField() {
+            return this.path[this.path.size() - 1];
+        }
+    }
 
     public Integer parentDepthLimit = SOQL_PARENT_HOPS;
     public Integer childDepthLimit = SOQL_CHILD_DEPTH;
@@ -88,9 +112,9 @@ public class XFTY_InjectConfig {
         return this;
     }
 
-    /** A scalar on a record several relationship hops up - see `XFTY_PathValue`. */
-    public XFTY_InjectConfig injectValue(XFTY_PathValue ancestorValue) {
-        this.ancestorValues.add(ancestorValue);
+    /** A scalar on a record several relationship hops up - `path` is the hops then the target field. */
+    public XFTY_InjectConfig injectValue(List<SObjectField> pathToField, Object value) {
+        this.ancestorValues.add(new AncestorValue(pathToField, value));
         return this;
     }
 

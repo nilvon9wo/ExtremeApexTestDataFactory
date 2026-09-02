@@ -64,6 +64,64 @@ public class XFTY_DummySObjectBundle {
         return this.sObjectBundleBySObjectFieldMap.keySet();
     }
 
+    // Serialization enrichment - re-express the graph in the shape put() rejects ----
+
+    /**
+     * A new carrier bundle whose `getList(field)` is new instances of the
+     * records at `getList(field)`, enriched per `config` - populated parent
+     * relationships, child subqueries, forced scalars - so code under test reads
+     * them straight off the SObject. Originals untouched. See `XFTY_BundleEnricher`.
+     */
+    public XFTY_DummySObjectBundle inject(SObjectField field, XFTY_InjectConfig config) {
+        return XFTY_BundleEnricher.enrich(this, field, config);
+    }
+
+    /** `inject` with everything the graph holds; throws if there is nothing to inject. */
+    public XFTY_DummySObjectBundle injectAll(SObjectField field) {
+        return XFTY_BundleEnricher.enrichEverything(this, field);
+    }
+
+    /** `inject` with every generated ancestor; children only if the config names them. */
+    public XFTY_DummySObjectBundle injectAllParents(SObjectField field) {
+        return this.inject(field, XFTY_InjectConfig.allParents());
+    }
+
+    /** `inject` with every generated child collection; parents only if the config names them. */
+    public XFTY_DummySObjectBundle injectAllChildren(SObjectField field) {
+        return this.inject(field, XFTY_InjectConfig.allChildren());
+    }
+
+    /**
+     * Which primary rows were generated pointing at `getList(relationshipField)`
+     * row `ancestorRowIndex` - the inverse of the 1:1 parent alignment, so a
+     * shared ancestor returns the several rows that resolved to it. Matched on the
+     * foreign key when Ids exist, else the 1:1 position.
+     */
+    public List<Integer> primaryRowsResolvingTo(SObjectField relationshipField, Integer ancestorRowIndex) {
+        List<SObject> primaries = this.primaryRecords();
+        List<SObject> ancestors = this.getList(relationshipField);
+        List<Integer> rows = new List<Integer>();
+        Boolean cannotResolve = primaries == null
+                || ancestors == null
+                || ancestorRowIndex < 0
+                || ancestorRowIndex >= ancestors.size();
+        if (cannotResolve) {
+            return rows;
+        }
+        Object ancestorId = ancestors[ancestorRowIndex].get('Id');
+        if (ancestorId == null) {
+            return (ancestorRowIndex < primaries.size())
+                    ? new List<Integer>{ ancestorRowIndex }
+                    : rows;
+        }
+        for (Integer row = 0; row < primaries.size(); row++) {
+            if (primaries[row].get(relationshipField) == ancestorId) {
+                rows.add(row);
+            }
+        }
+        return rows;
+    }
+
     // Up-flowing values - resolved during the DEFERRED flush, once the forest exists ----
 
     private final XFTY_DeferredValueQueue deferredValueQueue = new XFTY_DeferredValueQueue();
