@@ -13,7 +13,7 @@
     <testClassName>XFTY_DefaultSObjectProviderLookupTest</testClassName>
     <testClassName>XFTY_ValueExpressionTest</testClassName>
     <testClassName>XFTY_DummyDefaultRelationshipTest</testClassName>
-    <testClassName>XFTY_ChildGenerationTest</testClassName>
+    <testClassName>XFTY_DummySObjectProviderChildGenTest</testClassName>
     <testClassName>XFTY_PathValueTest</testClassName>
     <testClassName>XFTY_DummySObjectBundleTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>

@@ -51,7 +51,7 @@ examples compile and behave as documented.
 | `putRequired` / `putOptional`, `setInclusivity` | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |
 | `PREVENT_CASCADE`, self-referential cycle guard | [relationships](relationships.md) | `XFTY_Ex_RelationshipsTest` |
 | `includeOptional(field)` / `includeOptional(path)` / `excludeRelationship` | [per-call-relationships](per-call-relationships.md) | `XFTY_Ex_PerCallRelationshipsTest` |
-| `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_ChildGenerationTest` |
+| `with` / `withChildren` / `XFTY_SObjectChildProvider` (downward) | [child-records](child-records.md) | `XFTY_DummySObjectProviderChildGenTest` |
 | `put(List<SObjectField>, value)` — path-scoped ancestor values (literal / expression / context-aware / relationship) | [value-expressions](value-expressions.md#setting-a-value-on-a-generated-ancestor) | `XFTY_PathValueTest` |
 | `XFTY_SharedAncestor` — `get` / `put` / `putAsTemplate` / `putIfAbsent` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
@@ -61,7 +61,7 @@ examples compile and behave as documented.
 | `withVariant` / lookup-key ctor (flavour keys) | [provider-variants](provider-variants.md) | `XFTY_Ex_ProviderVariantsTest` |
 | record-type override template | [provider-variants](provider-variants.md) | `XFTY_RecordTypeRealRtTest` (org-only) |
 | `TEST_ADMIN_USER` | [test-user-helpers](test-user-helpers.md) | `XFTY_Ex_TestUserHelpersTest` |
-| `profileIdFor` / `roleIdFor` | [test-user-helpers](test-user-helpers.md) | `XFTY_DefaultDataProviderTest` (org-only) |
+| `profileIdFor` / `roleIdFor` | [test-user-helpers](test-user-helpers.md) | `XFTY_DefaultUserDataProviderTest` |
 
 Runnable tests live in `test-support/main/default/classes/examples/` and run as
 the `XFTY_Examples` suite — see

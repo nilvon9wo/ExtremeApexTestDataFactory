@@ -102,6 +102,43 @@ private class XFTY_DefaultContactDataProviderTest {
         );
     }
 
+    // Master Template ------------------------------------
+
+    @IsTest
+    static void testGetMasterTemplate_declaresARequiredAccountRelationship() {
+        // Arrange
+        XFTY_DefaultContactDataProvider provider = new XFTY_DefaultContactDataProvider();
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectMasterTemplate template = provider.getMasterTemplate();
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(template.requiredRelationshipBySObjectFieldMap.containsKey(Contact.AccountId),
+                'Contact requires an Account');
+    }
+
+    @IsTest
+    static void testSupplyList_withQuantity_generatesAUniqueEmailPerRecord() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setQuantityPerTemplate(3)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        List<SObject> contacts = provider.supplyList();
+        Test.stopTest();
+
+        // Assert
+        Set<Object> emails = new Set<Object>();
+        for (SObject generatedContact : contacts) {
+            emails.add(generatedContact.get(Contact.Email));
+        }
+        Assert.areEqual(3, emails.size(), 'each generated Contact gets its own email');
+    }
+
     private static void assertContactGenerated(XFTY_DummySObjectBundle bundle) {
         Contact generated = (Contact) bundle.getList(Contact.Id)[0];
         Assert.isNotNull(generated.Id);

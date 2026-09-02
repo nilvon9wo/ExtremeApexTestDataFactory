@@ -8,7 +8,8 @@
         Volume and governor-budget tests are in XFTY_Load, not here.
     -->
     <testClassName>XFTY_DefaultContactDataProviderTest</testClassName>
-    <testClassName>XFTY_DefaultDataProviderTest</testClassName>
+    <testClassName>XFTY_DefaultAccountDataProviderTest</testClassName>
+    <testClassName>XFTY_DefaultUserDataProviderTest</testClassName>
     <testClassName>XFTY_DeferredInsertBufferTest</testClassName>
     <testClassName>XFTY_DeferredInserterTest</testClassName>
     <testClassName>XFTY_DepthBatchedInserterTest</testClassName>

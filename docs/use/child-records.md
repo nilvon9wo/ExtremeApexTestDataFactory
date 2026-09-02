@@ -93,7 +93,7 @@ new XFTY_DummySObjectProvider(Account.SObjectType, lookup)
 // 8 primaries × 3 → 24 department-A Contacts ; 8 × 2 → 16 department-B ; 40 total
 ```
 
-Proven by `XFTY_ChildGenerationTest.twoConfigsOnTheSameFieldAreAdditiveAndMultiplyWithTemplateQuantity`.
+Proven by `XFTY_DummySObjectProviderChildGenTest.testWith_twoConfigsOnTheSameField_areAdditiveAndMultiplyWithTemplateQuantity`.
 
 ---
 
@@ -147,7 +147,7 @@ Ids with real rows in either direction: parent `MOCK` + child `NOW`, or parent
 other pairing is allowed (though `MOCK` parent + `RELATED_ONLY` child, for
 instance, is rarely what you want).
 
-▶ Runnable: `XFTY_ChildGenerationTest`
+▶ Runnable: `XFTY_DummySObjectProviderChildGenTest`
 
 See also: [relationships](relationships.md) · [shared-ancestors](shared-ancestors.md)
 (the opposite — many children, **one** shared parent) · [bundles](bundles.md)

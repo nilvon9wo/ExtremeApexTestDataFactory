@@ -5,7 +5,7 @@
  * `System.runAs`; MOCK-only tests do not.
  */
 @IsTest
-private class XFTY_ChildGenerationTest {
+private class XFTY_DummySObjectProviderChildGenTest {
 
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
