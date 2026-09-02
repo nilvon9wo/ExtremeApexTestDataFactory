@@ -190,17 +190,38 @@ More than **~250 lines** is a strong smell that the class does too much.
   trace back to XFTY is loud: a clear `XFTY_DummySObjectFtyProviderException`
   naming the misconfiguration and the fix — never a silent `null` or an opaque
   downstream DML error. Accessors that can miss throw at the call site.
-- One test class per purpose (suites group by class). Split a class that mixes
-  DML-free and DML-backed methods. **One behaviour per test method** — a big
-  end-to-end scenario is legitimate, but split it so each `@IsTest` asserts one
-  thing.
-- **`Assert.*`, never `System.assert*`.** Expecting a throw: `try { …;
-  Assert.fail('expected …'); } catch (XFTY_SpecificException ex) { … }` — catch
-  the *exact* type, not bare `Exception`.
+- **One test class per unit under test**, sitting beside it (suites group by
+  class). `XFTY_Foo.cls` → `XFTY_FooTest.cls`; do not let one test class cover a
+  whole subsystem. Split a class that mixes DML-free and DML-backed methods.
+- **One behaviour per test method.** A positive and a negative case are two
+  behaviours — two methods. Every assertion must be about the single value
+  captured in the Act; an assertion that re-invokes the code under test (with
+  other inputs) is a second Act in disguise and a *tell* that the test is doing
+  too much.
+- **The Act is exactly one statement.** Declare the result variable in Arrange,
+  assign it in Act, read it in Assert. Nothing acts in Assert.
+- **Every test runs its Act inside `System.runAs(TEST_ADMIN) { Test.startTest();
+  … ; Test.stopTest(); }`** — even pure-logic tests — so the result is identical
+  however the test is launched (IDE, CLI, UI). `TEST_ADMIN` is
+  `XFTY_DefaultUserDataProvider.TEST_ADMIN_USER`.
+- **Names:** `test<MethodUnderTest>_when<Condition>_<expectedOutcome>` —
+  `testIsSatisfiedBy_whenTheFieldIsBlank_returnsFalse`,
+  `testOf_whenTheListIsNull_throws`.
+- **Parameterised tests:** a thin `@IsTest` method is one call to a shared,
+  non-`@IsTest` helper that holds the `// Arrange` / `// Act` / `// Assert`; the
+  `@IsTest` methods are just the data rows. (`check-apex-style.py` exempts a
+  single-call test body from the marker rule for exactly this.)
+- **`Assert.*`, never `System.assert*`.** Expecting a throw: capture it in Act
+  (`try { act(); } catch (XFTY_SpecificException ex) { thrown = ex; }` — the
+  *exact* type, never bare `Exception`) and assert on `thrown` in Assert
+  (`Assert.isNotNull(thrown, …)` then check its message).
 - **Test doubles are code too.** Do not paste near-identical
   `XFTY_DummySObjectProviderLookupIntf` inner classes — use
   `XFTY_ProviderLookups.of(map)` behind a named fixture helper. Collapse
   near-identical Provider doubles into one parameterised inner class.
+- **The gold-standard shape:** class-level constants (incl. `TEST_ADMIN`), thin
+  data-row `@IsTest` methods, one `// Arrange` / `// Act` / `// Assert` helper,
+  and `create…` / `assert…` helpers at the bottom.
 - Everything in `## Style` applies: `Assert` calls broken off chained builders,
   no one-line ternaries, named constants over magic numbers, `~250` / `~10` line
   bars.
