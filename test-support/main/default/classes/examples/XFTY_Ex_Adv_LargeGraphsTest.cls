@@ -1,16 +1,14 @@
 /**
- * Runnable proof for docs/use/advanced/large-graphs.md - the three levers that
- * keep a big graph inside the governor limits.
- *
- * The "XFTY warns when you're close" behaviour is proven by the XFTY_Load suite
- * and XFTY_GovernorBudget's own tests, not re-proven here.
+ * Runnable proof for docs/use/advanced/large-graphs.md - the levers that keep a
+ * big graph inside the governor limits. The "XFTY warns when you're close"
+ * behaviour is proven by the XFTY_Load suite and XFTY_GovernorBudget's tests.
  */
 @IsTest
 private class XFTY_Ex_Adv_LargeGraphsTest {
 
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
-    // Case --(required)--> Account  and  --(required)--> Contact (no parent of its own).
+    // Case --(required)--> Account and --(required)--> Contact (no parent of its own).
     // Both parents sit at the same dependency depth.
     private static XFTY_DummySObjectProviderLookupIntf lookup() {
         return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -22,37 +20,51 @@ private class XFTY_Ex_Adv_LargeGraphsTest {
     }
 
     @IsTest
-    static void requiredGeneratesFewerRelationshipsThanAll() {
-        // Arrange - the Case has a required Account and an optional Owner
-        XFTY_DummySObjectProviderLookupIntf lookup = lookup();
+    static void testSupplyBundle_atRequiredInclusivity_leavesTheOptionalOwnerOut() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
         // Act
-        XFTY_DummySObjectBundle underRequired = new XFTY_DummySObjectProvider(Case.SObjectType, lookup)
-                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supplyBundle();
-        XFTY_DummySObjectBundle underAll = new XFTY_DummySObjectProvider(Case.SObjectType, lookup)
-                .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supplyBundle();
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
 
         // Assert
-        Assert.isNull(underRequired.getBundle(Case.OwnerId), 'REQUIRED leaves the optional Owner out');
-        Assert.isNotNull(underAll.getBundle(Case.OwnerId), 'ALL pulls it in - a bigger graph');
+        Assert.isNull(bundle.getBundle(Case.OwnerId), 'REQUIRED leaves the optional Owner out');
     }
 
     @IsTest
-    static void depthBatchedCollapsesTwoProvidersAtOneDepthIntoOneInsert() {
+    static void testSupplyBundle_atAllInclusivity_pullsInTheOptionalOwner() {
         // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(bundle.getBundle(Case.OwnerId), 'ALL pulls it in - a bigger graph');
+    }
+
+    @IsTest
+    static void testSupplyBundle_whenDepthBatched_collapsesTwoProvidersAtOneDepthIntoOneInsert() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .depthBatched();
+
+        // Act
         Integer statementsUsed;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             Integer before = Limits.getDmlStatements();
-            new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .depthBatched()
-                    .supplyBundle();
+            provider.supplyBundle();
             statementsUsed = Limits.getDmlStatements() - before;
             Test.stopTest();
         }
@@ -62,16 +74,18 @@ private class XFTY_Ex_Adv_LargeGraphsTest {
     }
 
     @IsTest
-    static void withoutDepthBatchingEachProviderInsertsSeparately() {
+    static void testSupplyBundle_withoutDepthBatching_eachProviderInsertsSeparately() {
         // Arrange - the same graph, depthBatched() left off
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW);
+
+        // Act
         Integer statementsUsed;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             Integer before = Limits.getDmlStatements();
-            new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .supplyBundle();
+            provider.supplyBundle();
             statementsUsed = Limits.getDmlStatements() - before;
             Test.stopTest();
         }
@@ -80,7 +94,7 @@ private class XFTY_Ex_Adv_LargeGraphsTest {
         Assert.areEqual(3, statementsUsed, 'one insert per Provider is the trade-off depthBatched() addresses');
     }
 
-    // Fixture -------------------------------------------------------------
+    // Fixture -----------------------------------------------
 
     private abstract class BaseProvider implements XFTY_DummySobjectProviderIntf {
         protected XFTY_DummySObjectMasterTemplate template;

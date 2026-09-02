@@ -1,107 +1,178 @@
 /**
- * Coverage for `XFTY_GenerationContext` - the constructor guards, the null
- * defaults, and the `forRelated()` recursion transforms.
+ * Proves `XFTY_GenerationContext` - the constructor guards and null defaults, and
+ * the `forRelated()` / `forRecord()` / `forValueField()` derivation transforms.
+ * Pure in-memory state, no DML/SOQL.
  */
 @IsTest
 private class XFTY_GenerationContextTest {
+
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
-    @IsTest
-    static void constructorKeepsWhatItIsGiven() {
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.ALL
-        );
+    private static XFTY_GenerationContext context(XFTY_InsertModeEnum mode, XFTY_InsertInclusivityEnum inclusivity) {
+        return new XFTY_GenerationContext(LOOKUP, mode, inclusivity);
+    }
 
-        Assert.areEqual(LOOKUP, context.providerLookup);
-        Assert.areEqual(XFTY_InsertModeEnum.NOW, context.insertMode);
-        Assert.areEqual(XFTY_InsertInclusivityEnum.ALL, context.inclusivity);
+    // Constructor -----------------------------------------------------
+
+    @IsTest
+    static void testConstructor_whenGivenARunConfiguration_keepsIt() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = context(XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.ALL);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(LOOKUP, ctx.providerLookup);
+        Assert.areEqual(XFTY_InsertModeEnum.NOW, ctx.insertMode);
+        Assert.areEqual(XFTY_InsertInclusivityEnum.ALL, ctx.inclusivity);
     }
 
     @IsTest
-    static void constructorRejectsANullProviderLookup() {
+    static void testConstructor_whenTheProviderLookupIsNull_throws() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
         try {
             new XFTY_GenerationContext(null, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE);
-            Assert.fail('Expected an exception');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('Provider Lookup'), ex.getMessage());
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('Provider Lookup'), thrown.getMessage());
     }
 
     @IsTest
-    static void constructorDefaultsANullModeAndInclusivityToTheSafeValues() {
-        XFTY_GenerationContext context = new XFTY_GenerationContext(LOOKUP, null, null);
+    static void testConstructor_whenTheModeIsNull_defaultsToNever() {
+        // Arrange
+        // nothing to arrange
 
-        Assert.areEqual(XFTY_InsertModeEnum.NEVER, context.insertMode, 'null mode defaults to NEVER');
-        Assert.areEqual(XFTY_InsertInclusivityEnum.NONE, context.inclusivity, 'null inclusivity defaults to NONE');
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = context(null, null);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(XFTY_InsertModeEnum.NEVER, ctx.insertMode);
     }
 
     @IsTest
-    static void forRelatedTurnsRelatedOnlyIntoNow() {
-        XFTY_GenerationContext related = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.RELATED_ONLY, XFTY_InsertInclusivityEnum.REQUIRED
-        ).forRelated();
+    static void testConstructor_whenTheInclusivityIsNull_defaultsToNone() {
+        // Arrange
+        // nothing to arrange
 
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = context(null, null);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(XFTY_InsertInclusivityEnum.NONE, ctx.inclusivity);
+    }
+
+    @IsTest
+    static void testConstructor_hasNoPerRecordState() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE);
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(ctx.recordBeingBuilt);
+        Assert.isNull(ctx.bundleSoFar);
+        Assert.areEqual(-1, ctx.rowIndex);
+    }
+
+    // forRelated() --------------------------------------------------
+
+    @IsTest
+    static void testForRelated_whenTheModeIsRelatedOnly_becomesNow() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.RELATED_ONLY, XFTY_InsertInclusivityEnum.REQUIRED);
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext related = base.forRelated();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual(XFTY_InsertModeEnum.NOW, related.insertMode, 'ancestors of a RELATED_ONLY run are inserted');
         Assert.areEqual(XFTY_InsertInclusivityEnum.REQUIRED, related.inclusivity, 'inclusivity is unchanged');
     }
 
     @IsTest
-    static void forRelatedTurnsPreventCascadeIntoNone() {
-        XFTY_GenerationContext related = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.PREVENT_CASCADE
-        ).forRelated();
+    static void testForRelated_whenTheInclusivityIsPreventCascade_becomesNone() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.PREVENT_CASCADE);
 
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext related = base.forRelated();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual(XFTY_InsertInclusivityEnum.NONE, related.inclusivity, 'the cascade stops one level down');
         Assert.areEqual(XFTY_InsertModeEnum.MOCK, related.insertMode, 'insert mode is unchanged');
     }
 
     @IsTest
-    static void withForcedRelationshipPathsToleratesNull() {
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
-        ).withForcedRelationshipPaths(null);
+    static void testForRelated_forAnyOtherModeAndInclusivity_carriesThemThrough() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.ALL);
 
-        Assert.isNotNull(context.forcedRelationshipPaths);
-        Assert.isTrue(context.forcedRelationshipPaths.isEmpty());
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext related = base.forRelated();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(XFTY_InsertModeEnum.NOW, related.insertMode);
+        Assert.areEqual(XFTY_InsertInclusivityEnum.ALL, related.inclusivity);
+        Assert.areEqual(LOOKUP, related.providerLookup, 'the Provider Lookup is always carried through');
     }
 
     @IsTest
-    static void batchedInsertPendingDefaultsFalseAndIsCarriedThroughEveryDerivation() {
-        XFTY_GenerationContext base = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.ALL
-        );
-        Assert.isFalse(base.batchedInsertPending, 'a plain run is not a batched-insert run');
+    static void testForRelated_clearsAnyPerRecordState() {
+        // Arrange
+        XFTY_GenerationContext scoped = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.ALL)
+                .forRecord(new Account(), new XFTY_DummySObjectBundle(), 0);
 
-        XFTY_GenerationContext batched = base.forBatchedInsert();
-        Assert.isTrue(batched.batchedInsertPending);
-        Assert.isTrue(batched.withForcedRelationshipPaths(null).batchedInsertPending, 'carried through withForcedRelationshipPaths');
-        Assert.isTrue(batched.forRelated().batchedInsertPending, 'carried down to ancestors');
-        Assert.isTrue(
-                batched.forRecord(new Account(), new XFTY_DummySObjectBundle(), 0).batchedInsertPending,
-                'carried into the value pass'
-        );
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext related = scoped.forRelated();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(related.recordBeingBuilt, 'descending into ancestors drops the current record');
+        Assert.areEqual(-1, related.rowIndex);
     }
 
-    @IsTest
-    static void baseContextHasNoPerRecordState() {
-        XFTY_GenerationContext context = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
-        );
-
-        Assert.isNull(context.recordBeingBuilt);
-        Assert.isNull(context.bundleSoFar);
-        Assert.areEqual(-1, context.rowIndex);
-    }
+    // forRecord() --------------------------------------------------
 
     @IsTest
-    static void forRecordScopesToOneRecordAndKeepsTheRun() {
+    static void testForRecord_scopesToOneRecordAndKeepsTheRunSettings() {
+        // Arrange
         Account record = new Account(Name = 'ctx');
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
 
-        XFTY_GenerationContext scoped = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.REQUIRED
-        ).forRecord(record, bundle, 2);
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext scoped = context(XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.REQUIRED)
+                .forRecord(record, bundle, 2);
+        Test.stopTest();
 
+        // Assert
         Assert.areEqual(record, scoped.recordBeingBuilt);
         Assert.areEqual(bundle, scoped.bundleSoFar);
         Assert.areEqual(2, scoped.rowIndex);
@@ -110,44 +181,137 @@ private class XFTY_GenerationContextTest {
         Assert.areEqual(LOOKUP, scoped.providerLookup);
     }
 
+    // forValueField() / siblingValue() ---------------------------
+
     @IsTest
-    static void forValueFieldExposesASiblingAndGuardsAPendingOne() {
-        Account record = new Account(Name = 'sib', Site = 'HQ');
-        XFTY_GenerationContext atField = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE
-        )
-                .forRecord(record, new XFTY_DummySObjectBundle(), 0)
+    static void testSiblingValue_whenTheSiblingIsAlreadyResolved_returnsItsValue() {
+        // Arrange
+        XFTY_GenerationContext atField = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE)
+                .forRecord(new Account(Name = 'sib', Site = 'HQ'), new XFTY_DummySObjectBundle(), 0)
                 .forValueField(Account.Description, new Set<SObjectField>{ Account.Type });
 
-        Assert.areEqual('HQ', atField.siblingValue(Account.Site), 'a resolved sibling is readable');
+        // Act
+        Test.startTest();
+        Object siteValue = atField.siblingValue(Account.Site);
+        Test.stopTest();
 
+        // Assert
+        Assert.areEqual('HQ', siteValue);
+    }
+
+    @IsTest
+    static void testSiblingValue_whenTheSiblingIsStillPending_throws() {
+        // Arrange
+        XFTY_GenerationContext atField = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE)
+                .forRecord(new Account(Name = 'sib', Site = 'HQ'), new XFTY_DummySObjectBundle(), 0)
+                .forValueField(Account.Description, new Set<SObjectField>{ Account.Type });
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
         try {
             atField.siblingValue(Account.Type);
-            Assert.fail('Expected an exception - Account.Type is still pending');
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('Type'), ex.getMessage());
-            Assert.isTrue(ex.getMessage().contains('Description'), ex.getMessage());
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown, 'Account.Type is still pending, not a misleading null');
+        Assert.isTrue(thrown.getMessage().contains('Type'), thrown.getMessage());
+        Assert.isTrue(thrown.getMessage().contains('Description'), thrown.getMessage());
+    }
+
+    // withForcedRelationshipPaths() -----------------------------
+
+    @IsTest
+    static void testWithForcedRelationshipPaths_whenGivenNull_tolerantlyKeepsAnEmptyList() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE);
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = base.withForcedRelationshipPaths(null);
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(ctx.forcedRelationshipPaths);
+        Assert.isTrue(ctx.forcedRelationshipPaths.isEmpty());
+    }
+
+    // forBatchedInsert() - the flag is carried through every derivation --
+
+    @IsTest
+    static void testForBatchedInsert_onAPlainContext_theFlagIsFalse() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.ALL);
+
+        // Act
+        Test.startTest();
+        Boolean pending = base.batchedInsertPending;
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(pending, 'a plain run is not a batched-insert run');
     }
 
     @IsTest
-    static void forRelatedClearsAnyPerRecordState() {
-        XFTY_GenerationContext related = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.ALL
-        ).forRecord(new Account(), new XFTY_DummySObjectBundle(), 0).forRelated();
+    static void testForBatchedInsert_setsTheFlag() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.ALL);
 
-        Assert.isNull(related.recordBeingBuilt, 'descending into ancestors drops the current record');
-        Assert.areEqual(-1, related.rowIndex);
+        // Act
+        Test.startTest();
+        Boolean pending = base.forBatchedInsert().batchedInsertPending;
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(pending);
     }
 
     @IsTest
-    static void forRelatedCarriesEveryOtherModeAndInclusivityThrough() {
-        XFTY_GenerationContext related = new XFTY_GenerationContext(
-                LOOKUP, XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.ALL
-        ).forRelated();
+    static void testWithForcedRelationshipPaths_carriesTheBatchedInsertFlagThrough() {
+        // Arrange
+        XFTY_GenerationContext batched = batchedContext();
 
-        Assert.areEqual(XFTY_InsertModeEnum.NOW, related.insertMode);
-        Assert.areEqual(XFTY_InsertInclusivityEnum.ALL, related.inclusivity);
-        Assert.areEqual(LOOKUP, related.providerLookup, 'the Provider Lookup is always carried through');
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext derived = batched.withForcedRelationshipPaths(null);
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(derived.batchedInsertPending);
+    }
+
+    @IsTest
+    static void testForRelated_carriesTheBatchedInsertFlagDownToAncestors() {
+        // Arrange
+        XFTY_GenerationContext batched = batchedContext();
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext derived = batched.forRelated();
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(derived.batchedInsertPending);
+    }
+
+    @IsTest
+    static void testForRecord_carriesTheBatchedInsertFlagIntoTheValuePass() {
+        // Arrange
+        XFTY_GenerationContext batched = batchedContext();
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext derived = batched.forRecord(new Account(), new XFTY_DummySObjectBundle(), 0);
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(derived.batchedInsertPending);
+    }
+
+    private static XFTY_GenerationContext batchedContext() {
+        return context(XFTY_InsertModeEnum.NEVER, XFTY_InsertInclusivityEnum.ALL).forBatchedInsert();
     }
 }

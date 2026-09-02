@@ -19,7 +19,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void requiredIsGeneratedOptionalIsNotUnderRequiredInclusivity() {
+    static void testSupplyBundle_atRequiredInclusivity_generatesTheRequiredRelationshipNotTheOptionalOne() {
         // Arrange - a Contact with a required Account and an optional Owner
         XFTY_DummySObjectProviderLookupIntf lookup = requiredAndOptionalLookup();
 
@@ -38,7 +38,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void allInclusivityGeneratesTheOptionalRelationshipToo() {
+    static void testSupplyBundle_atAllInclusivity_generatesTheOptionalRelationshipToo() {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf lookup = requiredAndOptionalLookup();
 
@@ -57,7 +57,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void noneInclusivityGeneratesNoRelatedRecords() {
+    static void testSupplyBundle_atNoneInclusivity_generatesNoRelatedRecords() {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf lookup = requiredAndOptionalLookup();
 
@@ -75,7 +75,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void relationshipGenerationCascadesThroughEveryLevel() {
+    static void testSupplyBundle_atRequiredInclusivity_cascadesThroughEveryLevel() {
         // Arrange - Contact -> Account -> top Account
         XFTY_DummySObjectProviderLookupIntf lookup = cascadeLookup();
 
@@ -95,7 +95,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void preventCascadeGeneratesTheFirstLevelOnly() {
+    static void testSupplyBundle_atPreventCascadeInclusivity_generatesTheFirstLevelOnly() {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf lookup = cascadeLookup();
 
@@ -115,7 +115,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void aSelfReferentialChainThrowsACycleErrorPastOneLevel() {
+    static void testSupplyBundle_whenASelfReferentialChainGoesPastOneLevel_throwsACycleError() {
         // Arrange - one Account Provider that optionally parents another of itself
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -141,7 +141,7 @@ private class XFTY_Ex_RelationshipsTest {
     }
 
     @IsTest
-    static void allowAncestorCyclesSuppressesTheGuard() {
+    static void testSupplyBundle_whenAllowAncestorCyclesIsSet_suppressesTheGuard() {
         // Arrange
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{

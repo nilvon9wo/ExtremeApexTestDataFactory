@@ -2,39 +2,43 @@
  * Runnable proof for docs/use/test-user-helpers.md.
  *
  * Covers TEST_ADMIN_USER. `profileIdFor` / `roleIdFor` resolve against real org
- * metadata and are proven by XFTY_DefaultDataProviderTest (they sit in the same
- * known-gap bucket as the record-type self-tests when run on the local runtime).
+ * metadata and are proven by XFTY_DefaultDataProviderTest.
  */
 @IsTest
 private class XFTY_Ex_TestUserHelpersTest {
 
     @IsTest
-    static void testAdminUserIsAnInsertedAdminReadyForRunAs() {
+    static void testTestAdminUser_isAnInsertedAdminUsableDirectlyInRunAs() {
         // Arrange
-        User admin = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+        // nothing to arrange - the helper is under test
 
         // Act
         Boolean ranAsAdmin = false;
-        System.runAs(admin) {
+        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
+            Test.startTest();
             ranAsAdmin = true;
+            Test.stopTest();
         }
 
         // Assert
-        Assert.isNotNull(admin.Id, 'TEST_ADMIN_USER is already inserted');
+        Assert.isNotNull(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER.Id, 'TEST_ADMIN_USER is already inserted');
         Assert.isTrue(ranAsAdmin, 'and usable directly in System.runAs(...)');
-        Assert.areEqual(1, [SELECT COUNT() FROM User WHERE Id = :admin.Id]);
+        Assert.areEqual(
+                1, [SELECT COUNT() FROM User WHERE Id = :XFTY_DefaultUserDataProvider.TEST_ADMIN_USER.Id]
+        );
     }
 
     @IsTest
-    static void theSameAdminInstanceIsReturnedEachTime() {
+    static void testTestAdminUser_returnsTheSameInstanceEachCall() {
         // Arrange
         // nothing to arrange - the helper is a per-transaction singleton
 
         // Act
+        Test.startTest();
         User first = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-        User second = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+        Test.stopTest();
 
         // Assert
-        Assert.areEqual(first.Id, second.Id, 'one admin per transaction, not one per call');
+        Assert.areEqual(first.Id, XFTY_DefaultUserDataProvider.TEST_ADMIN_USER.Id, 'one admin per transaction, not one per call');
     }
 }

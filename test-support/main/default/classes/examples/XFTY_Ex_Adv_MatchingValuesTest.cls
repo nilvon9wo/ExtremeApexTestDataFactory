@@ -10,7 +10,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void aSiblingCopyKeepsTwoFieldsOnOneRecordInSync() {
+    static void testSupply_withASiblingCopy_keepsTwoFieldsOnOneRecordInSync() {
         // Arrange
         // nothing to arrange - ShippingCountry is set, BillingCountry follows
 
@@ -30,7 +30,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
     }
 
     @IsTest
-    static void aCustomStrategyDerivesTheSecondFieldWhenItIsNotAStraightCopy() {
+    static void testSupply_withACustomExpression_derivesTheSecondFieldWhenItIsNotAStraightCopy() {
         // Arrange
         // nothing to arrange
 
@@ -49,7 +49,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
     }
 
     @IsTest
-    static void aSharedAncestorPlusCopyingRelatedFieldPutsAParentValueOnEveryChild() {
+    static void testSupplyList_withASharedAncestorAndCopyingRelatedField_putsAParentValueOnEveryChild() {
         // Arrange - many Cases under one shared Account; each Case carries the Account's OwnerId
         XFTY_SharedAncestor.put('hq', new Account(Name = 'HQ', OwnerId = TEST_ADMIN.Id))
                 .copyingRelatedField(Account.OwnerId);
@@ -72,7 +72,7 @@ private class XFTY_Ex_Adv_MatchingValuesTest {
     }
 
     @IsTest
-    static void copyFromDescendantPullsAChildValueUpOntoTheParent() {
+    static void testFlush_withCopyFromDescendant_pullsAChildValueUpOntoTheParent() {
         // Arrange - a Contact pulls in an Account whose Site copies the Contact's Department
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{

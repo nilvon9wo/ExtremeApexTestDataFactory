@@ -1,17 +1,27 @@
 /**
- * Coverage for the framework's base exception type. It is thrown and caught
- * across the suite; this pins its constructability and hierarchy.
+ * Proves the framework's base exception type is a constructable `Exception`
+ * subclass. It is thrown and caught across the suite; this pins the hierarchy.
  */
 @IsTest
 private class XFTY_FtyProviderExceptionTest {
 
     @IsTest
-    static void isAConstructableExceptionSubclass() {
+    static void testConstructor_whenGivenAMessage_producesACatchableExceptionSubclassCarryingIt() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Exception thrown;
+        Test.startTest();
         try {
             throw new XFTY_DummySObjectFtyProviderException('boom');
-        } catch (Exception ex) {
-            Assert.isInstanceOfType(ex, XFTY_DummySObjectFtyProviderException.class);
-            Assert.areEqual('boom', ex.getMessage());
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isInstanceOfType(thrown, XFTY_DummySObjectFtyProviderException.class);
+        Assert.areEqual('boom', thrown.getMessage());
     }
 }

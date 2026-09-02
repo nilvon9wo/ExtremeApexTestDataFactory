@@ -1,28 +1,65 @@
 /**
- * Coverage for `XFTY_RecordTypeDataProvider` - one SOQL for the whole
- * transaction, no matter how many SObjects or names are asked for.
+ * Proves `XFTY_RecordTypeDataProvider` on the paths that need no real record
+ * type. "Exactly one SOQL for the whole transaction" is asserted in
+ * `XFTY_RecordTypeDataProviderOrgTest` (test-support/orgonly) - the local Apex
+ * runtime resolves record types without a countable query.
  */
 @IsTest
 private class XFTY_RecordTypeDataProviderTest {
 
     @IsTest
-    static void returnsNullForAnUnknownDeveloperName() {
-        Assert.isNull(XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, 'This_Does_Not_Exist'));
-        Assert.isNull(XFTY_RecordTypeDataProvider.idFor(Account.SObjectType, 'This_Does_Not_Exist'));
+    static void testGetFor_whenTheDeveloperNameIsUnknown_returnsNull() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        RecordType resolved = XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, 'This_Does_Not_Exist');
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(resolved);
     }
 
     @IsTest
-    static void returnsNullForANullDeveloperName() {
-        Assert.isNull(XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, null));
+    static void testGetFor_whenTheDeveloperNameIsNull_returnsNull() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        RecordType resolved = XFTY_RecordTypeDataProvider.getFor(Account.SObjectType, null);
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(resolved);
     }
 
-    // "exactly one SOQL for the whole transaction" is asserted in
-    // XFTY_RecordTypeDataProviderOrgTest (test-support/orgonly) - the local Apex
-    // runtime resolves record types without a countable query.
+    @IsTest
+    static void testIdFor_whenTheDeveloperNameIsUnknown_returnsNull() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        Id resolved = XFTY_RecordTypeDataProvider.idFor(Account.SObjectType, 'This_Does_Not_Exist');
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(resolved);
+    }
 
     @IsTest
-    static void allForReturnsAnEmptyMapForAnSObjectWithNoRecordTypes() {
+    static void testAllFor_whenTheSObjectHasNoRecordTypes_returnsAnEmptyMap() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
         Map<String, RecordType> result = XFTY_RecordTypeDataProvider.allFor(Contact.SObjectType);
+        Test.stopTest();
+
+        // Assert
         Assert.isNotNull(result);
         Assert.areEqual(0, result.size());
     }

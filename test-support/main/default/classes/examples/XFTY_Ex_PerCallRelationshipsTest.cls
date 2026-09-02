@@ -19,7 +19,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     }
 
     @IsTest
-    static void includeOptionalGeneratesOneNamedRelationshipWhateverTheInclusivity() {
+    static void testIncludeOptional_generatesOneNamedRelationshipWhateverTheInclusivity() {
         // Arrange - default (NONE) inclusivity, but ask for the optional Owner
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
                 .includeOptional(Contact.OwnerId)
@@ -34,7 +34,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     }
 
     @IsTest
-    static void excludeRelationshipMakesOneRelationshipNonExistentForThisCall() {
+    static void testExcludeRelationship_makesOneRelationshipNonExistentForThisCall() {
         // Arrange - REQUIRED inclusivity would normally generate the Account
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
                 .excludeRelationship(Contact.AccountId)
@@ -50,7 +50,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     }
 
     @IsTest
-    static void includeOptionalTakesAPathAndForcesEveryStep() {
+    static void testIncludeOptional_withAPath_forcesEveryStep() {
         // Arrange - REQUIRED overall, but force the Account's own optional parent for this call
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
                 .includeOptional(new List<SObjectField>{ Contact.AccountId, Account.ParentId })
@@ -67,7 +67,7 @@ private class XFTY_Ex_PerCallRelationshipsTest {
     }
 
     @IsTest
-    static void anUnknownPathStepThrowsDuringGeneration() {
+    static void testSupplyBundle_whenAPathStepIsUnknown_throwsDuringGeneration() {
         // Arrange - LastName is a plain field, not a relationship
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
                 .includeOptional(Contact.LastName)

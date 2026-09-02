@@ -1,47 +1,55 @@
 /**
- * Coverage for `XFTY_DummySObjectBundle`, the container that preserves the shape
- * of a generated object graph.
+ * Proves `XFTY_DummySObjectBundle`, the container that preserves the shape of a
+ * generated object graph. Pure in-memory structure, no DML/SOQL.
  */
 @IsTest
 private class XFTY_DummySObjectBundleTest {
 
+    // put / getList / getBundle -------------------------------------
+
     @IsTest
-    static void getListReturnsWhatWasPut() {
+    static void testGetList_afterPut_returnsWhatWasPutAndPutIsChainable() {
         // Arrange
         List<SObject> accounts = new List<SObject>{ new Account(Name = 'One') };
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
 
         // Act
+        Test.startTest();
         XFTY_DummySObjectBundle returned = bundle.put(Account.Id, accounts);
+        Test.stopTest();
 
         // Assert
-        Assert.areEqual(bundle, returned, 'put should be chainable');
+        Assert.areEqual(bundle, returned, 'put is chainable');
         Assert.areEqual(accounts, bundle.getList(Account.Id));
     }
 
     @IsTest
-    static void getBundleReturnsTheNestedBundleThatWasPut() {
+    static void testGetBundle_afterPut_returnsTheNestedBundle() {
         // Arrange
         XFTY_DummySObjectBundle child = new XFTY_DummySObjectBundle();
         XFTY_DummySObjectBundle parent = new XFTY_DummySObjectBundle();
 
         // Act
+        Test.startTest();
         parent.put(Contact.AccountId, child);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(child, parent.getBundle(Contact.AccountId));
     }
 
     @IsTest
-    static void listAndBundleAreStoredIndependentlyForTheSameField() {
+    static void testGetListAndGetBundle_forTheSameField_areStoredIndependently() {
         // Arrange
         List<SObject> accounts = new List<SObject>{ new Account(Name = 'One') };
         XFTY_DummySObjectBundle child = new XFTY_DummySObjectBundle();
 
         // Act
+        Test.startTest();
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle()
                 .put(Contact.AccountId, accounts)
                 .put(Contact.AccountId, child);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(accounts, bundle.getList(Contact.AccountId));
@@ -49,22 +57,37 @@ private class XFTY_DummySObjectBundleTest {
     }
 
     @IsTest
-    static void missingKeysReturnNull() {
+    static void testGetList_forAMissingKey_returnsNull() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
 
         // Act
-        // nothing to act on - the assertions exercise the empty bundle directly
+        Test.startTest();
+        List<SObject> missing = bundle.getList(Account.Id);
+        Test.stopTest();
 
         // Assert
-        Assert.isNull(bundle.getList(Account.Id));
-        Assert.isNull(bundle.getBundle(Account.Id));
+        Assert.isNull(missing);
     }
 
-    // getValue - walk a path without holding the intermediate bundles ----------
+    @IsTest
+    static void testGetBundle_forAMissingKey_returnsNull() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle missing = bundle.getBundle(Account.Id);
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(missing);
+    }
+
+    // getValue - walk a path without holding the intermediate bundles --
 
     @IsTest
-    static void getValueReadsAOneHopAncestorFieldForARow() {
+    static void testGetValue_forAOneHopAncestorFieldAndARow_readsTheAlignedParentValue() {
         // Arrange - two Contacts, each with its own parent Account carrying a distinct name
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
         bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact(), new Contact() });
@@ -73,14 +96,16 @@ private class XFTY_DummySObjectBundleTest {
         });
 
         // Act
+        Test.startTest();
         Object rowOneName = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name }, 1);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual('Row One', rowOneName, 'the parent aligned with row 1');
     }
 
     @IsTest
-    static void getValueDescendsThroughEveryLeadingRelationshipHop() {
+    static void testGetValue_forAMultiHopPath_descendsThroughEveryLeadingRelationship() {
         // Arrange - Contact -> Account (sub-bundle) -> parent Account (list), only the deepest name set
         XFTY_DummySObjectBundle accountBundle = new XFTY_DummySObjectBundle();
         accountBundle.put(Account.ParentId, new List<SObject>{ new Account(Name = 'Grandparent') });
@@ -88,44 +113,70 @@ private class XFTY_DummySObjectBundleTest {
         bundle.put(Contact.AccountId, accountBundle);
 
         // Act
+        Test.startTest();
         Object grandparentName = bundle.getValue(
                 new List<SObjectField>{ Contact.AccountId, Account.ParentId, Account.Name }
         );
+        Test.stopTest();
 
         // Assert
         Assert.areEqual('Grandparent', grandparentName);
     }
 
     @IsTest
-    static void getValueReturnsNullWhenAHopWasNotGenerated() {
+    static void testGetValue_whenAHopWasNotGenerated_returnsNull() {
         // Arrange - the relationship the path asks for was never put
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
         bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact() });
 
         // Act
+        Test.startTest();
         Object missing = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
+        Test.stopTest();
 
         // Assert
         Assert.isNull(missing, 'an ungenerated ancestor reads as null, it does not throw');
     }
 
     @IsTest
-    static void getValueReturnsNullWhenTheRowIndexIsOutOfRange() {
+    static void testGetValue_whenTheRowIndexIsOutOfRange_returnsNull() {
         // Arrange - one parent, ask for row 5
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
         bundle.put(Contact.AccountId, new List<SObject>{ new Account(Name = 'Only') });
 
         // Act
+        Test.startTest();
         Object outOfRange = bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name }, 5);
+        Test.stopTest();
 
         // Assert
         Assert.isNull(outOfRange);
     }
 
-    // childRecordsOf - one primary's slice of the children -------------------
+    @IsTest
+    static void testGetValue_whenThePathIsTooShortToWalk_throws() {
+        // Arrange
+        List<SObjectField> justAField = new List<SObjectField>{ Account.Name };
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
+        try {
+            bundle.getValue(justAField);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown, 'a path needs at least one relationship hop then the field to read');
+    }
+
+    // childRecordsOf - one primary's slice of the children -----------
 
     @IsTest
-    static void childRecordsOfReturnsOnlyTheChildrenOfThatPrimaryRow() {
+    static void testChildRecordsOf_forOneParentRow_returnsOnlyThatRowsChildren() {
         // Arrange - 2 parents; row 0 owns children A0 and A1, row 1 owns A2
         XFTY_DummySObjectBundle childBundle = new XFTY_DummySObjectBundle();
         childBundle.putPrimaries(Contact.Id, new List<SObject>{
@@ -136,7 +187,9 @@ private class XFTY_DummySObjectBundleTest {
         bundle.putChild(Contact.AccountId, childBundle, new List<Integer>{ 0, 0, 1 });
 
         // Act
+        Test.startTest();
         List<SObject> rowOneChildren = bundle.childRecordsOf(1, Contact.AccountId);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(1, rowOneChildren.size());
@@ -144,7 +197,7 @@ private class XFTY_DummySObjectBundleTest {
     }
 
     @IsTest
-    static void childRecordsOfMergesAcrossConfigsInDeclarationOrder() {
+    static void testChildRecordsOf_acrossTwoConfigsOnTheSameField_mergesInDeclarationOrder() {
         // Arrange - two child configs on the same field, both with a child for parent row 0
         XFTY_DummySObjectBundle firstConfig = new XFTY_DummySObjectBundle();
         firstConfig.putPrimaries(Contact.Id, new List<SObject>{ new Contact(LastName = 'first') });
@@ -156,7 +209,9 @@ private class XFTY_DummySObjectBundleTest {
         bundle.putChild(Contact.AccountId, secondConfig, new List<Integer>{ 0 });
 
         // Act
+        Test.startTest();
         List<SObject> rowZeroChildren = bundle.childRecordsOf(0, Contact.AccountId);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(2, rowZeroChildren.size());
@@ -165,32 +220,16 @@ private class XFTY_DummySObjectBundleTest {
     }
 
     @IsTest
-    static void childRecordsOfIsEmptyWhenTheFieldCarriesNoChildren() {
+    static void testChildRecordsOf_whenTheFieldCarriesNoChildren_returnsAnEmptyList() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
 
         // Act
+        Test.startTest();
         List<SObject> none = bundle.childRecordsOf(0, Contact.AccountId);
+        Test.stopTest();
 
         // Assert
         Assert.areEqual(0, none.size(), 'no children configured for that field');
-    }
-
-    @IsTest
-    static void getValueRejectsAPathTooShortToWalk() {
-        // Arrange
-        List<SObjectField> justAField = new List<SObjectField>{ Account.Name };
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-
-        // Act
-        XFTY_DummySObjectFtyProviderException thrown;
-        try {
-            bundle.getValue(justAField);
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
-
-        // Assert
-        Assert.isNotNull(thrown, 'a path needs at least one relationship hop then the field to read');
     }
 }

@@ -8,7 +8,7 @@ private class XFTY_Ex_ValueExpressionsTest {
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     @IsTest
-    static void anIncrementingStringStrategyProducesADistinctValuePerRecord() {
+    static void testSupplyList_withAnIncrementingStringExpression_producesADistinctValuePerRecord() {
         // Arrange
         // nothing to arrange
 
@@ -32,7 +32,7 @@ private class XFTY_Ex_ValueExpressionsTest {
     }
 
     @IsTest
-    static void aBareValueIsWrappedInAnExactStrategy() {
+    static void testSupply_withABareValue_wrapsItInALiteralExpression() {
         // Arrange
         // nothing to arrange - put(field, bareValue) is the shorthand under test
 
@@ -52,7 +52,7 @@ private class XFTY_Ex_ValueExpressionsTest {
     }
 
     @IsTest
-    static void theExplicitLiteralExpressionFormIsEquivalentToABareValue() {
+    static void testSupply_theExplicitLiteralExpressionFormIsEquivalentToABareValue() {
         // Arrange
         // nothing to arrange - the explicit XFTY_LiteralExpression wrapper is under test
 
@@ -72,7 +72,7 @@ private class XFTY_Ex_ValueExpressionsTest {
     }
 
     @IsTest
-    static void aPathPutTakesEveryValueFormOnAGeneratedAncestor() {
+    static void testPut_withAPath_takesEveryValueFormOnAGeneratedAncestor() {
         // Arrange - 'mr-smith' is the ancestor Account's own generated owner
         XFTY_SharedAncestor.put('mr-smith', new User());
 
@@ -110,7 +110,7 @@ private class XFTY_Ex_ValueExpressionsTest {
     }
 
     @IsTest
-    static void aUniqueEmailStrategyNeverCollidesWithinOneRun() {
+    static void testSupplyList_withAUniqueEmailExpression_neverCollidesWithinOneRun() {
         // Arrange
         // nothing to arrange
 

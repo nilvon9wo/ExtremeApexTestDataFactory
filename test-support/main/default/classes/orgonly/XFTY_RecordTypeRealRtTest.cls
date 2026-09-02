@@ -4,10 +4,10 @@
  * an actual record type to exist.
  *
  * Lives in `test-support/orgonly/` because it uses `XFTY_HierarchyNode__c` and
- * its `Root` record type - real record-type metadata the local Apex runtime does
- * not carry. Runs on a scratch org. The feature-independent paths of the same
- * classes are covered by `XFTY_RecordTypeMatchingTest` / `XFTY_LookupKeyTest` in
- * `force-app`.
+ * its `Root` record type - real record-type metadata the local runtime does not
+ * carry. Runs on a scratch org. The feature-independent paths are covered by
+ * `XFTY_RecordTypeMatchingTest` / `XFTY_LookupKeyTest` in `force-app`.
+ * Describe-only, no DML/SOQL - no `System.runAs`.
  */
 @IsTest
 private class XFTY_RecordTypeRealRtTest {
@@ -16,68 +16,129 @@ private class XFTY_RecordTypeRealRtTest {
     private static final String REAL_RT = 'Root';
 
     private static Id realRtId() {
-        return RT_OBJECT.getDescribe()
-                .getRecordTypeInfosByDeveloperName()
-                .get(REAL_RT)
-                .getRecordTypeId();
+        return RT_OBJECT.getDescribe().getRecordTypeInfosByDeveloperName().get(REAL_RT).getRecordTypeId();
     }
 
-    // XFTY_RecordTypeMatching ------------------------------------------------
+    // XFTY_RecordTypeMatching ------------------------------------
 
     @IsTest
-    static void developerNameOfResolvesARealRecordType() {
-        Assert.areEqual(
-                REAL_RT,
-                XFTY_RecordTypeMatching.developerNameOf(new XFTY_HierarchyNode__c(RecordTypeId = realRtId()))
-        );
-    }
+    static void testDeveloperNameOf_forARecordCarryingARealRecordType_resolvesItsDeveloperName() {
+        // Arrange
+        XFTY_HierarchyNode__c record = new XFTY_HierarchyNode__c(RecordTypeId = realRtId());
 
-    @IsTest
-    static void idForResolvesARealRecordTypeFromTheDescribe() {
-        Assert.areEqual(realRtId(), XFTY_RecordTypeMatching.idFor(RT_OBJECT, REAL_RT));
-    }
+        // Act
+        Test.startTest();
+        String developerName = XFTY_RecordTypeMatching.developerNameOf(record);
+        Test.stopTest();
 
-    @IsTest
-    static void matchesARecordCarryingThatRecordType() {
-        Assert.isTrue(
-                XFTY_RecordTypeMatching.matches(
-                        new XFTY_HierarchyNode__c(RecordTypeId = realRtId()), RT_OBJECT, REAL_RT
-                )
-        );
+        // Assert
+        Assert.areEqual(REAL_RT, developerName);
     }
 
     @IsTest
-    static void matchesFallsBackToTheIdComparisonWhenDeveloperNamesDiffer() {
-        // The record carries an unrecognised record type Id, so developerNameOf(...)
-        // returns null and the name check fails - forcing the Id-comparison fallback,
-        // which resolves the real Id for REAL_RT and finds it does not match.
-        Id staleRtId = XFTY_IdMocker.generateId(new RecordType().getSObjectType());
-        Assert.isFalse(
-                XFTY_RecordTypeMatching.matches(
-                        new XFTY_HierarchyNode__c(RecordTypeId = staleRtId), RT_OBJECT, REAL_RT
-                )
-        );
-    }
+    static void testIdFor_forARealRecordType_resolvesItFromTheDescribe() {
+        // Arrange
+        // nothing to arrange
 
-    // XFTY_RecordTypeLookupKey / XFTY_FlavouredLookupKey ---------------------
+        // Act
+        Test.startTest();
+        Id resolved = XFTY_RecordTypeMatching.idFor(RT_OBJECT, REAL_RT);
+        Test.stopTest();
 
-    @IsTest
-    static void recordTypeKeyResolvesItsRecordTypeId() {
-        Assert.areEqual(
-                realRtId(),
-                XFTY_RecordTypeLookupKey.get(RT_OBJECT, REAL_RT).getRecordTypeId()
-        );
+        // Assert
+        Assert.areEqual(realRtId(), resolved);
     }
 
     @IsTest
-    static void flavouredKeyResolvesItsRecordTypeIdAndMatchesOnIt() {
+    static void testMatches_forARecordCarryingThatRecordType_returnsTrue() {
+        // Arrange
+        XFTY_HierarchyNode__c record = new XFTY_HierarchyNode__c(RecordTypeId = realRtId());
+
+        // Act
+        Test.startTest();
+        Boolean matches = XFTY_RecordTypeMatching.matches(record, RT_OBJECT, REAL_RT);
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(matches);
+    }
+
+    @IsTest
+    static void testMatches_whenTheDeveloperNamesDiffer_fallsBackToTheIdComparisonAndReturnsFalse() {
+        // Arrange - the record carries an unrecognised record type Id, so developerNameOf(...)
+        // returns null and the name check fails, forcing the Id-comparison fallback
+        Id staleRtId = XFTY_IdMocker.generateId(RecordType.SObjectType);
+        XFTY_HierarchyNode__c record = new XFTY_HierarchyNode__c(RecordTypeId = staleRtId);
+
+        // Act
+        Test.startTest();
+        Boolean matches = XFTY_RecordTypeMatching.matches(record, RT_OBJECT, REAL_RT);
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(matches);
+    }
+
+    // XFTY_RecordTypeLookupKey / XFTY_FlavouredLookupKey -------
+
+    @IsTest
+    static void testGetRecordTypeId_forARecordTypeKey_resolvesTheRealId() {
+        // Arrange
+        XFTY_RecordTypeLookupKey key = XFTY_RecordTypeLookupKey.get(RT_OBJECT, REAL_RT);
+
+        // Act
+        Test.startTest();
+        Id recordTypeId = key.getRecordTypeId();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(realRtId(), recordTypeId);
+    }
+
+    @IsTest
+    static void testGetRecordTypeId_forAFlavouredKeyWithARealRecordType_resolvesTheRealId() {
+        // Arrange
         XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(RT_OBJECT, REAL_RT, 'vip')
                 .matching(XFTY_FieldPredicate.isNotNull(XFTY_HierarchyNode__c.Name));
 
+        // Act
+        Test.startTest();
+        Id recordTypeId = key.getRecordTypeId();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual('vip', key.getFlavour());
         Assert.areEqual(REAL_RT, key.getRecordTypeDeveloperName());
-        Assert.areEqual(realRtId(), key.getRecordTypeId());
-        Assert.isTrue(key.isInstanceOf(new XFTY_HierarchyNode__c(RecordTypeId = realRtId(), Name = 'Doe')));
-        Assert.isFalse(key.isInstanceOf(new XFTY_HierarchyNode__c(Name = 'Doe')), 'wrong record type');
+        Assert.areEqual(realRtId(), recordTypeId);
+    }
+
+    @IsTest
+    static void testIsInstanceOf_forAFlavouredKey_whenTheRecordCarriesThatRecordTypeAndSatisfiesThePredicate_returnsTrue() {
+        // Arrange
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(RT_OBJECT, REAL_RT, 'vip')
+                .matching(XFTY_FieldPredicate.isNotNull(XFTY_HierarchyNode__c.Name));
+
+        // Act
+        Test.startTest();
+        Boolean matches = key.isInstanceOf(new XFTY_HierarchyNode__c(RecordTypeId = realRtId(), Name = 'Doe'));
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(matches);
+    }
+
+    @IsTest
+    static void testIsInstanceOf_forAFlavouredKey_whenTheRecordHasTheWrongRecordType_returnsFalse() {
+        // Arrange
+        XFTY_FlavouredLookupKey key = XFTY_FlavouredLookupKey.get(RT_OBJECT, REAL_RT, 'vip')
+                .matching(XFTY_FieldPredicate.isNotNull(XFTY_HierarchyNode__c.Name));
+
+        // Act
+        Test.startTest();
+        Boolean matches = key.isInstanceOf(new XFTY_HierarchyNode__c(Name = 'Doe'));
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(matches, 'wrong record type');
     }
 }

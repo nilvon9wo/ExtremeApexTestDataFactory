@@ -11,7 +11,7 @@ private class XFTY_Ex_ContextAwareTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void copyFromSiblingFillsAFieldFromAnotherOnTheSameRecord() {
+    static void testSupply_withCopyFromSibling_fillsAFieldFromAnotherOnTheSameRecord() {
         // Arrange
         // nothing to arrange - ShippingCity is put first, BillingCity copies it
 
@@ -30,7 +30,7 @@ private class XFTY_Ex_ContextAwareTest {
     }
 
     @IsTest
-    static void copyFromAncestorReadsAFieldOffAGeneratedParent() {
+    static void testSupply_withCopyFromAncestor_readsAFieldOffAGeneratedParent() {
         // Arrange - the Contact's generated Account has a Site
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -53,7 +53,7 @@ private class XFTY_Ex_ContextAwareTest {
     }
 
     @IsTest
-    static void copyFromAncestorWalksAMultiHopPath() {
+    static void testSupply_withCopyFromAncestor_walksAMultiHopPath() {
         // Arrange - Contact -> Account -> top Account; read the top Account's Name
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
@@ -77,7 +77,7 @@ private class XFTY_Ex_ContextAwareTest {
     }
 
     @IsTest
-    static void aCustomContextAwareValueReadsASiblingThroughTheContext() {
+    static void testSupply_withACustomContextAwareValue_readsASiblingThroughTheContext() {
         // Arrange
         // nothing to arrange - Birthdate is put first, the flag derives from it
 
@@ -96,7 +96,7 @@ private class XFTY_Ex_ContextAwareTest {
     }
 
     @IsTest
-    static void readingALaterContextAwareValueThrowsNamingBothFields() {
+    static void testSupply_whenReadingALaterContextAwareValue_throwsNamingBothFields() {
         // Arrange - BillingCity reads ShippingCity, but ShippingCity is put AFTER it
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .put(Account.BillingCity, new XFTY_CopyFromSiblingExpression(Account.ShippingCity))
@@ -116,7 +116,7 @@ private class XFTY_Ex_ContextAwareTest {
     }
 
     @IsTest
-    static void copyFromDescendantPullsAChildFieldUpUnderDeferred() {
+    static void testFlush_withCopyFromDescendant_pullsAChildFieldUpUnderDeferred() {
         // Arrange - an Account whose Site copies its primary Contact's Department
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{

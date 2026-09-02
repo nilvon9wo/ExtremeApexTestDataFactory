@@ -1,491 +1,680 @@
 /**
- * Coverage for the fluent public API of `XFTY_DummySObjectProvider` - one test
- * per affordance: the constructors and their guards, the setters, `withVariant`,
+ * Proves the fluent public API of `XFTY_DummySObjectProvider` - one test per
+ * affordance: the constructors and their guards, the setters, `withVariant`,
  * `put(...)` routing, `includeOptional` / `excludeRelationship`, precedence.
- * Add a test here when a builder method or a guard changes.
- *
- * End-to-end generation *scenarios* live in
- * `XFTY_DummySObjectProviderScenarioTest`; insert-mode / inclusivity behaviour in
- * `XFTY_DummySObjectFactoryTest`.
+ * MOCK / NEVER mode throughout - no DML/SOQL, so no `System.runAs`. End-to-end
+ * scenarios live in `XFTY_DummySObjectProviderScenarioTest`.
  */
 @IsTest
 private class XFTY_DummySObjectProviderApiTest {
+
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
-    // Constructor guards --------------------------------------------------------
-
-    @IsTest
-    static void constructorRejectsNullSObjectType() {
-        try {
-            new XFTY_DummySObjectProvider((SObjectType) null, LOOKUP);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('SObjectType to request data'), ex.getMessage());
-        }
+    private static XFTY_DummySObjectProvider contactProvider() {
+        return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP).setInsertMode(XFTY_InsertModeEnum.MOCK);
     }
 
-    // Convenience constructors ------------------------------------------------
+    // Constructor guards ------------------------------------------
 
     @IsTest
-    static void constructorFromLookupKeyPinsTheVariantAndType() {
-        Contact result = (Contact) new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+    static void testConstructor_whenTheSObjectTypeIsNull_throws() {
+        // Arrange
+        // nothing to arrange
 
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            new XFTY_DummySObjectProvider((SObjectType) null, LOOKUP);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('SObjectType to request data'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testConstructor_whenTheProviderLookupIsNull_throws() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            new XFTY_DummySObjectProvider(Contact.SObjectType, null);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('Dummy SObject Provider Lookup'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testConstructor_whenTheLookupKeyIsNull_throws() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            new XFTY_DummySObjectProvider((XFTY_LookupKeyIntf) null, LOOKUP);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('lookup key'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testConstructor_whenTheTemplateListIsEmpty_throws() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            new XFTY_DummySObjectProvider(new List<SObject>(), LOOKUP);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('empty or null template list'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testConstructor_whenTheTemplateListsFirstEntryIsNull_throws() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            new XFTY_DummySObjectProvider(new List<SObject>{ null }, LOOKUP);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('empty or null template list'), thrown.getMessage());
+    }
+
+    // Convenience constructors ----------------------------------
+
+    @IsTest
+    static void testConstructor_fromALookupKey_pinsTheVariantAndDerivesTheType() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(XFTY_LookupKey.get(Contact.SObjectType), LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
         Assert.isNotNull(result.Id);
         Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
     }
 
     @IsTest
-    static void constructorFromNullLookupKeyThrows() {
-        try {
-            new XFTY_DummySObjectProvider((XFTY_LookupKeyIntf) null, LOOKUP);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('lookup key'), ex.getMessage());
-        }
-    }
+    static void testConstructor_fromATemplate_derivesTheTypeAndAppliesTheOverride() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(new Contact(FirstName = 'Zoe'), LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
-    @IsTest
-    static void constructorFromTemplateDerivesTypeAndAppliesTheOverride() {
-        Contact result = (Contact) new XFTY_DummySObjectProvider(new Contact(FirstName = 'Zoe'), LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
 
+        // Assert
         Assert.areEqual('Zoe', result.FirstName);
         Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
     }
 
     @IsTest
-    static void constructorFromTemplateListDerivesTypeAndKeepsEachTemplate() {
-        List<SObject> results = new XFTY_DummySObjectProvider(
-                new List<Contact>{ new Contact(FirstName = 'Alice'), new Contact(FirstName = 'Bob') },
-                LOOKUP
-        )
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supplyList();
+    static void testConstructor_fromATemplateList_derivesTheTypeAndKeepsEachTemplate() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(
+                new List<Contact>{ new Contact(FirstName = 'Alice'), new Contact(FirstName = 'Bob') }, LOOKUP
+        ).setInsertMode(XFTY_InsertModeEnum.MOCK);
 
+        // Act
+        Test.startTest();
+        List<SObject> results = provider.supplyList();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual(2, results.size());
         Assert.areEqual('Alice', (String) results[0].get(Contact.FirstName));
         Assert.areEqual('Bob', (String) results[1].get(Contact.FirstName));
     }
 
+    // Setter guards -------------------------------------------
+
     @IsTest
-    static void constructorFromEmptyTemplateListThrows() {
+    static void testSetQuantityPerTemplate_whenGivenAValueBelowOne_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider();
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
         try {
-            new XFTY_DummySObjectProvider(new List<SObject>(), LOOKUP);
-            Assert.fail('Expected a SanityException');
+            provider.setQuantityPerTemplate(0);
         } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('empty or null template list'), ex.getMessage());
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('makes no sense'), thrown.getMessage());
     }
 
     @IsTest
-    static void constructorFromATemplateListWhoseFirstEntryIsNullThrows() {
+    static void testSetOverrideTemplateList_whenGivenMixedSObjectTypes_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider();
+
+        // Act
+        XFTY_DummySObjectProvider.ConflictException thrown;
+        Test.startTest();
         try {
-            new XFTY_DummySObjectProvider(new List<SObject>{ null }, LOOKUP);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('empty or null template list'), ex.getMessage());
+            provider.setOverrideTemplateList(new List<SObject>{ new Contact(), new Account() });
+        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('Account override template'), thrown.getMessage());
     }
 
     @IsTest
-    static void constructorRejectsNullProviderLookup() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, null);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('Dummy SObject Provider Lookup'), ex.getMessage());
-        }
-    }
+    static void testSetOverrideTemplateList_whenGivenAHomogeneousListOfTheWrongType_throws() {
+        // Arrange - a homogeneous list of the "wrong" type used to silently retarget the Provider
+        XFTY_DummySObjectProvider provider = contactProvider();
 
-    // Setter guards -----------------------------------------------------------
-
-    @IsTest
-    static void setQuantityPerTemplateRejectsValuesBelowOne() {
+        // Act
+        XFTY_DummySObjectProvider.ConflictException thrown;
+        Test.startTest();
         try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP).setQuantityPerTemplate(0);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('makes no sense'), ex.getMessage());
+            provider.setOverrideTemplateList(new List<SObject>{ new Account() });
+        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown, 'the constructor asked for Contact');
+        Assert.isTrue(thrown.getMessage().contains('requests Contact'), thrown.getMessage());
     }
 
     @IsTest
-    static void withVariantPinsAMatchingKeyAndGenerates() {
-        Contact result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+    static void testSetOverrideTemplateList_whenGivenNullThenEmpty_toleratesBothAndGeneratesABlankRecord() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setOverrideTemplateList(null)
+                .setOverrideTemplateList(new List<SObject>())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(result.Id, 'a blank template is generated when no overrides are supplied');
+    }
+
+    @IsTest
+    static void testConstructor_fromAHomogeneousTemplateList_isAccepted() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(
+                new List<SObject>{ new Contact(FirstName = 'A'), new Contact(FirstName = 'B') }, LOOKUP
+        ).setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        List<SObject> results = provider.supplyList();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(2, results.size());
+    }
+
+    // withVariant --------------------------------------------
+
+    @IsTest
+    static void testWithVariant_forAMatchingKey_pinsItAndGenerates() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .withVariant(XFTY_LookupKey.get(Contact.SObjectType))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
         Assert.isNotNull(result.Id);
         Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
     }
 
     @IsTest
-    static void withVariantRejectsANullKey() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP).withVariant(null);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('variant key is required'), ex.getMessage());
-        }
-    }
+    static void testWithVariant_whenTheKeyIsNull_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP);
 
-    @IsTest
-    static void withVariantRejectsAKeyForAnotherSObjectType() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .withVariant(XFTY_LookupKey.get(Account.SObjectType));
-            Assert.fail('Expected a ConflictException');
-        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
-            Assert.isTrue(ex.getMessage().contains('Account'), ex.getMessage());
-            Assert.isTrue(ex.getMessage().contains('Contact'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void withVariantRejectsALateCallAfterPut() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .put(Contact.FirstName, 'x')
-                    .withVariant(XFTY_LookupKey.get(Contact.SObjectType));
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('withVariant'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void overrideTemplateListRejectsMixedSObjectTypes() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .setOverrideTemplateList(new List<SObject>{ new Contact(), new Account() });
-            Assert.fail('Expected a ConflictException');
-        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
-            Assert.isTrue(ex.getMessage().contains('Account override template'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void theConstructorTypeWinsAndAMismatchedOverrideListThrows() {
-        // a homogeneous list of the "wrong" type used to silently retarget the Provider
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .setOverrideTemplateList(new List<SObject>{ new Account() });
-            Assert.fail('Expected a ConflictException - the constructor asked for Contact');
-        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
-            Assert.isTrue(ex.getMessage().contains('requests Contact'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void aHomogeneousListFromTheListConstructorIsAccepted() {
-        List<SObject> results = new XFTY_DummySObjectProvider(
-                new List<SObject>{ new Contact(FirstName = 'A'), new Contact(FirstName = 'B') }, LOOKUP
-        )
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supplyList();
-
-        Assert.areEqual(2, results.size());
-    }
-
-    @IsTest
-    static void setOverrideTemplateListToleratesNullAndEmpty() {
-        Contact result;
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .setOverrideTemplateList(null)
-                .setOverrideTemplateList(new List<SObject>())
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+        try {
+            provider.withVariant(null);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
         Test.stopTest();
 
-        Assert.isNotNull(result.Id, 'A blank template is generated when no overrides are supplied');
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('variant key is required'), thrown.getMessage());
     }
 
-    // put(...) routing -----------------------------------------------------
-
     @IsTest
-    static void putRoutesAValueStrategyPassedAsObject() {
-        Contact result;
+    static void testWithVariant_whenTheKeyIsForAnotherSObjectType_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP);
+
+        // Act
+        XFTY_DummySObjectProvider.ConflictException thrown;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, (Object) new XFTY_LiteralExpression('RoutedStrategy'))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+        try {
+            provider.withVariant(XFTY_LookupKey.get(Account.SObjectType));
+        } catch (XFTY_DummySObjectProvider.ConflictException ex) {
+            thrown = ex;
+        }
         Test.stopTest();
 
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('Account'), thrown.getMessage());
+        Assert.isTrue(thrown.getMessage().contains('Contact'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testWithVariant_whenCalledAfterPut_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .put(Contact.FirstName, 'x');
+
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
+        Test.startTest();
+        try {
+            provider.withVariant(XFTY_LookupKey.get(Contact.SObjectType));
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('withVariant'), thrown.getMessage());
+    }
+
+    // put(...) routing -----------------------------------
+
+    @IsTest
+    static void testPut_forAValueExpressionPassedAsObject_routesItCorrectly() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider()
+                .put(Contact.FirstName, (Object) new XFTY_LiteralExpression('RoutedStrategy'));
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual('RoutedStrategy', result.FirstName);
     }
 
     @IsTest
-    static void putRoutesAContextAwareStrategyPassedAsObject() {
-        Contact result;
-        Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+    static void testPut_forAContextAwareExpressionPassedAsObject_routesItCorrectly() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider()
                 .put(Contact.FirstName, 'Source')
-                .put(Contact.Department, (Object) new XFTY_CopyFromSiblingExpression(Contact.FirstName))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+                .put(Contact.Department, (Object) new XFTY_CopyFromSiblingExpression(Contact.FirstName));
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
         Test.stopTest();
 
+        // Assert
         Assert.areEqual('Source', result.Department, 'a context-aware expression passed as Object still routes correctly');
     }
 
     @IsTest
-    static void putRejectsARelationship() {
+    static void testPut_whenGivenARelationship_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP);
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
         try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .put(Contact.AccountId, (Object) new XFTY_DummyDefaultRelationship(new Account()));
-            Assert.fail('Expected an exception');
+            provider.put(Contact.AccountId, (Object) new XFTY_DummyDefaultRelationship(new Account()));
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('putRequired'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void putOptionalAddsAnOptionalRelationshipThatRequiredInclusivitySkips() {
-        XFTY_DummySObjectBundle underRequired;
-        XFTY_DummySObjectBundle underAll;
-        Test.startTest();
-        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
-            underRequired = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
-                    .removeFromMasterTemplate(Contact.AccountId)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-            underAll = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
-                    .removeFromMasterTemplate(Contact.AccountId)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
+            thrown = ex;
         }
         Test.stopTest();
 
-        Assert.isNull(underRequired.getList(Contact.ReportsToId), 'optional relationship skipped for REQUIRED');
-        Assert.areEqual(1, underAll.getList(Contact.ReportsToId).size(), 'optional relationship generated for ALL');
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('putRequired'), thrown.getMessage());
     }
 
-    // includeOptional / excludeRelationship -------------------------------------
-
     @IsTest
-    static void includeOptionalGeneratesJustThatOptionalRelationshipUnderRequired() {
-        XFTY_DummySObjectBundle bundle;
+    static void testPut_forAValueExpression_replacesTheGenerationStrategyForAField() {
+        // Regression guard: a defect previously made provider-level put(...) a no-op.
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider()
+                .put(Contact.FirstName, new XFTY_LiteralExpression('DeliberateName'));
+
+        // Act
         Test.startTest();
-        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
-            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
-                    .includeOptional(Contact.ReportsToId)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-        }
+        Contact result = (Contact) provider.supply();
         Test.stopTest();
 
+        // Assert
+        Assert.areEqual('DeliberateName', result.FirstName);
+    }
+
+    @IsTest
+    static void testPut_forABareLiteral_treatsItAsAnExactValue() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider().put(Contact.FirstName, 'LiteralFirstName');
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('LiteralFirstName', result.FirstName);
+    }
+
+    @IsTest
+    static void testSetOverrideTemplate_winsOverPut() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider()
+                .put(Contact.FirstName, new XFTY_LiteralExpression('FromPut'))
+                .setOverrideTemplate(new Contact(FirstName = 'FromOverride'));
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('FromOverride', result.FirstName);
+    }
+
+    @IsTest
+    static void testPut_onOneProvider_doesNotLeakIntoALaterSeparateProvider() {
+        // Arrange - customise one Provider, then build a pristine one on the same lookup
+        contactProvider().put(Contact.FirstName, new XFTY_LiteralExpression('Customized')).supply();
+
+        // Act
+        Test.startTest();
+        Contact pristine = (Contact) contactProvider().supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(
+                pristine.FirstName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_FIRST_NAME_PREFIX),
+                'expected the default prefix, got: ' + pristine.FirstName
+        );
+    }
+
+    // removeFromMasterTemplate -----------------------------
+
+    @IsTest
+    static void testRemoveFromMasterTemplate_dropsAGeneratedValueAndLeavesOtherDefaults() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .removeFromMasterTemplate(Contact.Email)
+                .setInsertMode(XFTY_InsertModeEnum.NEVER);
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(result.Email, 'Email is no longer generated once removed');
+        Assert.isNotNull(result.LastName, 'other defaults are unaffected');
+    }
+
+    // putOptional / includeOptional / excludeRelationship ---
+
+    @IsTest
+    static void testPutOptional_atRequiredInclusivity_theOptionalRelationshipIsSkipped() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                .removeFromMasterTemplate(Contact.AccountId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(bundle.getList(Contact.ReportsToId), 'an optional relationship is skipped for REQUIRED');
+    }
+
+    @IsTest
+    static void testPutOptional_atAllInclusivity_theOptionalRelationshipIsGenerated() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                .removeFromMasterTemplate(Contact.AccountId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(1, bundle.getList(Contact.ReportsToId).size(), 'an optional relationship is generated for ALL');
+    }
+
+    @IsTest
+    static void testIncludeOptional_atRequiredInclusivity_promotesJustThatOptionalRelationship() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .putOptional(Contact.ReportsToId, new XFTY_DummyDefaultRelationship(new Contact()))
+                .includeOptional(Contact.ReportsToId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual(1, bundle.getList(Contact.ReportsToId).size(), 'the included optional relationship is generated');
         Assert.areEqual(1, bundle.getList(Contact.AccountId).size(), 'the required Account is still generated');
     }
 
     @IsTest
-    static void includeOptionalOnAnAlreadyRequiredRelationshipIsANoOp() {
-        XFTY_DummySObjectBundle bundle;
+    static void testIncludeOptional_onAnAlreadyRequiredRelationship_isANoOp() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .includeOptional(Contact.AccountId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
         Test.startTest();
-        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
-            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .includeOptional(Contact.AccountId) // already required - nothing to promote
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-        }
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
         Test.stopTest();
 
+        // Assert
         Assert.areEqual(1, bundle.getList(Contact.AccountId).size(), 'the required Account is generated, exactly once');
     }
 
     @IsTest
-    static void includeOptionalRejectsAFieldThatIsNotARelationship() {
+    static void testIncludeOptional_whenTheFieldIsNotARelationship_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .includeOptional(Contact.FirstName)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
         try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .includeOptional(Contact.FirstName) // not a relationship
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-            Assert.fail('Expected an exception');
+            provider.supplyBundle();
         } catch (XFTY_DummySObjectFtyProviderException ex) {
-            Assert.isTrue(ex.getMessage().contains('is not a relationship'), ex.getMessage());
-        }
-    }
-
-    @IsTest
-    static void excludeRelationshipSkipsARequiredRelationship() {
-        XFTY_DummySObjectBundle bundle;
-        Test.startTest();
-        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
-            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .excludeRelationship(Contact.AccountId)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
+            thrown = ex;
         }
         Test.stopTest();
 
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('is not a relationship'), thrown.getMessage());
+    }
+
+    @IsTest
+    static void testExcludeRelationship_skipsARequiredRelationshipAndLeavesNoOrphanReference() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .excludeRelationship(Contact.AccountId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
         Assert.isNull(bundle.getList(Contact.AccountId), 'the excluded relationship is not generated');
-        Contact contact = (Contact) bundle.getList(Contact.Id)[0];
-        Assert.isNull(contact.AccountId, 'and not left as an orphan reference');
+        Assert.isNull(((Contact) bundle.getList(Contact.Id)[0]).AccountId, 'and not left as an orphan reference');
     }
 
     @IsTest
-    static void excludeRelationshipIsInstanceLocal() {
-        XFTY_DummySObjectBundle excluded;
-        XFTY_DummySObjectBundle normal;
+    static void testExcludeRelationship_isInstanceLocal() {
+        // Arrange - a separate Provider on the same lookup, no exclusion
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .excludeRelationship(Contact.AccountId)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK);
+        XFTY_DummySObjectBundle normal = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .supplyBundle();
+
+        // Act
         Test.startTest();
-        System.runAs(XFTY_DefaultUserDataProvider.TEST_ADMIN_USER) {
-            excluded = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .excludeRelationship(Contact.AccountId)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-            normal = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .supplyBundle();
-        }
+        XFTY_DummySObjectBundle excluded = provider.supplyBundle();
         Test.stopTest();
 
+        // Assert
         Assert.isNull(excluded.getList(Contact.AccountId));
         Assert.areEqual(1, normal.getList(Contact.AccountId).size(),
                 'a separate Provider on the same lookup still generates the relationship');
     }
 
     @IsTest
-    static void excludeRelationshipRejectsAPlainValueField() {
-        try {
-            new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .excludeRelationship(Contact.FirstName);
-            Assert.fail('Expected a SanityException');
-        } catch (XFTY_DummySObjectProvider.SanityException ex) {
-            Assert.isTrue(ex.getMessage().contains('no relationship'), ex.getMessage());
-        }
-    }
+    static void testExcludeRelationship_whenGivenAPlainValueField_throws() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP);
 
-    // supply / supplyList / supplyBundle -------------------------------------
-
-    @IsTest
-    static void supplyReturnsASingleRecordWithMasterTemplateDefaults() {
-        Contact result;
+        // Act
+        XFTY_DummySObjectProvider.SanityException thrown;
         Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
+        try {
+            provider.excludeRelationship(Contact.FirstName);
+        } catch (XFTY_DummySObjectProvider.SanityException ex) {
+            thrown = ex;
+        }
         Test.stopTest();
 
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('no relationship'), thrown.getMessage());
+    }
+
+    // supply / supplyList ----------------------------------
+
+    @IsTest
+    static void testSupply_returnsASingleRecordWithMasterTemplateDefaults() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider();
+
+        // Act
+        Test.startTest();
+        Contact result = (Contact) provider.supply();
+        Test.stopTest();
+
+        // Assert
         Assert.isNotNull(result.Id);
         Assert.isTrue(result.FirstName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_FIRST_NAME_PREFIX));
         Assert.isTrue(result.LastName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
     }
 
     @IsTest
-    static void supplyListHonoursOverrideTemplatesAndQuantity() {
-        List<SObject> results;
-        Test.startTest();
-        results = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+    static void testSupplyList_appliesQuantityOutsideTheTemplateLoop() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider()
                 .setOverrideTemplateList(new List<SObject>{
-                        new Contact(FirstName = 'Alice'),
-                        new Contact(FirstName = 'Bob')
+                        new Contact(FirstName = 'Alice'), new Contact(FirstName = 'Bob')
                 })
-                .setQuantityPerTemplate(2)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supplyList();
+                .setQuantityPerTemplate(2);
+
+        // Act
+        Test.startTest();
+        List<SObject> results = provider.supplyList();
         Test.stopTest();
 
-        Assert.areEqual(4, results.size(), 'Two templates x quantity 2');
+        // Assert
+        Assert.areEqual(4, results.size(), 'two templates x quantity 2');
         List<String> firstNames = new List<String>();
         for (SObject record : results) {
             firstNames.add((String) record.get(Contact.FirstName));
         }
-        // Quantity is applied outside the template loop: A, B, A, B (not A, A, B, B).
-        Assert.areEqual(new List<String>{ 'Alice', 'Bob', 'Alice', 'Bob' }, firstNames);
-    }
-
-    // Customization: put(...) / removeFromMasterTemplate(...) ---------------
-
-    @IsTest
-    static void putReplacesTheGenerationStrategyForAField() {
-        // Regression guard: a defect previously made provider-level put(...) a no-op.
-        Contact result;
-        Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_LiteralExpression('DeliberateName'))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        Assert.areEqual('DeliberateName', result.FirstName);
-    }
-
-    @IsTest
-    static void putAcceptsABareLiteralAndTreatsItAsExact() {
-        Contact result;
-        Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, 'LiteralFirstName')
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        Assert.areEqual('LiteralFirstName', result.FirstName);
-    }
-
-    @IsTest
-    static void removeFromMasterTemplateDropsAGeneratedValue() {
-        Contact result;
-        Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .removeFromMasterTemplate(Contact.Email)
-                .setInsertMode(XFTY_InsertModeEnum.NEVER)
-                .supply();
-        Test.stopTest();
-
-        Assert.isNull(result.Email, 'Email should no longer be generated once removed');
-        Assert.isNotNull(result.LastName, 'Other defaults are unaffected');
-    }
-
-    @IsTest
-    static void customizingOneProviderDoesNotLeakIntoTheNext() {
-        // Because the master template is now copied rather than shallow-cloned,
-        // a customization on one provider must not affect a later, separate one.
-        Test.startTest();
-        new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_LiteralExpression('Customized'))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-
-        Contact pristine = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        Assert.isTrue(
-                pristine.FirstName.startsWith(XFTY_DefaultContactDataProvider.DEFAULT_FIRST_NAME_PREFIX),
-                'Expected the default prefix, got: ' + pristine.FirstName
-        );
-    }
-
-    @IsTest
-    static void overrideTemplateWinsOverPut() {
-        Contact result;
-        Test.startTest();
-        result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .put(Contact.FirstName, new XFTY_LiteralExpression('FromPut'))
-                .setOverrideTemplate(new Contact(FirstName = 'FromOverride'))
-                .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                .supply();
-        Test.stopTest();
-
-        Assert.areEqual('FromOverride', result.FirstName);
+        Assert.areEqual(new List<String>{ 'Alice', 'Bob', 'Alice', 'Bob' }, firstNames, 'A, B, A, B - not A, A, B, B');
     }
 }

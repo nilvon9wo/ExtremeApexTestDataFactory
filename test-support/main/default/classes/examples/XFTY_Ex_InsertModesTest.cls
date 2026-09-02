@@ -9,7 +9,7 @@ private class XFTY_Ex_InsertModesTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void neverGeneratesRecordsWithoutIds() {
+    static void testSupply_inNeverMode_generatesRecordsWithoutIds() {
         // Arrange
         // nothing to arrange - NEVER is the default
 
@@ -27,7 +27,7 @@ private class XFTY_Ex_InsertModesTest {
     }
 
     @IsTest
-    static void mockGivesRealisticIdsWithoutDml() {
+    static void testSupply_inMockMode_givesRealisticIdsWithoutDml() {
         // Arrange
         Integer dmlBefore = Limits.getDmlStatements();
 
@@ -46,7 +46,7 @@ private class XFTY_Ex_InsertModesTest {
     }
 
     @IsTest
-    static void nowInsertsEveryGeneratedRecord() {
+    static void testSupply_inNowMode_insertsEveryGeneratedRecord() {
         // Arrange
         // nothing to arrange
 
@@ -67,7 +67,7 @@ private class XFTY_Ex_InsertModesTest {
     }
 
     @IsTest
-    static void relatedOnlyInsertsTheParentsButNotThePrimaries() {
+    static void testSupply_inRelatedOnlyMode_insertsTheParentsButNotThePrimaries() {
         // Arrange
         // nothing to arrange
 
@@ -90,7 +90,7 @@ private class XFTY_Ex_InsertModesTest {
     }
 
     @IsTest
-    static void theGeneratedDataIsIdenticalRegardlessOfMode() {
+    static void testSupply_theGeneratedDataIsIdenticalRegardlessOfMode() {
         // Arrange
         Contact template = new Contact(FirstName = 'Sam', LastName = 'Jones');
 

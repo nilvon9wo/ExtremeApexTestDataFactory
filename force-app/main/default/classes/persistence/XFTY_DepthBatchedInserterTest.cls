@@ -1,8 +1,7 @@
 /**
- * `XFTY_DepthBatchedInserter` - one `insert` per dependency layer, of any mix of
- * types. Each test pins the DML-statement count, not just the wiring.
- *
- * Real DML, so `XFTY_Integration`.
+ * Proves `XFTY_DepthBatchedInserter.insertAll` - one `insert` per dependency
+ * layer, of any mix of types. Each test pins the DML-statement count, not just
+ * the wiring. Real DML, so `System.runAs`.
  */
 @IsTest
 private class XFTY_DepthBatchedInserterTest {
@@ -10,100 +9,193 @@ private class XFTY_DepthBatchedInserterTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void nullInputDoesNothing() {
-        Assert.areEqual(0, insertCountingDml(null, null));
+    static void testInsertAll_forNullInput_doesNothing() {
+        assertInsertCount(null, null, 0);
     }
 
     @IsTest
-    static void emptyInputDoesNothing() {
-        Assert.areEqual(0, insertCountingDml(new List<SObject>(), links()));
+    static void testInsertAll_forEmptyInput_doesNothing() {
+        assertInsertCount(new List<SObject>(), links(), 0);
     }
 
     @IsTest
-    static void independentRecordsInsertInOneStatement() {
+    static void testInsertAll_forIndependentRecords_insertsThemInOneStatement() {
+        // Arrange
         List<SObject> records = new List<SObject>{
                 new Account(Name = 'A'), new Account(Name = 'B'), new Account(Name = 'C')
         };
 
-        Assert.areEqual(1, insertCountingDml(records, null));
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, null);
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, dml);
         Assert.isNotNull(records[2].Id);
     }
 
     @IsTest
-    static void aParentInsertsBeforeItsChildAndTheLookupIsPointed() {
-        Account parentCo = new Account(Name = 'Parent Co');
-        Contact childCon = new Contact(LastName = 'Child');
-        List<SObject> records = new List<SObject>{ childCon, parentCo };
+    static void testInsertAll_forAParentAndChild_insertsTheParentFirstAndPointsTheLookup() {
+        // Arrange
+        Account parent = new Account(Name = 'Parent Co');
+        Contact child = new Contact(LastName = 'Child');
+        List<SObject> records = new List<SObject>{ child, parent };
 
-        Integer dml = insertCountingDml(records, links(link(0, 1, Contact.AccountId)));
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, links(link(0, 1, Contact.AccountId)));
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
 
+        // Assert
         Assert.areEqual(2, dml);
-        Assert.areEqual(parentCo.Id, childCon.AccountId);
+        Assert.areEqual(parent.Id, child.AccountId);
     }
 
     @IsTest
-    static void parentsOfDifferentTypesShareOneInsert() {
+    static void testInsertAll_forParentsOfDifferentTypes_sharesOneInsert() {
+        // Arrange
         Account whatCo = new Account(Name = 'What Co');
         Contact whoCon = new Contact(LastName = 'Who');
         Task callTask = new Task(Subject = 'Call');
         List<SObject> records = new List<SObject>{ callTask, whatCo, whoCon };
 
-        Integer dml = insertCountingDml(
-                records, links(link(0, 1, Task.WhatId), link(0, 2, Task.WhoId))
-        );
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, links(link(0, 1, Task.WhatId), link(0, 2, Task.WhoId)));
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
 
+        // Assert
         Assert.areEqual(2, dml, 'both parents at layer 0, Task alone at layer 1');
         Assert.areEqual(whatCo.Id, callTask.WhatId);
         Assert.areEqual(whoCon.Id, callTask.WhoId);
     }
 
     @IsTest
-    static void aChainCostsOneInsertPerLink() {
+    static void testInsertAll_forAChain_costsOneInsertPerLink() {
+        // Arrange
         Account gen1 = new Account(Name = 'Gen 1');
         Contact gen2 = new Contact(LastName = 'Gen 2');
         Contact gen3 = new Contact(LastName = 'Gen 3');
         List<SObject> records = new List<SObject>{ gen1, gen2, gen3 };
 
-        Integer dml = insertCountingDml(
-                records, links(link(1, 0, Contact.AccountId), link(2, 1, Contact.ReportsToId))
-        );
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, links(link(1, 0, Contact.AccountId), link(2, 1, Contact.ReportsToId)));
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
 
+        // Assert
         Assert.areEqual(3, dml);
         Assert.areEqual(gen1.Id, gen2.AccountId);
         Assert.areEqual(gen2.Id, gen3.ReportsToId);
     }
 
     @IsTest
-    static void oneParentSharedByTwoChildrenInsertsOnce() {
-        Account parentCo = new Account(Name = 'Shared');
+    static void testInsertAll_forOneParentSharedByTwoChildren_insertsTheParentOnce() {
+        // Arrange
+        Account parent = new Account(Name = 'Shared');
         Contact first = new Contact(LastName = 'First');
         Contact second = new Contact(LastName = 'Second');
-        List<SObject> records = new List<SObject>{ parentCo, first, second };
+        List<SObject> records = new List<SObject>{ parent, first, second };
 
-        Integer dml = insertCountingDml(
-                records, links(link(1, 0, Contact.AccountId), link(2, 0, Contact.AccountId))
-        );
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, links(link(1, 0, Contact.AccountId), link(2, 0, Contact.AccountId)));
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
 
+        // Assert
         Assert.areEqual(2, dml);
-        Assert.areEqual(parentCo.Id, first.AccountId);
-        Assert.areEqual(parentCo.Id, second.AccountId);
+        Assert.areEqual(parent.Id, first.AccountId);
+        Assert.areEqual(parent.Id, second.AccountId);
     }
 
     @IsTest
-    static void aCycleThrows() {
-        List<SObject> records = new List<SObject>{ new Account(Name = 'A'), new Account(Name = 'B') };
-        assertCyclic(records, links(link(0, 1, Account.ParentId), link(1, 0, Account.ParentId)));
+    static void testInsertAll_whenTwoRecordsReferenceEachOther_throws() {
+        assertCyclic(
+                new List<SObject>{ new Account(Name = 'A'), new Account(Name = 'B') },
+                links(link(0, 1, Account.ParentId), link(1, 0, Account.ParentId))
+        );
     }
 
     @IsTest
-    static void aSelfReferenceThrows() {
+    static void testInsertAll_whenARecordReferencesItself_throws() {
         assertCyclic(new List<SObject>{ new Account(Name = 'Loop') }, links(link(0, 0, Account.ParentId)));
     }
 
-    // helpers ------------------------------------------------------------------
+    // Runners + helpers -------------------------------------
+
+    static void assertInsertCount(
+            List<SObject> records,
+            List<XFTY_DepthBatchedInserter.ParentLink> parentLinks,
+            Integer expectedDml
+    ) {
+        // Arrange - the caller supplies the records and links
+
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(records, parentLinks);
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(expectedDml, dml);
+    }
+
+    static void assertCyclic(List<SObject> records, List<XFTY_DepthBatchedInserter.ParentLink> parentLinks) {
+        // Arrange - the caller supplies a cyclic graph
+
+        // Act
+        XFTY_DepthBatchedInserter.CyclicGraphException thrown;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            try {
+                XFTY_DepthBatchedInserter.insertAll(records, parentLinks);
+            } catch (XFTY_DepthBatchedInserter.CyclicGraphException ex) {
+                thrown = ex;
+            }
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a cyclic graph must be rejected');
+        Assert.isTrue(thrown.getMessage().contains('cycle'), thrown.getMessage());
+    }
 
     private static XFTY_DepthBatchedInserter.ParentLink link(Integer child, Integer parent, SObjectField field) {
         return new XFTY_DepthBatchedInserter.ParentLink(child, parent, field);
+    }
+
+    private static List<XFTY_DepthBatchedInserter.ParentLink> links() {
+        return new List<XFTY_DepthBatchedInserter.ParentLink>();
     }
 
     private static List<XFTY_DepthBatchedInserter.ParentLink> links(XFTY_DepthBatchedInserter.ParentLink link1) {
@@ -115,36 +207,5 @@ private class XFTY_DepthBatchedInserterTest {
             XFTY_DepthBatchedInserter.ParentLink link2
     ) {
         return new List<XFTY_DepthBatchedInserter.ParentLink>{ link1, link2 };
-    }
-
-    private static List<XFTY_DepthBatchedInserter.ParentLink> links() {
-        return new List<XFTY_DepthBatchedInserter.ParentLink>();
-    }
-
-    private static Integer insertCountingDml(
-            List<SObject> records,
-            List<XFTY_DepthBatchedInserter.ParentLink> links
-    ) {
-        Integer dml;
-        System.runAs(TEST_ADMIN) {
-            Integer before = Limits.getDmlStatements();
-            XFTY_DepthBatchedInserter.insertAll(records, links);
-            dml = Limits.getDmlStatements() - before;
-        }
-        return dml;
-    }
-
-    private static void assertCyclic(
-            List<SObject> records,
-            List<XFTY_DepthBatchedInserter.ParentLink> links
-    ) {
-        try {
-            System.runAs(TEST_ADMIN) {
-                XFTY_DepthBatchedInserter.insertAll(records, links);
-            }
-            Assert.fail('Expected a CyclicGraphException');
-        } catch (XFTY_DepthBatchedInserter.CyclicGraphException ex) {
-            Assert.isTrue(ex.getMessage().contains('cycle'), ex.getMessage());
-        }
     }
 }

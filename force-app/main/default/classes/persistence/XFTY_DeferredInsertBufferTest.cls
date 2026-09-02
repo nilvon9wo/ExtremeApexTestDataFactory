@@ -1,9 +1,8 @@
 /**
- * `XFTY_DeferredInsertBuffer` driven directly with hand-built bundles, including
- * the guards the engine never trips. The end-to-end behaviour is covered by
- * `XFTY_DummySObjectFactoryDmlTest` and `XFTY_DeferredInsertTest`.
- *
- * Real DML, so `XFTY_Integration`.
+ * Proves `XFTY_DeferredInsertBuffer.insertGraph` driven directly with hand-built
+ * bundles, including the guards the engine never trips. End-to-end behaviour is
+ * covered by `XFTY_DummySObjectFactoryDmlTest` / `XFTY_DeferredInsertTest`. Real
+ * DML, so `System.runAs`.
  */
 @IsTest
 private class XFTY_DeferredInsertBufferTest {
@@ -11,57 +10,82 @@ private class XFTY_DeferredInsertBufferTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void aNullBundleDoesNothing() {
-        Assert.areEqual(0, insertCountingDml(null));
+    static void testInsertGraph_forANullBundle_doesNothing() {
+        assertInsertGraphDml(null, 0);
     }
 
     @IsTest
-    static void aBundleWithNoPrimaryRecordsDoesNothing() {
-        Assert.areEqual(0, insertCountingDml(new XFTY_DummySObjectBundle()));
+    static void testInsertGraph_forABundleWithNoPrimaryRecords_doesNothing() {
+        assertInsertGraphDml(new XFTY_DummySObjectBundle(), 0);
     }
 
     @IsTest
-    static void aParentBundleInsertsBeforeItsChildAndTheLookupIsPointed() {
-        Account parentCo = new Account(Name = 'Buffer Parent');
-        Contact childCon = new Contact(LastName = 'Buffer Child');
+    static void testInsertGraph_forAParentAndChild_insertsTheParentFirstAndPointsTheLookup() {
+        // Arrange
+        Account parent = new Account(Name = 'Buffer Parent');
+        Contact child = new Contact(LastName = 'Buffer Child');
+        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, child);
+        childBundle.put(Contact.AccountId, bundleOf(Account.Id, parent));
+        childBundle.put(Contact.AccountId, new List<SObject>{ parent });
 
-        Integer dml = insertCountingDml(childBundleWithParent(childCon, parentCo));
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DeferredInsertBuffer.insertGraph(childBundle);
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
 
-        Assert.areEqual(2, dml);
-        Assert.areEqual(parentCo.Id, childCon.AccountId);
+        // Assert
+        Assert.areEqual(2, dml, 'one insert for the parent, one for the child');
+        Assert.areEqual(parent.Id, child.AccountId, 'the child lookup points at the fresh parent Id');
     }
 
     @IsTest
-    static void aChildLookupThatIsAlreadySetIsLeftAlone() {
+    static void testInsertGraph_whenAChildLookupIsAlreadySet_leavesItAlone() {
+        // Arrange
         Account existing = new Account(Name = 'Already Linked');
         Account generatedParent = new Account(Name = 'Generated Parent');
-        Contact childCon = new Contact(LastName = 'Pre Linked');
-        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, childCon);
+        Contact child = new Contact(LastName = 'Pre Linked');
+        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, child);
         childBundle.put(Contact.AccountId, bundleOf(Account.Id, generatedParent));
         childBundle.put(Contact.AccountId, new List<SObject>{ generatedParent });
 
+        // Act
         System.runAs(TEST_ADMIN) {
+            Test.startTest();
             insert existing;
-            childCon.AccountId = existing.Id;
+            child.AccountId = existing.Id;
             XFTY_DeferredInsertBuffer.insertGraph(childBundle);
+            Test.stopTest();
         }
 
-        Assert.areEqual(existing.Id, childCon.AccountId, 'the pre-set lookup is not repointed');
+        // Assert
+        Assert.areEqual(existing.Id, child.AccountId, 'the pre-set lookup is not repointed');
         Assert.isNotNull(generatedParent.Id, 'the generated parent still inserts');
     }
 
     @IsTest
-    static void aRelationshipFieldWithNoSubBundleIsSkipped() {
+    static void testInsertGraph_whenARelationshipFieldHasNoSubBundle_skipsItAndStillInsertsThePrimary() {
+        // Arrange
         Account onlyRecord = new Account(Name = 'No Parent Bundle');
         XFTY_DummySObjectBundle bundle = bundleOf(Account.Id, onlyRecord);
         bundle.put(Account.ParentId, (XFTY_DummySObjectBundle) null);
 
-        insertCountingDml(bundle);
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_DeferredInsertBuffer.insertGraph(bundle);
+            Test.stopTest();
+        }
 
+        // Assert
         Assert.isNotNull(onlyRecord.Id);
     }
 
-    // helpers ------------------------------------------------------------------
+    // Helpers -----------------------------------------------
 
     private static XFTY_DummySObjectBundle bundleOf(SObjectField primaryField, SObject record) {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
@@ -70,20 +94,20 @@ private class XFTY_DeferredInsertBufferTest {
         return bundle;
     }
 
-    private static XFTY_DummySObjectBundle childBundleWithParent(Contact childCon, Account parentCo) {
-        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, childCon);
-        childBundle.put(Contact.AccountId, bundleOf(Account.Id, parentCo));
-        childBundle.put(Contact.AccountId, new List<SObject>{ parentCo });
-        return childBundle;
-    }
+    static void assertInsertGraphDml(XFTY_DummySObjectBundle bundle, Integer expectedDml) {
+        // Arrange - the caller supplies the bundle
 
-    private static Integer insertCountingDml(XFTY_DummySObjectBundle bundle) {
+        // Act
         Integer dml;
         System.runAs(TEST_ADMIN) {
+            Test.startTest();
             Integer before = Limits.getDmlStatements();
             XFTY_DeferredInsertBuffer.insertGraph(bundle);
             dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
         }
-        return dml;
+
+        // Assert
+        Assert.areEqual(expectedDml, dml);
     }
 }

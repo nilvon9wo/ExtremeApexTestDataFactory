@@ -13,7 +13,7 @@ private class XFTY_DeferredLoadTest {
     private static final Decimal FLUSH_CPU_BUDGET_FRACTION = 0.4;
 
     @IsTest
-    static void depthBatchedCostsOneInsertPerDepthAndBeatsThePerProviderDefault() {
+    static void testFlush_whenDepthBatched_costsOneInsertPerDepthAndBeatsThePerProviderDefault() {
         // Arrange - a wide Task graph (Account + Contact parents, Contact needs an Account = 3 depths)
 
         // Act - build it depth-batched, then build a smaller one the per-Provider default way
@@ -34,7 +34,7 @@ private class XFTY_DeferredLoadTest {
     }
 
     @IsTest
-    static void deferredAcrossManyCallsFlushesInABoundedNumberOfStatements() {
+    static void testFlush_forDeferredWorkAcrossManyCalls_usesABoundedNumberOfStatements() {
         // Arrange - DEFERRED across 8 supplyBundle() calls, 100 Contacts each
         System.runAs(TEST_ADMIN) {
             for (Integer call = 0; call < 8; call++) {

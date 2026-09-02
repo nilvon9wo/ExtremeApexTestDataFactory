@@ -13,7 +13,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     // --- Plain: XFTY_ValueExpressionIntf --------------------------------
 
     @IsTest
-    static void aPlainStrategySeesNothingButItself() {
+    static void testGet_forAPlainValueExpression_seesNothingButItself() {
         // Arrange
         // nothing to arrange
 
@@ -36,7 +36,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     // --- Sibling: XFTY_ContextAwareExpressionIntf ----------------------------
 
     @IsTest
-    static void aContextAwareStrategyReadsASiblingFieldAsAValue() {
+    static void testGet_forAContextAwareExpression_readsASiblingFieldAsAValue() {
         // Arrange
         // nothing to arrange - MailingCountry is generated first, Description derives from it
 
@@ -57,7 +57,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     // --- Ancestor: XFTY_ContextAwareExpressionIntf, non-Id field -------------
 
     @IsTest
-    static void anAncestorReadOfANonIdFieldIsReliableInEveryMode() {
+    static void testGet_forAnAncestorNonIdFieldRead_isReliableInEveryMode() {
         // Arrange - the Contact's Description copies its generated Account's ShippingCountry
         Map<XFTY_InsertModeEnum, String> countryByMode = new Map<XFTY_InsertModeEnum, String>();
 
@@ -89,7 +89,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     // --- Ancestor: XFTY_ContextAwareExpressionIntf, the ancestor's Id --------
 
     @IsTest
-    static void anAncestorIdReadIsOnlyRealUnderNow() {
+    static void testGet_forAnAncestorIdRead_isOnlyRealUnderNow() {
         // Arrange - the Contact's Description copies its generated Account's Id (as a string)
 
         // Act
@@ -113,7 +113,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     }
 
     @IsTest
-    static void anAncestorIdReadUnderDeferredIsNullAtStrategyTimeEvenAfterFlush() {
+    static void testGet_forAnAncestorIdReadUnderDeferred_isNullAtExpressionTimeEvenAfterFlush() {
         // Arrange - DEFERRED: the ancestor has no Id until flush(), which is after the strategy
         Contact generated;
         System.runAs(TEST_ADMIN) {
@@ -139,7 +139,7 @@ private class XFTY_Ex_Extend_CustomExpressionsTest {
     // --- Descendant: XFTY_DeferredExpressionIntf -----------------------------
 
     @IsTest
-    static void aDeferredExpressionReadsUpFromTheChildrenDeferredBuilds() {
+    static void testGet_forADeferredExpression_readsUpFromTheChildrenDeferredBuilds() {
         // Arrange - one Account with two Cases, one still open
         XFTY_DummySObjectProviderLookupIntf lookup = XFTY_ProviderLookups.of(
                 new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{

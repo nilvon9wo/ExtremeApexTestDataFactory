@@ -1,64 +1,90 @@
 /**
- * Coverage for `XFTY_DefaultSObjectProviderLookup` - the built-in Providers,
- * registration, and `get(...)` resolution. Key derivation (`keysFor` /
- * `XFTY_ProviderLookups.resolve`) is covered in `XFTY_LookupKeyTest`.
+ * Proves `XFTY_DefaultSObjectProviderLookup` - the built-in Providers and
+ * `get(...)` resolution. Key derivation is covered in `XFTY_LookupKeyTest`. Pure
+ * in-memory, no DML/SOQL.
  */
 @IsTest
 private class XFTY_DefaultSObjectProviderLookupTest {
 
     @IsTest
-    static void resolvesEachRegisteredSObjectTypeToItsProvider() {
+    static void testGet_forEachRegisteredSObjectType_returnsItsProvider() {
+        // Arrange
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-        Assert.isInstanceOfType(lookup.get(Account.SObjectType), XFTY_DefaultAccountDataProvider.class);
+        // Act
+        Test.startTest();
+        XFTY_DummySobjectProviderIntf accountProvider = lookup.get(Account.SObjectType);
+        Test.stopTest();
+
+        // Assert
+        Assert.isInstanceOfType(accountProvider, XFTY_DefaultAccountDataProvider.class);
         Assert.isInstanceOfType(lookup.get(Contact.SObjectType), XFTY_DefaultContactDataProvider.class);
         Assert.isInstanceOfType(lookup.get(User.SObjectType), XFTY_DefaultUserDataProvider.class);
     }
 
     @IsTest
-    static void getBySObjectTypeAndGetByPlainKeyAreEquivalent() {
+    static void testGet_bySObjectTypeAndByPlainKey_returnTheSameProvider() {
+        // Arrange
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-        Assert.areEqual(
-                lookup.get(Account.SObjectType),
-                lookup.get(XFTY_LookupKey.get(Account.SObjectType))
-        );
+        // Act
+        Test.startTest();
+        XFTY_DummySobjectProviderIntf byKey = lookup.get(XFTY_LookupKey.get(Account.SObjectType));
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(lookup.get(Account.SObjectType), byKey);
     }
 
     @IsTest
-    static void cachesProviderInstancesBetweenCalls() {
+    static void testGet_calledTwiceForTheSameType_returnsTheOneCachedInstance() {
+        // Arrange
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-        Assert.areEqual(
-                lookup.get(Account.SObjectType),
-                lookup.get(Account.SObjectType),
-                'The same Provider instance should be returned each time'
-        );
+        // Act
+        Test.startTest();
+        XFTY_DummySobjectProviderIntf first = lookup.get(Account.SObjectType);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(first, lookup.get(Account.SObjectType), 'the same Provider instance is returned each time');
     }
 
     @IsTest
-    static void keysForReturnsNoRefinedKeysForTheDefaultProviders() {
+    static void testKeysFor_forADefaultProviderRecord_returnsOnlyThePlainTypeKey() {
+        // Arrange
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
-        // The default lookup registers only plain type keys, which match.
+        // Act
+        Test.startTest();
+        Set<XFTY_LookupKeyIntf> keys = lookup.keysFor(new Account());
+        Test.stopTest();
+
+        // Assert
         Set<String> hashes = new Set<String>();
-        for (XFTY_LookupKeyIntf key : lookup.keysFor(new Account())) {
+        for (XFTY_LookupKeyIntf key : keys) {
             hashes.add(key.getHashKey());
         }
         Assert.areEqual(new Set<String>{ 'Account' }, hashes);
-
-        Assert.areEqual('Account', XFTY_ProviderLookups.resolve(lookup, new Account()).getHashKey());
     }
 
     @IsTest
-    static void throwsAFriendlyExceptionForAnUnregisteredType() {
+    static void testGet_forAnUnregisteredType_throwsAFriendlyException() {
+        // Arrange
         XFTY_DefaultSObjectProviderLookup lookup = new XFTY_DefaultSObjectProviderLookup();
 
+        // Act
+        XFTY_ProviderLookups.LookupException thrown;
+        Test.startTest();
         try {
             lookup.get(Case.SObjectType);
-            Assert.fail('Expected a LookupException');
         } catch (XFTY_ProviderLookups.LookupException ex) {
-            Assert.isTrue(ex.getMessage().contains('No data provider registered'), ex.getMessage());
+            thrown = ex;
         }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('No data provider registered'), thrown.getMessage());
     }
 }

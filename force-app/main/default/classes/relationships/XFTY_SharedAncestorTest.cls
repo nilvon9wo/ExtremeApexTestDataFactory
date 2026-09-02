@@ -14,7 +14,7 @@ private class XFTY_SharedAncestorTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void fiftyChildrenUnderOneSharedAncestorCostOneAccountInsert() {
+    static void testSupplyList_whenFiftyChildrenShareOneSharedAncestor_insertsTheAccountOnce() {
         // Arrange
         XFTY_SharedAncestor.put('acme-hq', new Account(Name = 'ACME HQ'));
 
@@ -37,7 +37,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void manyChildrenShareOneGeneratedParent() {
+    static void testSupplyBundle_whenManyChildrenShareASharedAncestor_theyAllPointAtOneParent() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -67,7 +67,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void nowModeInsertsTheSharedParentOnce() {
+    static void testSupplyList_inNowMode_insertsTheSharedParentExactlyOnce() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -91,7 +91,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void theSharedRecordAppearsInBothTheListAndTheSubBundle() {
+    static void testSupplyBundle_exposesTheSharedRecordInBothTheListAndTheSubBundle() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -115,7 +115,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void referencingAMockResolvedSharedAncestorFromANowCallThrows() {
+    static void testSupply_whenAMockResolvedSharedAncestorIsReferencedFromANowCall_throws() {
         // Arrange - resolve 'hq' in MOCK mode first, so it has a mock (not real) Id
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
         System.runAs(TEST_ADMIN) {
@@ -146,7 +146,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void putAnInsertedRecordAndItAcceptsNowReferences() {
+    static void testSupplyList_whenTheSharedAncestorIsAPreInsertedRecord_acceptsNowReferences() {
         // Arrange - the test inserts its own HQ and registers it
         Account inserted = new Account(Name = 'Real HQ');
         System.runAs(TEST_ADMIN) {
@@ -171,7 +171,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void aPutRecordIsAvailableThroughGetBundleNotJustGetList() {
+    static void testGetBundle_forAPutSharedAncestor_returnsIt() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Supplied HQ'));
 
@@ -199,7 +199,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void theSameSharedAncestorIsReusedAcrossSeparateSupplyCalls() {
+    static void testSupply_reusesTheSameSharedAncestorAcrossSeparateSupplyCalls() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -219,7 +219,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void getIdReturnsTheResolvedRecordsId() {
+    static void testGetId_afterResolution_returnsTheResolvedRecordsId() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -236,7 +236,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void getIdBeforeResolutionThrows() {
+    static void testGetId_beforeResolution_throws() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'x'));
 
@@ -254,7 +254,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void putRegistersATestSuppliedRecord() {
+    static void testPut_registersATestSuppliedRecord() {
         // Arrange
         Account preMade = new Account(Name = 'Pre Made', Id = XFTY_IdMocker.generateId(Account.SObjectType));
         XFTY_SharedAncestor.put('hq', preMade);
@@ -273,7 +273,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void copyingRelatedFieldCopiesThatFieldInsteadOfTheId() {
+    static void testSupply_whenCopyingRelatedField_copiesThatFieldInsteadOfTheId() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Named HQ'))
                 .copyingRelatedField(Account.Name);
@@ -296,7 +296,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void fromVariantPinsTheProviderVariant() {
+    static void testSupply_whenFromVariantIsUsed_pinsTheProviderVariant() {
         // Arrange
         XFTY_SharedAncestor.put('acct', new Account())
                 .fromVariant(XFTY_LookupKey.get(Account.SObjectType));
@@ -318,7 +318,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void aSharedAncestorExposesItsNameAndConfiguredTemplate() {
+    static void testGetNameAndGetTemplate_exposeWhatTheSharedAncestorWasConfiguredWith() {
         // Arrange
         // nothing to arrange - configuration is the act
 
@@ -335,7 +335,7 @@ private class XFTY_SharedAncestorTest {
     // Guards ---------------------------------------------------------------
 
     @IsTest
-    static void getRejectsABlankName() {
+    static void testGet_whenTheNameIsBlank_throws() {
         // Arrange
         // nothing to arrange - the blank name is the act
 
@@ -353,7 +353,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void anUnregisteredSharedAncestorThrowsWhenGenerated() {
+    static void testSupply_whenASharedAncestorIsUnregistered_throws() {
         // Arrange
         // nothing to arrange - 'never-registered' is referenced but never given a template
 
@@ -377,7 +377,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void depthBatchedResolvesTheSharedAncestorUpFront() {
+    static void testSupply_whenDepthBatched_resolvesTheSharedAncestorUpFront() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -400,7 +400,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void reconfiguringAResolvedSharedAncestorThrows() {
+    static void testPut_whenReconfiguringAnAlreadyResolvedSharedAncestor_throws() {
         // Arrange - resolve 'hq', then try to reconfigure it
         XFTY_SharedAncestor.put('hq', new Account(Name = 'First'));
         System.runAs(TEST_ADMIN) {
@@ -423,7 +423,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void aSelfReferentialSharedAncestorThrowsInsteadOfRecursing() {
+    static void testSupply_whenASharedAncestorIsSelfReferential_throwsInsteadOfRecursing() {
         // Arrange - the 'loop' Account's own ParentId is the 'loop' shared ancestor
         XFTY_SharedAncestor.put('loop', new Account(Name = 'Loop'));
         XFTY_DummySObjectProviderLookupIntf loopy = XFTY_ProviderLookups.of(
@@ -453,7 +453,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void anIndirectCycleRoundThreeSharedAncestorsThrows() {
+    static void testSupply_whenThreeSharedAncestorsFormAnIndirectCycle_throws() {
         // Arrange - tom -> dick -> harry -> tom
         XFTY_LookupKeyIntf tomKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'tom');
         XFTY_LookupKeyIntf dickKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'dick');
@@ -490,7 +490,7 @@ private class XFTY_SharedAncestorTest {
     }
 
     @IsTest
-    static void putOverAResolvedDifferentRecordWarnsButSucceeds() {
+    static void testPut_overAResolvedSharedAncestorWithADifferentRecord_warnsButSucceeds() {
         // Arrange - resolve 'hq', then put a different record over it
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Generated'));
         System.runAs(TEST_ADMIN) {

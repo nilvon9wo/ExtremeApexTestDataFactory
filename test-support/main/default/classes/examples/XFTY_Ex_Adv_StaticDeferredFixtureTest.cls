@@ -31,7 +31,7 @@ private class XFTY_Ex_Adv_StaticDeferredFixtureTest {
     }
 
     @IsTest
-    static void theTrailingStaticBlockFlushesTheAccountFixture() {
+    static void testStaticBlock_flushesTheAccountFixture() {
         // Arrange
         // nothing to arrange - the static block already flushed sharedAccounts
 
@@ -44,7 +44,7 @@ private class XFTY_Ex_Adv_StaticDeferredFixtureTest {
     }
 
     @IsTest
-    static void theSameStaticBlockAlsoFlushedTheContactFixtureAndWiredItsParents() {
+    static void testStaticBlock_alsoFlushesTheContactFixtureAndWiresItsParents() {
         // Arrange
         // nothing to arrange - the same static block flushed sharedContacts too
 

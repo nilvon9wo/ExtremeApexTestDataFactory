@@ -1,42 +1,70 @@
 /**
- * Coverage for `XFTY_DummyDefaultRelationship`, including deferred + memoised
- * lookup-key resolution.
+ * Proves `XFTY_DummyDefaultRelationship` - its accessors and its deferred,
+ * memoised lookup-key resolution. Pure in-memory, no DML/SOQL.
  */
 @IsTest
 private class XFTY_DummyDefaultRelationshipTest {
 
     @IsTest
-    static void exposesTheOverrideTemplateAndRelatedField() {
+    static void testGetOverrideTemplate_returnsTheTemplateItWasBuiltWith() {
+        // Arrange
         Account template = new Account(Name = 'Parent');
 
-        XFTY_DummyDefaultRelationship withId = new XFTY_DummyDefaultRelationship(template);
-        Assert.areEqual(template, withId.getOverrideTemplate());
-        Assert.isNull(withId.getRelatedField());
+        // Act
+        Test.startTest();
+        XFTY_DummyDefaultRelationship relationship = new XFTY_DummyDefaultRelationship(template);
+        Test.stopTest();
 
-        XFTY_DummyDefaultRelationship withField =
-                new XFTY_DummyDefaultRelationship(template, Account.AccountNumber);
-        Assert.areEqual(Account.AccountNumber, withField.getRelatedField());
+        // Assert
+        Assert.areEqual(template, relationship.getOverrideTemplate());
+        Assert.isNull(relationship.getRelatedField(), 'no related field was supplied');
     }
 
     @IsTest
-    static void anExplicitKeyIsUsedAsIs() {
-        XFTY_LookupKeyIntf explicitKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big');
+    static void testGetRelatedField_whenBuiltWithARelatedField_returnsIt() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
         XFTY_DummyDefaultRelationship relationship =
-                new XFTY_DummyDefaultRelationship(explicitKey, new Account());
+                new XFTY_DummyDefaultRelationship(new Account(Name = 'Parent'), Account.AccountNumber);
+        Test.stopTest();
 
-        Assert.areEqual(explicitKey, relationship.resolveLookupKey(new CountingLookup()));
+        // Assert
+        Assert.areEqual(Account.AccountNumber, relationship.getRelatedField());
     }
 
     @IsTest
-    static void anAbsentKeyIsDerivedFromTheTemplateOnceAndMemoised() {
+    static void testResolveLookupKey_whenAnExplicitKeyWasGiven_returnsItAsIs() {
+        // Arrange
+        XFTY_LookupKeyIntf explicitKey = XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big');
+        XFTY_DummyDefaultRelationship relationship = new XFTY_DummyDefaultRelationship(explicitKey, new Account());
+
+        // Act
+        Test.startTest();
+        XFTY_LookupKeyIntf resolved = relationship.resolveLookupKey(new CountingLookup());
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(explicitKey, resolved);
+    }
+
+    @IsTest
+    static void testResolveLookupKey_whenNoKeyWasGiven_derivesItFromTheTemplateOnceAndMemoises() {
+        // Arrange
         XFTY_DummyDefaultRelationship relationship = new XFTY_DummyDefaultRelationship(new Account());
         CountingLookup lookup = new CountingLookup();
 
+        // Act
+        Test.startTest();
         XFTY_LookupKeyIntf firstCall = relationship.resolveLookupKey(lookup);
         XFTY_LookupKeyIntf secondCall = relationship.resolveLookupKey(lookup);
+        Test.stopTest();
 
-        Assert.areEqual(1, lookup.keysForCalls, 'Derivation should happen only once');
-        Assert.areEqual(firstCall, secondCall, 'The memoised key is returned on later calls');
+        // Assert
+        Assert.areEqual(1, lookup.keysForCalls, 'derivation happens only once');
+        Assert.areEqual(firstCall, secondCall, 'the memoised key is returned on later calls');
         Assert.areEqual('Account', firstCall.getHashKey());
     }
 

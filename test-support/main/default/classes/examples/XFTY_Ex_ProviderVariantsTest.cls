@@ -22,7 +22,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     }
 
     @IsTest
-    static void withVariantSelectsTheNamedProvider() {
+    static void testWithVariant_selectsTheNamedProvider() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
                 .withVariant(PARTNER)
@@ -36,7 +36,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     }
 
     @IsTest
-    static void theLookupKeyConstructorHasTheSameEffect() {
+    static void testConstructor_fromALookupKey_selectsTheNamedProvider() {
         // Arrange
         // nothing to arrange - the key carries the SObjectType and pins the variant
 
@@ -50,7 +50,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     }
 
     @IsTest
-    static void aRelationshipPinsItsParentVariant() {
+    static void testSupplyBundle_whenARelationshipPinsAVariant_generatesThatParentVariant() {
         // Arrange - the Case Provider's required Account relationship pins PARTNER
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Case.SObjectType, lookup())
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
@@ -65,7 +65,7 @@ private class XFTY_Ex_ProviderVariantsTest {
     }
 
     @IsTest
-    static void withoutAVariantTheDefaultKeyProviderIsUsed() {
+    static void testSupply_withoutAVariant_usesTheDefaultKeyProvider() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);

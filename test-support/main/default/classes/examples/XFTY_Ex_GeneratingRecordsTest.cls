@@ -8,7 +8,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     @IsTest
-    static void supplyReturnsOneGeneratedRecord() {
+    static void testSupply_onABareProvider_returnsOneRecordWithDefaultsAndNoId() {
         // Arrange
         // nothing to arrange - a bare Provider generates one record with defaults
 
@@ -26,7 +26,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void supplyListReturnsManyCopiesOfOneTemplate() {
+    static void testSupplyList_withQuantity_returnsThatManyCopies() {
         // Arrange
         // nothing to arrange
 
@@ -44,7 +44,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void supplyBundleReturnsTheWholeGraph() {
+    static void testSupplyBundle_returnsTheWholeGeneratedGraph() {
         // Arrange
         // nothing to arrange
 
@@ -63,7 +63,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void aTemplateListGivesDifferentValuesPerRecord() {
+    static void testSupplyList_withATemplateList_appliesEachTemplateToItsRow() {
         // Arrange
         List<Contact> templates = new List<Contact>{
                 new Contact(FirstName = 'Alice'),
@@ -87,7 +87,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void quantityIsAppliedOutsideTheTemplateLoop() {
+    static void testSupplyList_withATemplateListAndQuantity_appliesQuantityOutsideTheTemplateLoop() {
         // Arrange
         List<Contact> templates = new List<Contact>{
                 new Contact(FirstName = 'Alice'),
@@ -113,7 +113,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void theTemplateShorthandConstructorDerivesTheType() {
+    static void testConstructor_fromASingleTemplate_derivesTheType() {
         // Arrange
         // nothing to arrange - the single-template constructor is under test
 
@@ -131,7 +131,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void theTemplateListShorthandConstructorDerivesTheTypeFromTheFirstTemplate() {
+    static void testConstructor_fromATemplateList_derivesTheTypeFromTheFirstTemplate() {
         // Arrange
         // nothing to arrange - the template-list constructor is under test
 
@@ -148,7 +148,7 @@ private class XFTY_Ex_GeneratingRecordsTest {
     }
 
     @IsTest
-    static void theLookupKeyShorthandConstructorDerivesTheTypeAndPinsTheVariant() {
+    static void testConstructor_fromALookupKey_derivesTheTypeAndPinsTheVariant() {
         // Arrange
         // nothing to arrange - the lookup-key constructor is under test
 

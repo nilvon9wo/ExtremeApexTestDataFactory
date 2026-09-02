@@ -14,7 +14,7 @@ private class XFTY_SharedAncestorLoadTest {
     private static final Integer FRUGAL_STATEMENT_CEILING = 4;
 
     @IsTest
-    static void fiveHundredChildrenUnderOneSharedAncestorCostOneParentInsert() {
+    static void testSupplyList_forFiveHundredChildrenUnderOneSharedAncestor_costsOneParentInsert() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 
@@ -35,7 +35,7 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     @IsTest
-    static void aDeepSharedChainStaysStatementFrugal() {
+    static void testSupply_forADeepSharedChain_staysStatementFrugal() {
         // Arrange - Contact -> shared level1 -> shared root, four leaves
         XFTY_SharedAncestor.put('root', new Account(Name = 'Root'))
                 .fromVariant(XFTY_LookupKey.get(Account.SObjectType));
@@ -58,7 +58,7 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     @IsTest
-    static void manyIndependentSharedAncestorsStayStatementFrugal() {
+    static void testSupply_forManyIndependentSharedAncestors_staysStatementFrugal() {
         // Arrange - 12 independent shared Accounts, each referenced by its own Contacts.
         // S2 depth-batches per sub-graph, so this is the "several independent heavy
         // ancestors" case the docs flag as a known limit - it must still be bounded.
@@ -90,7 +90,7 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     @IsTest
-    static void aTenLevelSharedChainInsertsOnePerLevelNotOnePerRecord() {
+    static void testSupply_forATenLevelSharedChain_insertsOnePerLevelNotOnePerRecord() {
         // Arrange - Root <- L1 <- ... <- L9, all shared; five leaf Contacts under L9
         configureTenLevelChain();
 
@@ -111,7 +111,7 @@ private class XFTY_SharedAncestorLoadTest {
     }
 
     @IsTest
-    static void oneSharedAncestorAcrossManySupplyCallsResolvesOnce() {
+    static void testSupply_forOneSharedAncestorAcrossManyCalls_resolvesItOnce() {
         // Arrange
         XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
 

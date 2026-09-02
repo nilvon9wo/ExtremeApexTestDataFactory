@@ -11,7 +11,7 @@ private class XFTY_Ex_Adv_UnitVsIntegrationTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void theUnitFormBuildsTheGraphWithoutTouchingTheDatabase() {
+    static void testSupplyBundle_inTheUnitForm_buildsTheGraphWithoutTouchingTheDatabase() {
         // Arrange
         // nothing to arrange - the same providerFor(...) shape, MOCK mode
 
@@ -25,7 +25,7 @@ private class XFTY_Ex_Adv_UnitVsIntegrationTest {
     }
 
     @IsTest
-    static void theIntegrationFormBuildsTheIdenticalGraphInTheDatabase() {
+    static void testSupplyBundle_inTheIntegrationForm_buildsTheIdenticalGraphInTheDatabase() {
         // Arrange
         XFTY_DummySObjectBundle bundle;
 

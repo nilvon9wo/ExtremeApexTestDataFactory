@@ -1,128 +1,214 @@
 /**
- * Coverage for the small `XFTY_ValueExpressionIntf` expression implementations.
- *
- * These generators are pure value producers, so the tests need neither DML nor
- * `System.runAs`. They double as executable documentation of what each expression
- * guarantees (format, uniqueness scope, statefulness).
+ * Proves the small `XFTY_ValueExpressionIntf` implementations - pure value
+ * producers, so no DML/SOQL and no `System.runAs`. They double as executable
+ * documentation of what each expression guarantees (format, uniqueness scope,
+ * statefulness).
  */
 @IsTest
 private class XFTY_ValueExpressionTest {
 
-    // XFTY_LiteralExpression -------------------------------------------------
+    // XFTY_LiteralExpression --------------------------------------
 
     @IsTest
-    static void exactReturnsTheSuppliedValueUnchanged() {
-        Assert.areEqual('Customer', new XFTY_LiteralExpression('Customer').get());
-        Assert.areEqual(42, new XFTY_LiteralExpression(42).get());
+    static void testGet_forAStringLiteral_returnsItUnchanged() {
+        assertLiteralReturnsItself('Customer');
     }
 
     @IsTest
-    static void exactSupportsNull() {
-        Assert.isNull(new XFTY_LiteralExpression(null).get());
+    static void testGet_forAnIntegerLiteral_returnsItUnchanged() {
+        assertLiteralReturnsItself(42);
     }
 
     @IsTest
-    static void exactReturnsTheSameValueEveryCall() {
+    static void testGet_forANullLiteral_returnsNull() {
+        assertLiteralReturnsItself(null);
+    }
+
+    @IsTest
+    static void testGet_forALiteral_returnsTheSameValueEveryCall() {
+        // Arrange
         XFTY_LiteralExpression expression = new XFTY_LiteralExpression('constant');
-        Assert.areEqual('constant', expression.get());
-        Assert.areEqual('constant', expression.get());
+
+        // Act
+        Test.startTest();
+        List<Object> twoCalls = new List<Object>{ expression.get(), expression.get() };
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(new List<Object>{ 'constant', 'constant' }, twoCalls);
     }
 
-    // XFTY_IncrementingStringExpression ----------------------------------
+    // XFTY_IncrementingStringExpression --------------------------
 
     @IsTest
-    static void incrementingStringSeparatesPrefixAndCounterByDefault() {
-        XFTY_IncrementingStringExpression expression =
-                new XFTY_IncrementingStringExpression('Account');
-        Assert.areEqual('Account 1', expression.get());
-        Assert.areEqual('Account 2', expression.get());
-        Assert.areEqual('Account 3', expression.get());
+    static void testGet_forAnIncrementingString_separatesThePrefixAndCounterByDefault() {
+        // Arrange
+        XFTY_IncrementingStringExpression expression = new XFTY_IncrementingStringExpression('Account');
+
+        // Act
+        Test.startTest();
+        List<Object> sequence = new List<Object>{ expression.get(), expression.get(), expression.get() };
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(new List<Object>{ 'Account 1', 'Account 2', 'Account 3' }, sequence);
     }
 
     @IsTest
-    static void incrementingStringCanOmitTheSeparator() {
+    static void testGet_forAnIncrementingStringWithNoSeparator_joinsThePrefixAndCounter() {
+        // Arrange
         XFTY_IncrementingStringExpression expression = new XFTY_IncrementingStringExpression(
-                'ACME',
-                XFTY_IncrementingStringExpression.DONT_SEPARATE_PREFIX
+                'ACME', XFTY_IncrementingStringExpression.DONT_SEPARATE_PREFIX
         );
-        Assert.areEqual('ACME1', expression.get());
-        Assert.areEqual('ACME2', expression.get());
+
+        // Act
+        Test.startTest();
+        List<Object> sequence = new List<Object>{ expression.get(), expression.get() };
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(new List<Object>{ 'ACME1', 'ACME2' }, sequence);
     }
 
     @IsTest
-    static void incrementingStringCounterIsPerInstance() {
+    static void testGet_forTwoIncrementingStringInstances_theCounterIsPerInstance() {
+        // Arrange
         XFTY_IncrementingStringExpression first = new XFTY_IncrementingStringExpression('P');
         XFTY_IncrementingStringExpression second = new XFTY_IncrementingStringExpression('P');
         first.get();
         first.get();
-        Assert.areEqual('P 1', second.get(), 'Each instance should count independently');
+
+        // Act
+        Test.startTest();
+        Object secondsFirstValue = second.get();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('P 1', secondsFirstValue, 'each instance counts independently');
     }
 
-    // XFTY_UniqueStringExpression ---------------------------------------
+    // XFTY_UniqueStringExpression ------------------------------
 
     @IsTest
-    static void uniqueStringNeverRepeatsEvenAcrossInstances() {
+    static void testGet_forAUniqueString_neverRepeatsEvenAcrossInstances() {
+        // Arrange
         Set<Object> produced = new Set<Object>();
+
+        // Act
+        Test.startTest();
         for (Integer i = 0; i < 25; i++) {
             produced.add(new XFTY_UniqueStringExpression('Prefix').get());
         }
-        Assert.areEqual(25, produced.size(), 'The counter is static, so values must be globally unique');
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(25, produced.size(), 'the counter is static, so values are globally unique');
     }
 
     @IsTest
-    static void uniqueStringStartsWithTheSuppliedPrefix() {
+    static void testGet_forAUniqueString_startsWithTheSuppliedPrefix() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
         String value = (String) new XFTY_UniqueStringExpression('Widget').get();
-        Assert.isTrue(value.startsWith('Widget '), 'Got: ' + value);
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(value.startsWith('Widget '), value);
     }
 
-    // XFTY_UniqueEmailExpression --------------------------------------
+    // XFTY_UniqueEmailExpression -----------------------------
 
     @IsTest
-    static void uniqueEmailProducesWellFormedUniqueAddresses() {
+    static void testGet_forAUniqueEmail_producesWellFormedUniqueAddresses() {
+        // Arrange
         Set<Object> produced = new Set<Object>();
+
+        // Act
+        Test.startTest();
         for (Integer i = 0; i < 25; i++) {
-            String email = (String) new XFTY_UniqueEmailExpression('test.user').get();
-            Assert.isTrue(email.startsWith('test.user'), 'Got: ' + email);
-            Assert.isTrue(email.endsWith('@example.com'), 'Got: ' + email);
-            produced.add(email);
+            produced.add(new XFTY_UniqueEmailExpression('test.user').get());
         }
-        Assert.areEqual(25, produced.size());
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(25, produced.size(), 'each address is unique');
+        for (Object email : produced) {
+            Assert.isTrue(((String) email).startsWith('test.user'), (String) email);
+            Assert.isTrue(((String) email).endsWith('@example.com'), (String) email);
+        }
     }
 
-    // XFTY_UniqueStringOfLengthExpression ------------------------------
+    // XFTY_UniqueStringOfLengthExpression --------------------
 
     @IsTest
-    static void uniqueStringLengthProducesFixedLengthUppercaseValues() {
+    static void testGet_forAUniqueStringOfLength_producesFixedLengthUppercaseUniqueValues() {
+        // Arrange
         XFTY_UniqueStringOfLengthExpression expression = new XFTY_UniqueStringOfLengthExpression(5);
         Set<Object> produced = new Set<Object>();
+
+        // Act
+        Test.startTest();
         for (Integer i = 0; i < 20; i++) {
-            String value = (String) expression.get();
-            Assert.areEqual(5, value.length(), 'Got: ' + value);
-            Assert.isTrue(Pattern.matches('[A-Z]{5}', value), 'Got: ' + value);
-            produced.add(value);
+            produced.add(expression.get());
         }
+        Test.stopTest();
+
+        // Assert
         Assert.areEqual(20, produced.size());
+        for (Object value : produced) {
+            Assert.areEqual(5, ((String) value).length(), (String) value);
+            Assert.isTrue(Pattern.matches('[A-Z]{5}', (String) value), (String) value);
+        }
     }
 
     @IsTest
-    static void uniqueStringLengthCountsSeparatelyPerLength() {
-        String threeChars = (String) new XFTY_UniqueStringOfLengthExpression(3).get();
-        String fourChars = (String) new XFTY_UniqueStringOfLengthExpression(4).get();
-        Assert.areEqual(3, threeChars.length());
-        Assert.areEqual(4, fourChars.length());
-        // Both counters started at 0, so both should be the first string for their length.
-        Assert.areEqual('AAA', threeChars);
-        Assert.areEqual('AAAA', fourChars);
+    static void testGet_forUniqueStringsOfDifferentLengths_countsSeparatelyPerLength() {
+        // Arrange
+        XFTY_UniqueStringOfLengthExpression threeCharExpression = new XFTY_UniqueStringOfLengthExpression(3);
+        XFTY_UniqueStringOfLengthExpression fourCharExpression = new XFTY_UniqueStringOfLengthExpression(4);
+
+        // Act
+        Test.startTest();
+        List<Object> firstOfEachLength = new List<Object>{ threeCharExpression.get(), fourCharExpression.get() };
+        Test.stopTest();
+
+        // Assert - both counters started at 0, so both are the first string for their length
+        Assert.areEqual(new List<Object>{ 'AAA', 'AAAA' }, firstOfEachLength);
     }
 
-    // XFTY_IncrementingDecimalExpression ---------------------------------
+    // XFTY_IncrementingDecimalExpression --------------------
 
     @IsTest
-    static void incrementingDecimalReturnsAscendingDecimals() {
+    static void testGet_forAnIncrementingDecimal_returnsAscendingDecimals() {
+        // Arrange
         XFTY_IncrementingDecimalExpression expression = new XFTY_IncrementingDecimalExpression();
-        Object first = expression.get();
-        Assert.isTrue(first instanceof Decimal, 'Expected a Decimal');
-        Assert.areEqual(Decimal.valueOf('1'), (Decimal) first);
-        Assert.areEqual(Decimal.valueOf('2'), (Decimal) expression.get());
+
+        // Act
+        Test.startTest();
+        List<Object> twoCalls = new List<Object>{ expression.get(), expression.get() };
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(twoCalls[0] instanceof Decimal, 'produces a Decimal');
+        Assert.areEqual(Decimal.valueOf('1'), (Decimal) twoCalls[0]);
+        Assert.areEqual(Decimal.valueOf('2'), (Decimal) twoCalls[1]);
+    }
+
+    // Runner -----------------------------------------------
+
+    static void assertLiteralReturnsItself(Object value) {
+        // Arrange
+        XFTY_LiteralExpression expression = new XFTY_LiteralExpression(value);
+
+        // Act
+        Test.startTest();
+        Object result = expression.get();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(value, result);
     }
 }

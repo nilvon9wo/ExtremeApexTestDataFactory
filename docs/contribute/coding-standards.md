@@ -210,11 +210,15 @@ More than **~250 lines** is a strong smell that the class does too much.
   method, so it is not free.
 - **Names:** `test<MethodUnderTest>_when<Condition>_<expectedOutcome>` —
   `testIsSatisfiedBy_whenTheFieldIsBlank_returnsFalse`,
-  `testOf_whenTheListIsNull_throws`.
-- **Parameterised tests:** a thin `@IsTest` method is one call to a shared,
-  non-`@IsTest` helper that holds the `// Arrange` / `// Act` / `// Assert`; the
-  `@IsTest` methods are just the data rows. (`check-apex-style.py` exempts a
-  single-call test body from the marker rule for exactly this.)
+  `testOf_whenTheListIsNull_throws`. For an end-to-end / scenario test,
+  `<MethodUnderTest>` is the entry point exercised (`testSupply_…`,
+  `testSupplyBundle_…`, `testFlush_…`).
+- **Parameterised tests:** a thin `@IsTest` method is one call to a shared runner
+  that holds the `// Arrange` / `// Act` / `// Assert`; the `@IsTest` methods are
+  just the data rows. (`check-apex-style.py` exempts a single-call test body from
+  the marker rule for exactly this.) Helper names: the runner is `test<Method>(…,
+  expected)` (no `@IsTest`); fixtures are `create…`; shared assertions are
+  `assert…`.
 - **`Assert.*`, never `System.assert*`.** Expecting a throw: capture it in Act
   (`try { act(); } catch (XFTY_SpecificException ex) { thrown = ex; }` — the
   *exact* type, never bare `Exception`) and assert on `thrown` in Assert
@@ -224,12 +228,36 @@ More than **~250 lines** is a strong smell that the class does too much.
   `XFTY_ProviderLookups.of(map)` behind a named fixture helper. Collapse
   near-identical Provider doubles into one parameterised inner class.
 - **The gold-standard shape:** class-level constants (incl. `TEST_ADMIN` where
-  it is needed), thin
-  data-row `@IsTest` methods, one `// Arrange` / `// Act` / `// Assert` helper,
-  and `create…` / `assert…` helpers at the bottom.
+  it is needed), thin data-row `@IsTest` methods, one `test<Method>(…)` runner
+  holding `// Arrange` / `// Act` / `// Assert`, and `create…` / `assert…`
+  helpers at the bottom. `XFTY_FieldEqualToPredicateTest` and
+  `XFTY_ValueComparisonTest` are the live examples.
 - Everything in `## Style` applies: `Assert` calls broken off chained builders,
   no one-line ternaries, named constants over magic numbers, `~250` / `~10` line
   bars.
+
+```apex
+// data rows
+@IsTest
+static void testIsSatisfiedBy_whenFieldEqualsValue_returnsTrue() {
+    testIsSatisfiedBy('Technology', new Account(Industry = 'Technology'), true);
+}
+@IsTest
+static void testIsSatisfiedBy_whenFieldDiffersFromValue_returnsFalse() {
+    testIsSatisfiedBy('Technology', new Account(Industry = 'Retail'), false);
+}
+// runner — one Act statement, wrapped; no runAs (no DML/SOQL)
+static void testIsSatisfiedBy(Object configuredValue, SObject record, Boolean expectedResult) {
+    // Arrange
+    XFTY_SObjectPredicateIntf predicate = XFTY_FieldEqualToPredicate.of(Account.Industry, configuredValue);
+    // Act
+    Test.startTest();
+    Boolean actualResult = predicate.isSatisfiedBy(record);
+    Test.stopTest();
+    // Assert
+    Assert.areEqual(expectedResult, actualResult);
+}
+```
 
 ---
 

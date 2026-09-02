@@ -20,7 +20,7 @@ private class XFTY_LoadTest {
     private static final Decimal SAFE_FRACTION_OF_LIMIT = 0.75;
 
     @IsTest
-    static void nowGenerationOfThreeThousandPrimariesStaysUnderTheDmlRowLimit() {
+    static void testGenerate_forThreeThousandPrimariesInNowMode_staysUnderTheDmlRowLimit() {
         // Arrange - a Contact + its Account is 2 rows per primary, so 3 000 primaries = 6 000 rows
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setQuantityPerTemplate(3000)
@@ -42,7 +42,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void wideGraphCostsOneDmlStatementPerProviderNotPerRow() {
+    static void testGenerate_forAWideGraph_costsOneDmlStatementPerProviderNotPerRow() {
         // Arrange - a Task with an Account, a Contact and a User parent: 4 Provider levels, 200 rows
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Task.SObjectType, XFTY_LoadProviders.lookup())
                 .putRequired(Task.WhatId, new XFTY_DummyDefaultRelationship(new Account()))
@@ -66,7 +66,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void generationSoqlDoesNotGrowWithVolume() {
+    static void testGenerate_soqlDoesNotGrowWithVolume() {
         // Arrange - MOCK generation of 500 primaries: XFTY's own SOQL is a small constant
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setQuantityPerTemplate(500)
@@ -87,7 +87,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void fiveThousandPrimariesInMemoryStayUnderTheHeapLimit() {
+    static void testGenerate_forFiveThousandPrimariesHeldInMemory_staysUnderTheHeapLimit() {
         // Arrange - 5 000 primaries with a generated parent each, held in memory, no insert
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setQuantityPerTemplate(5000)
@@ -111,7 +111,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void aDeepAndWideGraphTimesHundredStaysUnderTheCpuLimit() {
+    static void testGenerate_forADeepAndWideGraphTimesOneHundred_staysUnderTheCpuLimit() {
         // Arrange - a 5-level Account chain that also generates a User per level (~10 records/primary), x 100
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(
                 XFTY_HierarchyKeys.LEVEL_1, XFTY_HierarchyKeys.lookup()
@@ -137,7 +137,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void downwardGenerationMultipliesRowsButNotStatements() {
+    static void testGenerate_downwardGenerationMultipliesRowsButNotStatements() {
         // Arrange - 15 Accounts, 10 Contacts each, 2 Cases per Contact: 15 + 150 + 300 = 465 records
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, XFTY_LoadProviders.lookup())
                 .setQuantityPerTemplate(15)
@@ -167,7 +167,7 @@ private class XFTY_LoadTest {
     }
 
     @IsTest
-    static void theContextAwareValuePassStaysCheapAtVolume() {
+    static void testGenerate_theContextAwareValuePassStaysCheapAtVolume() {
         // Arrange - 3 000 Contacts, each with a sibling copy and a custom context-aware expression.
         // MOCK isolates the value-pass cost from DML.
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)

@@ -11,7 +11,7 @@ private class XFTY_Ex_DeferredInsertTest {
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
 
     @IsTest
-    static void deferredGeneratesOverManyCallsAndFlushInsertsOnce() {
+    static void testFlush_afterDeferredGenerationOverManyCalls_insertsEverythingOnce() {
         // Arrange - two DEFERRED calls, nothing inserted yet
         XFTY_DummySObjectBundle accounts;
         XFTY_DummySObjectBundle contacts;
@@ -37,7 +37,7 @@ private class XFTY_Ex_DeferredInsertTest {
     }
 
     @IsTest
-    static void aTestThatNeverFlushesGetsNeverSemantics() {
+    static void testSupply_inDeferredModeWithoutFlush_hasNeverSemantics() {
         // Arrange
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
@@ -52,7 +52,7 @@ private class XFTY_Ex_DeferredInsertTest {
     }
 
     @IsTest
-    static void flushClearsTheRegistrySoLaterGenerationStartsFresh() {
+    static void testFlush_clearsTheRegistrySoLaterGenerationStartsFresh() {
         // Arrange
         System.runAs(TEST_ADMIN) {
             new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
@@ -72,7 +72,7 @@ private class XFTY_Ex_DeferredInsertTest {
     }
 
     @IsTest
-    static void deferredDoesNotGiveYouAnIdMidGenerationSoFlushBetweenSteps() {
+    static void testFlush_betweenSteps_providesTheIdsALaterStepNeeds() {
         // Arrange - flush the parents, then read a real Id off the bundle for the next step
         Id parentId;
         XFTY_DummySObjectBundle contacts;
@@ -102,19 +102,21 @@ private class XFTY_Ex_DeferredInsertTest {
     }
 
     @IsTest
-    static void depthBatchedCollapsesToOneInsertPerDependencyDepth() {
+    static void testSupplyBundle_whenDepthBatched_collapsesToOneInsertPerDependencyDepth() {
         // Arrange - a Contact + its required Account in one NOW call
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .depthBatched()
+                .setQuantityPerTemplate(3);
+
+        // Act
         XFTY_DummySObjectBundle bundle;
         Integer dmlStatementsUsed;
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             Integer before = Limits.getDmlStatements();
-            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .depthBatched()
-                    .setQuantityPerTemplate(3)
-                    .supplyBundle();
+            bundle = provider.supplyBundle();
             dmlStatementsUsed = Limits.getDmlStatements() - before;
             Test.stopTest();
         }

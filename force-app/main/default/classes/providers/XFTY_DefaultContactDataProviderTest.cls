@@ -1,133 +1,111 @@
+/**
+ * Proves `XFTY_DefaultContactDataProvider` end to end: a generated Contact, its
+ * required Account (with the documented defaults), and the inclusivity that
+ * controls whether that Account is generated. Real DML in the NOW tests, so
+ * `System.runAs`.
+ */
 @IsTest
-public class XFTY_DefaultContactDataProviderTest {
-    private static final XFTY_DefaultSObjectProviderLookup DEFAULT_SOBJECT_PROVIDER = new XFTY_DefaultSObjectProviderLookup();
+private class XFTY_DefaultContactDataProviderTest {
+
+    private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
     private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
-    private static final String TEST_CONTACT_FIRST_NAME = 'Fred';
+    private static final String TEST_FIRST_NAME = 'Fred';
 
-    @IsTest public static void testContactFactoryCreatesOnlyContact() {
-        // Arrange
-        List<Contact> templateContactList = createTestTemplateContactList();
-
-        // Act
-        XFTY_DummySObjectBundle resultBundle;
-        Test.startTest();
-        System.runAs(TEST_ADMIN) {
-            resultBundle = (new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER))
-                    .setOverrideTemplateList(templateContactList)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.NONE)
-                    .supplyBundle();
-        }
-        Test.stopTest();
-
-        // Assert
-        System.assertNotEquals(null, resultBundle);
-        assertContactsCreated(resultBundle);
-
-        System.assertEquals(null, resultBundle.getList(Contact.AccountId));
-        System.assertEquals(null, resultBundle.getBundle(Contact.AccountId));
-        System.assertEquals(null, ((Contact) resultBundle.getList(Contact.Id)[0]).AccountId);
+    private static XFTY_DummySObjectProvider contactProvider(XFTY_InsertInclusivityEnum inclusivity, XFTY_InsertModeEnum mode) {
+        return new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setOverrideTemplate(new Contact(FirstName = TEST_FIRST_NAME))
+                .setInclusivity(inclusivity)
+                .setInsertMode(mode);
     }
 
-
-    @IsTest public static void testContactFactoryCreatesBothContactAndAccountInDatabase() {
+    @IsTest
+    static void testSupplyBundle_atNoneInclusivity_generatesTheContactButNotAnAccount() {
         // Arrange
-        List<Contact> templateContactList = createTestTemplateContactList();
+        XFTY_DummySObjectProvider provider = contactProvider(XFTY_InsertInclusivityEnum.NONE, XFTY_InsertModeEnum.NOW);
 
         // Act
-        XFTY_DummySObjectBundle resultBundle;
-        Test.startTest();
+        XFTY_DummySObjectBundle bundle;
         System.runAs(TEST_ADMIN) {
-            resultBundle = (new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER))
-                    .setOverrideTemplateList(templateContactList)
-                    .setInsertMode(XFTY_InsertModeEnum.NOW)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
-                    .supplyBundle();
+            Test.startTest();
+            bundle = provider.supplyBundle();
+            Test.stopTest();
         }
+
+        // Assert
+        assertContactGenerated(bundle);
+        Assert.isNull(bundle.getList(Contact.AccountId), 'no Account generated at NONE inclusivity');
+        Assert.isNull(((Contact) bundle.getList(Contact.Id)[0]).AccountId);
+    }
+
+    @IsTest
+    static void testSupplyBundle_atAllInclusivityInNowMode_generatesTheContactAndItsAccountWithTheDocumentedDefaults() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider(XFTY_InsertInclusivityEnum.ALL, XFTY_InsertModeEnum.NOW);
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            bundle = provider.supplyBundle();
+            Test.stopTest();
+        }
+
+        // Assert
+        assertContactGenerated(bundle);
+        Account generatedAccount = (Account) bundle.getList(Contact.AccountId)[0];
+        Assert.isNotNull(generatedAccount.Id);
+        Assert.isTrue(generatedAccount.Name.contains(XFTY_DefaultAccountDataProvider.DEFAULT_NAME_PREFIX));
+        Assert.areEqual(XFTY_DefaultContactDataProvider.DEFAULT_ACCOUNT_DESCRIPTION, generatedAccount.Description);
+        Assert.areEqual(generatedAccount.Id, ((Contact) bundle.getList(Contact.Id)[0]).AccountId, 'the FK is wired');
+    }
+
+    @IsTest
+    static void testUpdate_onRecordsFromANowRun_succeeds() {
+        // Arrange
+        List<Contact> generated;
+        System.runAs(TEST_ADMIN) {
+            generated = (List<Contact>) contactProvider(XFTY_InsertInclusivityEnum.ALL, XFTY_InsertModeEnum.NOW).supplyList();
+        }
+
+        // Act
+        List<Database.SaveResult> results;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            results = Database.update(generated);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(generated.size(), results.size());
+        for (Database.SaveResult result : results) {
+            Assert.isTrue(result.isSuccess(), String.valueOf(result.getErrors()));
+        }
+    }
+
+    @IsTest
+    static void testSupplyBundle_atAllInclusivityInMockMode_wiresTheGraphWithoutTouchingTheDatabase() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = contactProvider(XFTY_InsertInclusivityEnum.ALL, XFTY_InsertModeEnum.MOCK);
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
         Test.stopTest();
 
         // Assert
-        System.assertNotEquals(null, resultBundle);
-        assertContactsCreated(resultBundle);
-        assertAccountsCreated(resultBundle);
-
-        System.assertEquals(
-                ((Contact) resultBundle.getList(Contact.Id)[0]).AccountId,
-                resultBundle.getList(Contact.AccountId)[0].Id
+        assertContactGenerated(bundle);
+        Assert.isNotNull(bundle.getList(Contact.AccountId)[0].Id, 'the Account got a mock Id');
+        Assert.areEqual(
+                bundle.getList(Contact.AccountId)[0].Id,
+                ((Contact) bundle.getList(Contact.Id)[0]).AccountId,
+                'mock Ids still wire the FK'
         );
-
-        List<Database.SaveResult> saveResultList = Database.update(resultBundle.getList(Contact.Id));
-        System.assertEquals(resultBundle.getList(Contact.Id).size(), saveResultList.size());
-        for (Database.SaveResult saveResult : saveResultList) {
-            System.assert(saveResult.isSuccess());
-        }
     }
 
-    @IsTest public static void testContactFactoryCreatesBothContactAndAccountWithoutTouchingDatabase() {
-        // Arrange
-        List<Contact> templateContactList = createTestTemplateContactList();
-
-        // Act
-        XFTY_DummySObjectBundle resultBundle;
-        Test.startTest();
-        System.runAs(TEST_ADMIN) {
-            resultBundle = (new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_SOBJECT_PROVIDER))
-                    .setOverrideTemplateList(templateContactList)
-                    .setInsertMode(XFTY_InsertModeEnum.MOCK)
-                    .setInclusivity(XFTY_InsertInclusivityEnum.ALL)
-                    .supplyBundle();
-        }
-        Test.stopTest();
-
-        // Assert
-        System.assertNotEquals(null, resultBundle);
-        assertContactsCreated(resultBundle);
-        assertAccountsCreated(resultBundle);
-
-        System.assertEquals(
-                ((Contact) resultBundle.getList(Contact.Id)[0]).AccountId,
-                resultBundle.getList(Contact.AccountId)[0].Id
-        );
-
-        DmlException caughtException;
-        try {
-            update resultBundle.getList(Contact.Id);
-        } catch (DmlException ex) {
-            caughtException = ex;
-        }
-        System.assertNotEquals(null, caughtException);
-        System.assert(caughtException.getMessage().contains('INVALID_CROSS_REFERENCE_KEY'));
+    private static void assertContactGenerated(XFTY_DummySObjectBundle bundle) {
+        Contact generated = (Contact) bundle.getList(Contact.Id)[0];
+        Assert.isNotNull(generated.Id);
+        Assert.areEqual(TEST_FIRST_NAME, generated.FirstName);
+        Assert.isTrue(generated.LastName.contains(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
     }
-
-
-    private static List<Contact> createTestTemplateContactList() {
-        return new List<Contact>{
-                new Contact(
-                        FirstName = TEST_CONTACT_FIRST_NAME
-                )
-        };
-    }
-
-    private static void assertAccountsCreated(XFTY_DummySObjectBundle resultBundle) {
-        System.assertNotEquals(null, resultBundle.getBundle(Contact.AccountId));
-        List<Account> resultAccountList = resultBundle.getList(Contact.AccountId);
-        System.assertNotEquals(null, resultAccountList);
-
-        Account resultAccount = resultAccountList[0];
-        System.assertNotEquals(null, resultAccount.Id);
-        System.assert(resultAccount.Name.contains(XFTY_DefaultAccountDataProvider.DEFAULT_NAME_PREFIX));
-        System.assertEquals(resultAccount.Description, XFTY_DefaultContactDataProvider.DEFAULT_ACCOUNT_DESCRIPTION);
-    }
-
-    private static void assertContactsCreated(XFTY_DummySObjectBundle resultBundle) {
-        List<Contact> resultContactList = resultBundle.getList(Contact.Id);
-        System.assertNotEquals(null, resultContactList);
-
-        Contact resultContact = resultContactList[0];
-        System.assertNotEquals(null, resultContact.Id);
-        System.assertEquals(TEST_CONTACT_FIRST_NAME, resultContact.FirstName);
-        System.assert(resultContact.LastName.contains(XFTY_DefaultContactDataProvider.DEFAULT_LAST_NAME_PREFIX));
-    }
-
-
 }

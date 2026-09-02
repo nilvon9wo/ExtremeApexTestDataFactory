@@ -8,7 +8,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
     @IsTest
-    static void anOverrideTemplateReplacesOnlyTheFieldsItSets() {
+    static void testSupply_withAnOverrideTemplate_replacesOnlyTheFieldsItSets() {
         // Arrange
         // nothing to arrange - the override template is inline, below
 
@@ -28,7 +28,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
     }
 
     @IsTest
-    static void theOverrideTemplateWinsOverAPutStrategy() {
+    static void testSupply_whenAnOverrideTemplateAndPutSetTheSameField_theOverrideWins() {
         // Arrange
         // nothing to arrange - the precedence is exercised entirely by the Provider config
 
@@ -47,7 +47,7 @@ private class XFTY_Ex_OverrideTemplatesTest {
     }
 
     @IsTest
-    static void removeFromMasterTemplateDropsAFieldsGenerationEntirely() {
+    static void testRemoveFromMasterTemplate_dropsAFieldsGenerationEntirely() {
         // Arrange
         // nothing to arrange
 

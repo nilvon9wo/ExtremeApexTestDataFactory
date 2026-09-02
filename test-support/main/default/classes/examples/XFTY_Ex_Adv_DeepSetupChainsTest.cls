@@ -24,7 +24,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
             .supplyList();
 
     @IsTest
-    static void aMockStaticFixtureIsBuiltFreshAndReusableAcrossASingleTest() {
+    static void testStaticFixture_isBuiltFreshAndReusableWithinOneTest() {
         // Arrange
         // nothing to arrange - MOCKED_ACCOUNTS is the static fixture, built for this method
 
@@ -43,7 +43,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
     }
 
     @IsTest
-    static void helpersBuildTheGraphAcrossStepsAndFlushInsertsItOnce() {
+    static void testFlush_afterHelpersBuildTheGraphAcrossSteps_insertsItOnce() {
         // Arrange - two helper steps, no DML in either
         XFTY_DummySObjectBundle seededAccounts;
         XFTY_DummySObjectBundle seededContacts;
@@ -68,7 +68,7 @@ private class XFTY_Ex_Adv_DeepSetupChainsTest {
     }
 
     @IsTest
-    static void aLaterStepReadsAnEarlierRecordsRealIdOffTheBundle() {
+    static void testFlush_aLaterStepReadsAnEarlierRecordsRealIdOffTheBundle() {
         // Arrange - seed and flush the Accounts so they have real Ids
         XFTY_DummySObjectBundle seededAccounts;
         Id firstSeededAccountId;

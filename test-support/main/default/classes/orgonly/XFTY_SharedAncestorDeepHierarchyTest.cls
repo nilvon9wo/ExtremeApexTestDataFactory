@@ -52,7 +52,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
     };
 
     @IsTest
-    static void twoDeepLeavesConvergeOnTheOneSharedRoot() {
+    static void testSupply_forTwoDeepLeaves_theirChainsConvergeOnTheOneSharedRoot() {
       grantRecordTypeVisibility();
       System.runAs(RUNNING_USER) {
         // Arrange - register Root + Level1..Level8 as shared ancestors, each carrying its own parent
@@ -93,7 +93,7 @@ private class XFTY_SharedAncestorDeepHierarchyTest {
     }
 
     @IsTest
-    static void aSecondRootCannotBeInserted() {
+    static void testSupply_afterTheSharedRootExists_aSecondRootCannotBeInserted() {
       grantRecordTypeVisibility();
       System.runAs(RUNNING_USER) {
         // Arrange
