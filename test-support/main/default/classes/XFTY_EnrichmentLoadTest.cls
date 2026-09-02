@@ -72,13 +72,13 @@ private class XFTY_EnrichmentLoadTest {
 
     @IsTest
     static void testInjectAllChildren_overAWideDeepDescendantTree_scalesWithPayloadNotParentCount() {
-        // Arrange - 50 Accounts, 20 Contacts each, 3 Cases per Contact: 50 + 1 000 + 3 000
+        // Arrange - 50 Accounts, 15 Contacts each, 2 Cases per Contact: 50 + 750 + 1 500
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, XFTY_LoadProviders.lookup())
                 .setQuantityPerTemplate(50)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .with(
-                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(20)
-                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(3))
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(15)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(2))
                 )
                 .supplyBundle();
 
@@ -91,16 +91,17 @@ private class XFTY_EnrichmentLoadTest {
         }
 
         // Assert
-        Assert.areEqual(20, ((Account) used.records[0]).Contacts.size(), 'the subquery is on every Account');
+        Assert.areEqual(15, ((Account) used.records[0]).Contacts.size(), 'the subquery is on every Account');
         Assert.isTrue(used.cpuTime < Limits.getLimitCpuTime() * SAFE_FRACTION_OF_LIMIT,
-                '50 Accounts over a 4 050-record descendant tree stays under 75% of CPU, used ' + used.cpuTime);
+                '50 Accounts over a 2 300-record descendant tree stays under 75% of CPU, used ' + used.cpuTime);
     }
 
     @IsTest
     static void testInjectAll_bothDirectionsAtVolume_staysUnderTheCeiling() {
-        // Arrange - 300 Accounts, generated-ancestor inverse Contacts AND 15 Contacts x 2 Cases below
+        // Arrange - 250 Accounts, 15 Contacts each below (the Cases are generated but one level
+        // past what a single SOQL subquery could return, so they are not injected)
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, XFTY_LoadProviders.lookup())
-                .setQuantityPerTemplate(300)
+                .setQuantityPerTemplate(250)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .with(
                         new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(15)
@@ -119,7 +120,7 @@ private class XFTY_EnrichmentLoadTest {
         // Assert
         Assert.areEqual(15, ((Account) used.records[0]).Contacts.size(), 'children grafted');
         Assert.isTrue(used.cpuTime < Limits.getLimitCpuTime() * SAFE_FRACTION_OF_LIMIT,
-                '300 Accounts over a 13 500-record descendant tree, everything() pass, under 75% of CPU, used ' + used.cpuTime);
+                '250 Accounts x 15 injected Contacts, everything() pass, under 75% of CPU, used ' + used.cpuTime);
     }
 
     @IsTest

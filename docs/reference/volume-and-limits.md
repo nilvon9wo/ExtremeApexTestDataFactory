@@ -67,6 +67,11 @@ guard; re-run it against your own org.
 | `NOW`, 12 **independent** shared ancestors, 10 children each | ≤ 24 DML statements, CPU well under budget — but see the note below |
 | `NOW`, a **10-level** all-shared chain, 5 leaves | 10 Account rows, ≤ 12 DML statements — the chain depth-batches, one `insert` per level |
 | `DEFERRED`, 2,000 primaries + parents (4,000 records), then `flush()` | `flush()` alone ≈ **5 s CPU — half the limit** |
+| **`injectAll`**, 1,000 primaries × 1 ancestor level | 0 DML; CPU well under budget — one serialize/deserialize per level, not per record |
+| **`injectAll`**, 200 primaries × a 5-deep ancestor chain (User at each level) | passes with headroom — 5 round-trips total regardless of the 200 |
+| **`injectAllChildren`**, 50 parents × 15 children each (750 injected) | passes with headroom |
+| **`injectAll` both directions**, 250 parents × 15 children | passes with headroom |
+| **`XFTY_SObjectInjector`**, 3,000 rows, one parent graft each | one serialize + one deserialize; CPU well under budget |
 
 **Practical ceilings for one transaction:**
 
@@ -97,6 +102,17 @@ many parent types at each level) adds records and CPU per primary. A graph that
 is 5 deep and 3 wide at each level is ~15 generated records per primary — so the
 row and CPU ceilings above divide by roughly that. `PREVENT_CASCADE` (one level)
 and tighter inclusivity are the levers.
+
+### Serialization enrichment
+
+[`inject` / `injectAll`](../use/enrichment.md) costs one `JSON.serialize` +
+`JSON.deserialize` **per graph level**, over the whole list at that level — not
+per record. So a wide-but-shallow graph is cheap regardless of width; cost climbs
+with **depth** (`parentDepth`) and with the **total payload size** (records ×
+fields serialized). It does no DML. `injectAll` recurses every level the config
+allows; a tight `inject(field, config)` that names only the paths it needs pays
+for only those. The `XFTY_Load` suite (`XFTY_EnrichmentLoadTest`) exercises the
+shapes in the table above.
 
 ---
 
