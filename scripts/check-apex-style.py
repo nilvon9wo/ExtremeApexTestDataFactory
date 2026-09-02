@@ -46,7 +46,7 @@ SOBJECTS = (
 # as identifiers. Kept to the ones a person might reach for as a variable or
 # method name; `class`, `return`, `new`, … are not worth listing.
 RESERVED_WORDS = (
-    "not inner outer like asc desc having hint join sort when"
+    "not inner outer like asc desc having hint join sort when from limit group where"
 ).split()
 
 failures = []

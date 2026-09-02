@@ -67,13 +67,13 @@ public class XFTY_BundleEnricher {
     private class WorkingList {
         private final List<SObject> records;
         private final XFTY_DummySObjectBundle subBundle;
-        private final SObjectType type;
+        private final SObjectType workingType;
         private final Boolean isGeneratedAncestor;
 
         private WorkingList(List<SObject> records, XFTY_DummySObjectBundle subBundle, Boolean isGeneratedAncestor) {
             this.records = records;
             this.subBundle = subBundle;
-            this.type = (records == null || records.isEmpty()) ? null : records[0].getSObjectType();
+            this.workingType = (records == null || records.isEmpty()) ? null : records[0].getSObjectType();
             this.isGeneratedAncestor = isGeneratedAncestor;
         }
     }
@@ -147,13 +147,13 @@ public class XFTY_BundleEnricher {
         }
         for (SObjectField childField : XFTY_EnrichmentPaths.childFields(this.working.subBundle, this.config)) {
             injector.childRelationship(
-                    XFTY_InjectionPathResolver.childRelationshipName(this.working.type, childField),
+                    XFTY_InjectionPathResolver.childRelationshipName(this.working.workingType, childField),
                     this.downwardChildrenPerRow(childField)
             );
         }
         if (this.working.isGeneratedAncestor && this.config.fromAllChildren) {
             injector.childRelationship(
-                    XFTY_InjectionPathResolver.childRelationshipName(this.working.type, this.field),
+                    XFTY_InjectionPathResolver.childRelationshipName(this.working.workingType, this.field),
                     this.inverseChildrenPerRow()
             );
         }
@@ -201,8 +201,8 @@ public class XFTY_BundleEnricher {
                 : value;
     }
 
-    private static List<SObject> listAt(XFTY_DummySObjectBundle from, List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = from;
+    private static List<SObject> listAt(XFTY_DummySObjectBundle source, List<SObjectField> path) {
+        XFTY_DummySObjectBundle bundle = source;
         for (Integer hop = 0; hop < path.size() - 1; hop++) {
             bundle = (bundle == null)
                     ? null
@@ -213,8 +213,8 @@ public class XFTY_BundleEnricher {
                 : bundle.getList(path[path.size() - 1]);
     }
 
-    private static XFTY_DummySObjectBundle bundleAt(XFTY_DummySObjectBundle from, List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = from;
+    private static XFTY_DummySObjectBundle bundleAt(XFTY_DummySObjectBundle source, List<SObjectField> path) {
+        XFTY_DummySObjectBundle bundle = source;
         for (SObjectField hop : path) {
             bundle = (bundle == null)
                     ? null

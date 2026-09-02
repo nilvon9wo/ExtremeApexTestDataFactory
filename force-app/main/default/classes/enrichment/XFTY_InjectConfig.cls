@@ -34,29 +34,6 @@ public class XFTY_InjectConfig {
     public final Map<SObjectField, Object> onRecordValues = new Map<SObjectField, Object>();
     public final List<AncestorValue> ancestorValues = new List<AncestorValue>();
 
-    /** A forced scalar on a record several relationship hops up. `path` is the hops then the target field. */
-    public class AncestorValue {
-        public final List<SObjectField> path;
-        public final Object value;
-
-        public AncestorValue(List<SObjectField> path, Object value) {
-            this.path = path;
-            this.value = value;
-        }
-
-        public List<SObjectField> relationshipPrefix() {
-            List<SObjectField> prefix = new List<SObjectField>();
-            for (Integer i = 0; i < this.path.size() - 1; i++) {
-                prefix.add(this.path[i]);
-            }
-            return prefix;
-        }
-
-        public SObjectField targetField() {
-            return this.path[this.path.size() - 1];
-        }
-    }
-
     public Integer parentDepthLimit = SOQL_PARENT_HOPS;
     public Integer childDepthLimit = SOQL_CHILD_DEPTH;
     public Boolean soqlLimitsLifted = false;
@@ -118,13 +95,13 @@ public class XFTY_InjectConfig {
         return this;
     }
 
-    public XFTY_InjectConfig parentDepth(Integer limit) {
-        this.parentDepthLimit = limit;
+    public XFTY_InjectConfig parentDepth(Integer hops) {
+        this.parentDepthLimit = hops;
         return this;
     }
 
-    public XFTY_InjectConfig childDepth(Integer limit) {
-        this.childDepthLimit = limit;
+    public XFTY_InjectConfig childDepth(Integer hops) {
+        this.childDepthLimit = hops;
         return this;
     }
 
@@ -132,5 +109,28 @@ public class XFTY_InjectConfig {
     public XFTY_InjectConfig breakSoqlLimits() {
         this.soqlLimitsLifted = true;
         return this;
+    }
+
+    /** A forced scalar on a record several relationship hops up. `path` is the hops then the target field. */
+    public class AncestorValue {
+        public final List<SObjectField> path;
+        public final Object value;
+
+        public AncestorValue(List<SObjectField> path, Object value) {
+            this.path = path;
+            this.value = value;
+        }
+
+        public List<SObjectField> relationshipPrefix() {
+            List<SObjectField> prefix = new List<SObjectField>();
+            for (Integer i = 0; i < this.path.size() - 1; i++) {
+                prefix.add(this.path[i]);
+            }
+            return prefix;
+        }
+
+        public SObjectField targetField() {
+            return this.path[this.path.size() - 1];
+        }
     }
 }

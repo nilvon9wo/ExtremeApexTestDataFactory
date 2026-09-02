@@ -16,9 +16,9 @@
 @IsTest
 public class XFTY_AncestorPathWalker {
 
-    public static Object read(XFTY_DummySObjectBundle from, List<SObjectField> path, Integer rowIndex) {
+    public static Object read(XFTY_DummySObjectBundle source, List<SObjectField> path, Integer rowIndex) {
         rejectMalformed(path);
-        XFTY_DummySObjectBundle owningBundle = descend(from, path);
+        XFTY_DummySObjectBundle owningBundle = descend(source, path);
         Boolean cannotRead = owningBundle == null
                 || rowIndex == null
                 || rowIndex < 0;
@@ -28,8 +28,8 @@ public class XFTY_AncestorPathWalker {
         return valueAt(owningBundle, path, rowIndex);
     }
 
-    private static XFTY_DummySObjectBundle descend(XFTY_DummySObjectBundle from, List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = from;
+    private static XFTY_DummySObjectBundle descend(XFTY_DummySObjectBundle source, List<SObjectField> path) {
+        XFTY_DummySObjectBundle bundle = source;
         for (Integer hop = 0; hop < path.size() - 2; hop++) {
             bundle = (bundle == null)
                     ? null
