@@ -9,6 +9,7 @@
 @IsTest
 private class XFTY_VariantResolutionTest {
 
+    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
     private static final XFTY_FlavouredLookupKey BIG =
             (XFTY_FlavouredLookupKey) XFTY_FlavouredLookupKey.get(Account.SObjectType, 'big')
                     .matching(XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 1000));
@@ -52,13 +53,20 @@ private class XFTY_VariantResolutionTest {
         XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
 
         // Act
-        try {
-            XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account(NumberOfEmployees = 2));
-            Assert.fail('Expected a contradiction exception');
-        } catch (XFTY_ProviderLookups.LookupException ex) {
-            // Assert
-            Assert.isTrue(ex.getMessage().contains('contradicts'), ex.getMessage());
+        XFTY_ProviderLookups.LookupException thrown;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            try {
+                XFTY_ProviderLookups.reconcile(providerLookup, BIG, new Account(NumberOfEmployees = 2));
+            } catch (XFTY_ProviderLookups.LookupException ex) {
+                thrown = ex;
+            }
+            Test.stopTest();
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a template matching a different variant must be rejected');
+        Assert.isTrue(thrown.getMessage().contains('contradicts'), thrown.getMessage());
     }
 
     // End to end through XFTY_DummySObjectProvider ---------------------------
@@ -72,13 +80,20 @@ private class XFTY_VariantResolutionTest {
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
         // Act
-        try {
-            provider.supply();
-            Assert.fail('Expected a contradiction exception');
-        } catch (XFTY_ProviderLookups.LookupException ex) {
-            // Assert
-            Assert.isTrue(ex.getMessage().contains('contradicts'), ex.getMessage());
+        XFTY_ProviderLookups.LookupException thrown;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            try {
+                provider.supply();
+            } catch (XFTY_ProviderLookups.LookupException ex) {
+                thrown = ex;
+            }
+            Test.stopTest();
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'withVariant contradicting the template must throw');
+        Assert.isTrue(thrown.getMessage().contains('contradicts'), thrown.getMessage());
     }
 
     @IsTest
@@ -90,7 +105,12 @@ private class XFTY_VariantResolutionTest {
                 .setInsertMode(XFTY_InsertModeEnum.MOCK);
 
         // Act
-        Account result = (Account) provider.supply();
+        Account result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = (Account) provider.supply();
+            Test.stopTest();
+        }
 
         // Assert
         Assert.areEqual(5000, result.NumberOfEmployees);
@@ -103,7 +123,12 @@ private class XFTY_VariantResolutionTest {
         XFTY_DummySObjectProviderLookupIntf providerLookup = lookup();
 
         // Act
-        XFTY_LookupKeyIntf resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
+        XFTY_LookupKeyIntf resolved;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            resolved = XFTY_ProviderLookups.reconcile(providerLookup, explicitKey, template);
+            Test.stopTest();
+        }
 
         // Assert
         Assert.areEqual(expectedHash, resolved?.getHashKey());

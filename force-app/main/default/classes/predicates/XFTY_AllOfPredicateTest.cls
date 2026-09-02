@@ -6,24 +6,16 @@
 @IsTest
 private class XFTY_AllOfPredicateTest {
 
+    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+
     @IsTest
     static void testIsSatisfiedBy_whenEveryMemberIsSatisfied_returnsTrue() {
-        testIsSatisfiedBy(
-                new List<XFTY_SObjectPredicateIntf>{
-                        XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100),
-                        XFTY_FieldPredicate.equalTo(Account.Industry, 'Technology')
-                },
-                new Account(NumberOfEmployees = 900, Industry = 'Technology'), true);
+        testIsSatisfiedBy(bigTechPredicates(), new Account(NumberOfEmployees = 900, Industry = 'Technology'), true);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenOneMemberIsNotSatisfied_returnsFalse() {
-        testIsSatisfiedBy(
-                new List<XFTY_SObjectPredicateIntf>{
-                        XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100),
-                        XFTY_FieldPredicate.equalTo(Account.Industry, 'Technology')
-                },
-                new Account(NumberOfEmployees = 900, Industry = 'Retail'), false);
+        testIsSatisfiedBy(bigTechPredicates(), new Account(NumberOfEmployees = 900, Industry = 'Retail'), false);
     }
 
     @IsTest
@@ -37,13 +29,27 @@ private class XFTY_AllOfPredicateTest {
         // nothing to arrange
 
         // Act
-        try {
-            XFTY_AllOfPredicate.of(null);
-            Assert.fail('Expected an exception');
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            // Assert
-            Assert.isTrue(ex.getMessage().contains('predicate list is required'), ex.getMessage());
+        XFTY_DummySObjectFtyProviderException thrown;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            try {
+                XFTY_AllOfPredicate.of(null);
+            } catch (XFTY_DummySObjectFtyProviderException ex) {
+                thrown = ex;
+            }
+            Test.stopTest();
         }
+
+        // Assert
+        Assert.isNotNull(thrown, 'a null member list must be rejected');
+        Assert.isTrue(thrown.getMessage().contains('predicate list is required'), thrown.getMessage());
+    }
+
+    private static List<XFTY_SObjectPredicateIntf> bigTechPredicates() {
+        return new List<XFTY_SObjectPredicateIntf>{
+                XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 100),
+                XFTY_FieldPredicate.equalTo(Account.Industry, 'Technology')
+        };
     }
 
     static void testIsSatisfiedBy(List<XFTY_SObjectPredicateIntf> members, SObject record, Boolean expectedResult) {
@@ -51,7 +57,12 @@ private class XFTY_AllOfPredicateTest {
         XFTY_SObjectPredicateIntf predicate = XFTY_AllOfPredicate.of(members);
 
         // Act
-        Boolean actualResult = predicate.isSatisfiedBy(record);
+        Boolean actualResult;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            actualResult = predicate.isSatisfiedBy(record);
+            Test.stopTest();
+        }
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

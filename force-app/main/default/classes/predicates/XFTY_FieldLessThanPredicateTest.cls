@@ -7,44 +7,44 @@
 @IsTest
 private class XFTY_FieldLessThanPredicateTest {
 
+    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldIsBelowTheValue_returnsTrue() {
-        testIsSatisfiedBy(100, 5, true);
+        testIsSatisfiedBy(100, new Account(NumberOfEmployees = 5), true);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldEqualsTheValue_returnsFalse() {
-        testIsSatisfiedBy(100, 100, false);
+        testIsSatisfiedBy(100, new Account(NumberOfEmployees = 100), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldExceedsTheValue_returnsFalse() {
-        testIsSatisfiedBy(100, 900, false);
+        testIsSatisfiedBy(100, new Account(NumberOfEmployees = 900), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldValueIsNull_returnsFalse() {
-        testIsSatisfiedBy(1, null, false);
+        testIsSatisfiedBy(1, new Account(), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheRecordIsNull_returnsFalse() {
-        // Arrange
-        XFTY_SObjectPredicateIntf predicate = XFTY_FieldLessThanPredicate.of(Account.NumberOfEmployees, 1);
-
-        // Act
-        Boolean actualResult = predicate.isSatisfiedBy(null);
-
-        // Assert
-        Assert.isFalse(actualResult);
+        testIsSatisfiedBy(1, null, false);
     }
 
-    static void testIsSatisfiedBy(Object threshold, Integer fieldValue, Boolean expectedResult) {
+    static void testIsSatisfiedBy(Object threshold, SObject record, Boolean expectedResult) {
         // Arrange
         XFTY_SObjectPredicateIntf predicate = XFTY_FieldLessThanPredicate.of(Account.NumberOfEmployees, threshold);
 
         // Act
-        Boolean actualResult = predicate.isSatisfiedBy(new Account(NumberOfEmployees = fieldValue));
+        Boolean actualResult;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            actualResult = predicate.isSatisfiedBy(record);
+            Test.stopTest();
+        }
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);

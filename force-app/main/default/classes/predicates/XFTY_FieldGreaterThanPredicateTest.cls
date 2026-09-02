@@ -7,49 +7,49 @@
 @IsTest
 private class XFTY_FieldGreaterThanPredicateTest {
 
+    private static final User TEST_ADMIN = XFTY_DefaultUserDataProvider.TEST_ADMIN_USER;
+
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldExceedsTheValue_returnsTrue() {
-        testIsSatisfiedBy(100, 900, true);
+        testIsSatisfiedBy(100, new Account(NumberOfEmployees = 900), true);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldEqualsTheValue_returnsFalse() {
-        testIsSatisfiedBy(900, 900, false);
+        testIsSatisfiedBy(900, new Account(NumberOfEmployees = 900), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldIsBelowTheValue_returnsFalse() {
-        testIsSatisfiedBy(900, 5, false);
+        testIsSatisfiedBy(900, new Account(NumberOfEmployees = 5), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheFieldValueIsNull_returnsFalse() {
-        testIsSatisfiedBy(1, null, false);
+        testIsSatisfiedBy(1, new Account(), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheComparisonValueIsNull_returnsFalse() {
-        testIsSatisfiedBy(null, 5, false);
+        testIsSatisfiedBy(null, new Account(NumberOfEmployees = 5), false);
     }
 
     @IsTest
     static void testIsSatisfiedBy_whenTheRecordIsNull_returnsFalse() {
-        // Arrange
-        XFTY_SObjectPredicateIntf predicate = XFTY_FieldGreaterThanPredicate.of(Account.NumberOfEmployees, 1);
-
-        // Act
-        Boolean actualResult = predicate.isSatisfiedBy(null);
-
-        // Assert
-        Assert.isFalse(actualResult);
+        testIsSatisfiedBy(1, null, false);
     }
 
-    static void testIsSatisfiedBy(Object threshold, Integer fieldValue, Boolean expectedResult) {
+    static void testIsSatisfiedBy(Object threshold, SObject record, Boolean expectedResult) {
         // Arrange
         XFTY_SObjectPredicateIntf predicate = XFTY_FieldGreaterThanPredicate.of(Account.NumberOfEmployees, threshold);
 
         // Act
-        Boolean actualResult = predicate.isSatisfiedBy(new Account(NumberOfEmployees = fieldValue));
+        Boolean actualResult;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            actualResult = predicate.isSatisfiedBy(record);
+            Test.stopTest();
+        }
 
         // Assert
         Assert.areEqual(expectedResult, actualResult);
