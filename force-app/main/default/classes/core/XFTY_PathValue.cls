@@ -5,7 +5,8 @@
  *
  * `path` is `[rel1, rel2, ..., targetField]`: every element but the last is a
  * relationship that is forced generated (same as `includeOptional`), and the
- * last is the field the value lands on.
+ * last is the field the value lands on. The value half is an
+ * `XFTY_PathTargetValue`.
  *
  * Immutable. Threaded through `XFTY_GenerationContext`; `tail()` drops the head
  * as the engine recurses one relationship down.
@@ -13,51 +14,38 @@
 @IsTest
 public class XFTY_PathValue {
 
-    public enum Kind { VALUE_EXPRESSION, CONTEXT_AWARE, LITERAL, REQUIRED_RELATIONSHIP, OPTIONAL_RELATIONSHIP }
-
     public final List<SObjectField> path;
-    public final Kind pathKind;
-    private final XFTY_ValueExpressionIntf valueExpression;
-    private final XFTY_ContextAwareExpressionIntf contextAwareExpression;
-    private final Object literal;
-    private final XFTY_DummyDefaultRelationshipIntf relationship;
+    public final XFTY_PathTargetValue value;
 
-    private XFTY_PathValue(
-            List<SObjectField> path,
-            Kind pathKind,
-            XFTY_ValueExpressionIntf valueExpression,
-            XFTY_ContextAwareExpressionIntf contextAwareExpression,
-            Object literal,
-            XFTY_DummyDefaultRelationshipIntf relationship
-    ) {
+    private XFTY_PathValue(List<SObjectField> path, XFTY_PathTargetValue value) {
         assertPath(path);
         this.path = path;
-        this.pathKind = pathKind;
-        this.valueExpression = valueExpression;
-        this.contextAwareExpression = contextAwareExpression;
-        this.literal = literal;
-        this.relationship = relationship;
+        this.value = value;
     }
 
     public static XFTY_PathValue ofExpression(List<SObjectField> path, XFTY_ValueExpressionIntf expression) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.VALUE_EXPRESSION, expression, null, null, null);
+        return new XFTY_PathValue(path, XFTY_PathTargetValue.ofExpression(expression));
     }
+
     public static XFTY_PathValue ofContextAware(List<SObjectField> path, XFTY_ContextAwareExpressionIntf contextAware) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.CONTEXT_AWARE, null, contextAware, null, null);
+        return new XFTY_PathValue(path, XFTY_PathTargetValue.ofContextAware(contextAware));
     }
+
     public static XFTY_PathValue ofLiteral(List<SObjectField> path, Object literal) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.LITERAL, null, null, literal, null);
+        return new XFTY_PathValue(path, XFTY_PathTargetValue.ofLiteral(literal));
     }
+
     public static XFTY_PathValue ofRequiredRelationship(List<SObjectField> path, XFTY_DummyDefaultRelationshipIntf rel) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.REQUIRED_RELATIONSHIP, null, null, null, rel);
+        return new XFTY_PathValue(path, XFTY_PathTargetValue.ofRequiredRelationship(rel));
     }
+
     public static XFTY_PathValue ofOptionalRelationship(List<SObjectField> path, XFTY_DummyDefaultRelationshipIntf rel) {
         assertUsablePath(path);
-        return new XFTY_PathValue(path, Kind.OPTIONAL_RELATIONSHIP, null, null, null, rel);
+        return new XFTY_PathValue(path, XFTY_PathTargetValue.ofOptionalRelationship(rel));
     }
 
     /** The path of relationship fields that must be forced generated to reach the target (path minus the target). */
@@ -80,12 +68,12 @@ public class XFTY_PathValue {
 
     /** True when the value is itself a relationship (`putRequired`/`putOptional` path form). */
     public Boolean isRelationshipKind() {
-        return this.pathKind == Kind.REQUIRED_RELATIONSHIP || this.pathKind == Kind.OPTIONAL_RELATIONSHIP;
+        return this.value.isRelationship();
     }
 
     /** True when the value is a shared ancestor (`putRequired(path, XFTY_SharedAncestor.get(name))`). */
     public Boolean isSharedRelationshipValue() {
-        return this.relationship instanceof XFTY_SharedRelationshipIntf;
+        return this.value.isSharedRelationship();
     }
 
     /** The same value, one relationship deeper (head dropped). Only valid when `!isAtTarget()`. */
@@ -94,30 +82,12 @@ public class XFTY_PathValue {
         for (Integer i = 1; i < this.path.size(); i++) {
             rest.add(this.path[i]);
         }
-        return new XFTY_PathValue(rest, this.pathKind, this.valueExpression, this.contextAwareExpression, this.literal, this.relationship);
+        return new XFTY_PathValue(rest, this.value);
     }
 
     /** Land the value on `template` (call only when `isAtTarget()`). */
     public void applyTo(XFTY_DummySObjectMasterTemplate template) {
-        SObjectField targetField = this.path[0];
-        template.remove(targetField);
-        switch on this.pathKind {
-            when VALUE_EXPRESSION {
-                template.put(targetField, this.valueExpression);
-            }
-            when CONTEXT_AWARE {
-                template.put(targetField, this.contextAwareExpression);
-            }
-            when LITERAL {
-                template.put(targetField, this.literal);
-            }
-            when REQUIRED_RELATIONSHIP {
-                template.putRequired(targetField, this.relationship);
-            }
-            when OPTIONAL_RELATIONSHIP {
-                template.putOptional(targetField, this.relationship);
-            }
-        }
+        this.value.applyTo(template, this.path[0]);
     }
 
     private static void assertPath(List<SObjectField> path) {

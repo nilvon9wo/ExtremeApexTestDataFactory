@@ -15,6 +15,7 @@
     <testClassName>XFTY_DummyDefaultRelationshipTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderChildGenTest</testClassName>
     <testClassName>XFTY_PathValueTest</testClassName>
+    <testClassName>XFTY_PathTargetValueTest</testClassName>
     <testClassName>XFTY_DummySObjectBundleTest</testClassName>
     <testClassName>XFTY_BundleMergerTest</testClassName>
     <testClassName>XFTY_AncestorPathWalkerTest</testClassName>
