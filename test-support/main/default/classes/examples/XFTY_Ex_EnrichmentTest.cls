@@ -106,13 +106,14 @@ private class XFTY_Ex_EnrichmentTest {
     }
 
     @IsTest
-    static void testInject_withExcludeParent_leavesThatAncestorOffTheRecord() {
+    static void testInject_withACappedBreadthAndAnExcludedParent_honoursBoth() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .supplyBundle();
         XFTY_InjectConfig config = XFTY_InjectConfig.everything()
+                .parentDepth(2)
                 .excludeParent(new List<SObjectField>{ Contact.AccountId });
 
         // Act
@@ -121,7 +122,24 @@ private class XFTY_Ex_EnrichmentTest {
         Test.stopTest();
 
         // Assert
-        Assert.isNull(((Contact) enriched.getList(Contact.Id)[0]).Account);
+        Assert.isNull(((Contact) enriched.getList(Contact.Id)[0]).Account, 'the excluded ancestor is not grafted');
+    }
+
+    @IsTest
+    static void testInject_withABreadthStart_configuresWhatInjectAllParentsWouldDo() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, XFTY_InjectConfig.allParents().parentDepth(2));
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(((Contact) enriched.getList(Contact.Id)[0]).Account, 'the ancestor within depth 2 is grafted');
     }
 
     @IsTest

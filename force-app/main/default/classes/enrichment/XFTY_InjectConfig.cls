@@ -11,9 +11,11 @@
  *   (formula / roll-up / system / read-only);
  * - `injectValue(path, value)` - a scalar on a record several hops up, where
  *   `path` is the relationship hops then the target field;
- * - `parentDepth(n)` / `childDepth(n)` - cap the climb (default: the SOQL
- *   limit);
- * - `breakSoqlLimits()` - lift the ceiling on the depths and the path lengths.
+ * - `parentDepth(n)` - cap the ancestor climb (default: 5, the SOQL limit);
+ * - `childDepth(n)` - reserved; only 1 is supported (a subquery cannot nest),
+ *   `n > 1` throws;
+ * - `breakSoqlLimits()` - lift the ceiling on `parentDepth` and the `injectParent`
+ *   path lengths.
  *
  * A plain state carrier - the enricher reads the fields, nothing here acts.
  * `injectAll(field)` on the bundle is `inject(field, everything())`.
@@ -100,6 +102,7 @@ public class XFTY_InjectConfig {
         return this;
     }
 
+    /** Reserved. Only `1` is honoured - a SOQL subquery cannot nest; `hops > 1` throws at `inject`. */
     public XFTY_InjectConfig childDepth(Integer hops) {
         this.childDepthLimit = hops;
         return this;

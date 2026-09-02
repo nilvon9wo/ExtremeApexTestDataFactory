@@ -66,7 +66,7 @@ One line per public entry point. Follow the links for detail.
 | `.injectParent(path)` / `.injectChild(path)` | add a path and every hop along it |
 | `.excludeParent(path)` / `.excludeChild(path)` | prune a subtree from a breadth start |
 | `.injectValue(field, value)` / `.injectValue(path, value)` | force a scalar on the record / on a record `path` reaches |
-| `.parentDepth(n)` / `.childDepth(n)` / `.breakSoqlLimits()` | cap the climb (default: SOQL limit) · lift the ceiling |
+| `.parentDepth(n)` / `.breakSoqlLimits()` | cap the ancestor climb (default 5) · lift the ceiling. Child injection is one level only (`childDepth(n>1)` throws) |
 | `XFTY_SObjectInjector.inject(records).relationship(name, parents).childRelationship(name, perRow).value(field, v).valuePerRow(field, vs).result()` | the JSON round-trip, standalone — one serialize + one deserialize |
 
 `MOCK`-only (see [unit-vs-integration](../use/advanced/unit-vs-integration.md) point 4). Detail: [enrichment](../use/enrichment.md).
