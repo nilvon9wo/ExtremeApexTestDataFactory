@@ -54,6 +54,24 @@ def all_cls():
                     yield os.path.join(dp, f)
 
 
+def split_params(param_text: str):
+    """Split a parameter list on top-level commas only - commas inside the angle
+    brackets of a generic type (`Map<Id, Account>`) do not separate parameters."""
+    parts, depth, current = [], 0, ""
+    for ch in param_text:
+        if ch in "<(":
+            depth += 1
+        elif ch in ">)":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            parts.append(current)
+            current = ""
+        else:
+            current += ch
+    parts.append(current)
+    return [p for p in parts if p.strip()]
+
+
 def strip_block_comments(src: str) -> str:
     src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
     src = re.sub(r"//[^\n]*", "", src)
@@ -114,7 +132,7 @@ def check_changed(paths):
             r"\b(?:static|public|private|protected|global)\b[^;{}=]*?\b(\w+)\s*\(([^)]*)\)\s*\{",
             src,
         ):
-            params = [p for p in m.group(2).split(",") if p.strip()]
+            params = split_params(m.group(2))
             if len(params) > MAX_PARAMS:
                 line = src[: m.start()].count("\n") + 1
                 fail(path, f"line {line}: {m.group(1)}(...) has {len(params)} parameters (max {MAX_PARAMS})")

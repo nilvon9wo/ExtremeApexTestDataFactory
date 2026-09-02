@@ -21,3 +21,7 @@ node_modules/
 
 # Nimbus local Apex runtime — generated
 .nimbus/
+
+# Python
+__pycache__/
+*.pyc
