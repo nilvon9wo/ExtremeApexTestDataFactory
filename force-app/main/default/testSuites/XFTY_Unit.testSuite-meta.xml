@@ -19,6 +19,7 @@
     <testClassName>XFTY_BundleMergerTest</testClassName>
     <testClassName>XFTY_AncestorPathWalkerTest</testClassName>
     <testClassName>XFTY_DeferredValueQueueTest</testClassName>
+    <testClassName>XFTY_SObjectInjectorTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>
