@@ -27,4 +27,5 @@
     <testClassName>XFTY_MultiVariantProviderTest</testClassName>
     <testClassName>XFTY_RecordTypeDataProviderTest</testClassName>
     <testClassName>XFTY_RecordTypeMatchingTest</testClassName>
+    <testClassName>XFTY_VariantResolutionTest</testClassName>
 </ApexTestSuite>

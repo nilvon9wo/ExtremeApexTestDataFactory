@@ -23,12 +23,63 @@ predicates are *not* part of its identity); add its predicates with
 
 ---
 
+## Predicates on a flavoured key
+
+`.matching(...)` takes any `XFTY_SObjectPredicateIntf` — a one-method interface
+(`Boolean isSatisfiedBy(SObject)`). Repeated `.matching(...)` calls are an
+**AND**.
+
+**Ready-made single-field conditions** — `XFTY_FieldPredicate`:
+
+| Factory | Matches when |
+|---------|-------------|
+| `equalTo(field, value)` / `notEqualTo(field, value)` | `field` == / != `value` (null-aware) |
+| `greaterThan(field, value)` / `lessThan(field, value)` | numeric, `Date`/`Datetime`, else lexicographic; false if either side is null |
+| `isNull(field)` / `isNotNull(field)` | `field` is / is not null |
+| `inSet(field, Set<Object>)` | `field` is one of the set (null set → matches nothing) |
+
+(`XFTY_FieldPredicate` is a thin facade over `XFTY_FieldComparisonPredicate` and
+`XFTY_FieldInSetPredicate`, which you can use directly.)
+
+**AND / OR / NOT** — `XFTY_Predicates`, for anything beyond the implicit AND:
+
+```apex
+XFTY_FlavouredLookupKey.get(Account.SObjectType, 'strategic')
+        .matching(XFTY_Predicates.anyOf(new List<XFTY_SObjectPredicateIntf>{
+                XFTY_FieldPredicate.greaterThan(Account.AnnualRevenue, 1000000),
+                XFTY_FieldPredicate.greaterThan(Account.NumberOfEmployees, 5000)
+        }))
+        .matching(XFTY_Predicates.not(XFTY_FieldPredicate.equalTo(Account.Type, 'Prospect')));
+```
+
+`allOf(list)` / `anyOf(list)` / `not(one)` return an `XFTY_SObjectPredicateIntf`,
+so they nest. An empty `allOf` is vacuously true; an empty `anyOf` is never
+satisfied.
+
+**Your own predicate** — when the ready-made ones do not express the condition,
+implement the interface. No base class, no registration:
+
+<!-- sketch -->
+```apex
+public class CreatedThisFiscalYearPredicate implements XFTY_SObjectPredicateIntf {
+    public Boolean isSatisfiedBy(SObject record) {
+        Date created = (Date) record?.get('CreatedDate');
+        return created != null && created >= Date.today().toStartOfMonth().addMonths(-11);
+    }
+}
+```
+
+▶ Runnable: `XFTY_FieldPredicateTest`
+
+---
+
 ## Define keys in one place
 
 A flavoured key is referenced from the Provider Lookup map *and* from every
 relationship that pins that variant, so define each in a shared `*LookupKeys`
 constants class:
 
+<!-- sketch -->
 ```apex
 @IsTest
 public class MyProjectLookupKeys {
@@ -40,6 +91,7 @@ public class MyProjectLookupKeys {
 }
 ```
 
+<!-- sketch -->
 ```apex
 private static final Map<XFTY_LookupKeyIntf, Type> PROVIDERS = new Map<XFTY_LookupKeyIntf, Type>{
     XFTY_LookupKey.get(Account.SObjectType) => BusinessAccountProvider.class,
@@ -64,9 +116,41 @@ private static final Map<XFTY_LookupKeyIntf, Type> PROVIDERS = new Map<XFTY_Look
   key is the fallback. Two equally-specific matches is an error — supply an
   explicit key. `XFTY_RecordTypeLookupKey` matches the template's `RecordTypeId`
   from the describe (no SOQL). The derived key is memoised on the relationship.
+- **An explicit key *and* an override template that disagree:** if the template
+  independently matches a *different* refined variant (e.g. `withVariant(PERSON_ACCOUNT)`
+  with a business-record-type template), that is a contradiction and throws
+  rather than silently letting the explicit key win. A template that carries no
+  discriminator is fine — the explicit key stands.
 
 Each top-level Provider still owns one Master Template, so one generation call
 produces one variant. Provider-specific `createBundle` logic that inspects the
 override template is no longer needed for record types.
+
+---
+
+## Your own lookup key
+
+`XFTY_LookupKeyIntf` is four methods — implement it directly when a variant is
+chosen by something the shipped keys don't model (a multi-field rule, a namespace
+prefix, whatever). `isInstanceOf(SObject)` is what template-derived resolution
+calls; `getSpecificity()` decides who wins when several keys match (return more
+than `20` to outrank a flavoured key). Register the instance in the Provider map
+like any other key.
+
+<!-- sketch -->
+```apex
+public class WholesaleAccountKey implements XFTY_LookupKeyIntf {
+    public SObjectType getSObjectType()    { return Account.SObjectType; }
+    public Boolean isInstanceOf(SObject r) {
+        return r?.getSObjectType() == Account.SObjectType
+                && r.get('Segment__c') == 'Wholesale'
+                && r.get('AnnualRevenue') != null;
+    }
+    public String getHashKey()             { return 'Account::wholesale'; }
+    public Integer getSpecificity()        { return 30; }
+}
+```
+
+---
 
 Design record: [../roadmap/multi-variant-providers.md](../roadmap/multi-variant-providers.md).

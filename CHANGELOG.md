@@ -4,6 +4,26 @@ All notable changes to XFTY are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); XFTY aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Predicate combinators** — `XFTY_Predicates.allOf(list)` / `anyOf(list)` /
+  `not(one)` build AND / OR / NOT trees of `XFTY_SObjectPredicateIntf` for a
+  flavoured lookup key, beyond the implicit AND of repeated `.matching(...)`.
+
+### Changed
+
+- **Predicate internals split out.** `XFTY_FieldPredicate` is now a thin facade;
+  the comparison and set-membership logic moved to the top-level, directly
+  usable `XFTY_FieldComparisonPredicate` and `XFTY_FieldInSetPredicate`. The
+  facade's method names are unchanged (`equalTo` / `greaterThan` / `inSet` / …).
+- **Explicit variant vs. override template are now reconciled.** Supplying both
+  `withVariant(key)` (or a relationship's explicit key) *and* an override
+  template that independently matches a *different* refined variant now throws
+  `XFTY_ProviderLookups.LookupException` instead of silently letting the explicit
+  key win. A template with no discriminator is unaffected.
+
 ## [4.0.0-beta.1] – 2026-09-01
 
 The first public beta of XFTY 4.0. Feature-complete on the `4.0-beta` branch;

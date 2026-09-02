@@ -95,8 +95,11 @@ One line per public entry point. Follow the links for detail.
 
 | `XFTY_LookupKey.get(SObjectType)` | plain type key |
 | `XFTY_RecordTypeLookupKey.get(SObjectType, developerName)` | + record type |
-| `XFTY_FlavouredLookupKey.get(SObjectType, [rt,] flavour).matching(predicate)` | + arbitrary conditions |
-| `XFTY_FieldPredicate.equals/notEquals/greaterThan/lessThan/isIn/…(field, value)` | conditions for a flavoured key |
+| `XFTY_FlavouredLookupKey.get(SObjectType, [rt,] flavour).matching(predicate)` | + arbitrary conditions (repeat `.matching(...)` = AND) |
+| `XFTY_FieldPredicate.equalTo/notEqualTo/greaterThan/lessThan/isNull/isNotNull/inSet(field, value)` | ready-made single-field conditions |
+| `XFTY_Predicates.allOf(list)/anyOf(list)/not(one)` | AND / OR / NOT over `XFTY_SObjectPredicateIntf` |
+| implement `XFTY_SObjectPredicateIntf` (`isSatisfiedBy(SObject)`) | any condition the ready-made ones do not express |
+| implement `XFTY_LookupKeyIntf` | a variant discriminator of your own (`getSObjectType` · `isInstanceOf` · `getHashKey` · `getSpecificity`) |
 
 ## Provider extension points
 

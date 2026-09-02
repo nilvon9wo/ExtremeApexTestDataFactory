@@ -51,6 +51,10 @@ XFTY matches the template's `RecordTypeId` against the registered record-type
 keys (resolved from the describe, no SOQL) and selects the matching Provider
 automatically.
 
+Don't combine the two: `withVariant(key)` *and* an override template that carries
+a conflicting record type (or otherwise matches a different registered variant)
+throws. Pick one.
+
 ---
 
 ## For a related record
