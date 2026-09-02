@@ -87,52 +87,6 @@ private class XFTY_PathTargetValueTest {
         Assert.isTrue(template.contextAwareBySObjectFieldMap.containsKey(Account.Site));
     }
 
-    @IsTest
-    static void testPlain_forALiteral_returnsTheLiteral() {
-        // Arrange
-        XFTY_PathTargetValue value = XFTY_PathTargetValue.ofLiteral(5000);
 
-        // Act
-        Test.startTest();
-        Object plain = value.plain();
-        Test.stopTest();
 
-        // Assert
-        Assert.areEqual(5000, plain);
-    }
-
-    @IsTest
-    static void testPlain_forAValueExpression_resolvesItThroughGet() {
-        // Arrange
-        XFTY_PathTargetValue value = XFTY_PathTargetValue.ofExpression(new XFTY_LiteralExpression('resolved'));
-
-        // Act
-        Test.startTest();
-        Object plain = value.plain();
-        Test.stopTest();
-
-        // Assert
-        Assert.areEqual('resolved', plain);
-    }
-
-    @IsTest
-    static void testPlain_forARelationshipKind_throws() {
-        // Arrange
-        XFTY_PathTargetValue value = XFTY_PathTargetValue.ofRequiredRelationship(
-                new XFTY_DummyDefaultRelationship(new Account())
-        );
-
-        // Act
-        XFTY_DummySObjectFtyProviderException thrown;
-        Test.startTest();
-        try {
-            value.plain();
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
-        Test.stopTest();
-
-        // Assert
-        Assert.isNotNull(thrown);
-    }
 }

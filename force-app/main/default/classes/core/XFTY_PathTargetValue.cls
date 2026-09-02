@@ -67,24 +67,4 @@ public class XFTY_PathTargetValue {
         }
     }
 
-    /**
-     * The value as a plain `Object`, for a pass with no generation context (the
-     * enrichment pass) - a literal as-is, a value expression resolved through
-     * `get()`. Context-aware and relationship kinds need the engine and throw.
-     */
-    public Object plain() {
-        switch on this.valueKind {
-            when LITERAL {
-                return this.payload;
-            }
-            when VALUE_EXPRESSION {
-                return ((XFTY_ValueExpressionIntf) this.payload).get();
-            }
-            when else {
-                throw new XFTY_DummySObjectFtyProviderException(
-                        'A ' + this.valueKind + ' path value cannot be resolved without generation context.'
-                );
-            }
-        }
-    }
 }
