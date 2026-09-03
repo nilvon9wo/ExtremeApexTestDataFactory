@@ -31,61 +31,19 @@ public class XFTY_DummySObjectBundle {
     }
 
     /**
-     * Walk an ancestor path and read one field, without the caller holding on to
-     * every intermediate bundle and list.
-     *
-     * `path` is one or more relationship fields then the field to read -
+     * Read one field several relationship hops up the generated ancestor graph -
      * `{ Contact.AccountId, Account.OwnerId }` reads the generated Account's
-     * OwnerId for the Contact at `rowIndex`. Each leading relationship field is a
-     * `getBundle(...)` step down; the last relationship field selects the parent
-     * list, aligned 1:1 with this bundle's primaries.
-     *
-     * Returns `null` if any hop was not generated (an optional relationship the
-     * current inclusivity skipped) or `rowIndex` is out of range. Only walks
-     * generated ancestors - child relationships are not followed.
+     * OwnerId for the primary at `rowIndex`. Null when a hop was not generated or
+     * the row is out of range; throws only on a malformed path. See
+     * `XFTY_AncestorPathWalker`.
      */
     public Object getValue(List<SObjectField> path, Integer rowIndex) {
-        rejectMalformed(path);
-        SObjectField lastRelationshipField = path[path.size() - 2];
-        SObjectField fieldToRead = path[path.size() - 1];
-
-        XFTY_DummySObjectBundle owningBundle = this.descendTo(path);
-        if (owningBundle == null || rowIndex == null || rowIndex < 0) {
-            return null;
-        }
-
-        List<SObject> parents = owningBundle.getList(lastRelationshipField);
-        if (parents == null || rowIndex >= parents.size() || parents[rowIndex] == null) {
-            return null;
-        }
-        return parents[rowIndex].get(fieldToRead);
+        return XFTY_AncestorPathWalker.read(this, path, rowIndex);
     }
 
     /** `getValue(path, 0)` - for a single-primary bundle. */
     public Object getValue(List<SObjectField> path) {
-        return this.getValue(path, 0);
-    }
-
-    /** Follow every relationship hop except the last, which `getValue` reads as a list. */
-    private XFTY_DummySObjectBundle descendTo(List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = this;
-        for (Integer hop = 0; hop < path.size() - 2; hop++) {
-            bundle = (bundle == null) ? null : bundle.getBundle(path[hop]);
-        }
-        return bundle;
-    }
-
-    private static void rejectMalformed(List<SObjectField> path) {
-        if (path == null || path.size() < 2) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'getValue needs a path of at least one relationship field then the field to read.'
-            );
-        }
-        for (SObjectField step : path) {
-            if (step == null) {
-                throw new XFTY_DummySObjectFtyProviderException('getValue path steps cannot be null.');
-            }
-        }
+        return XFTY_AncestorPathWalker.read(this, path, 0);
     }
 
     /** Record the primary records and the field they belong to. */
@@ -106,35 +64,60 @@ public class XFTY_DummySObjectBundle {
         return this.sObjectBundleBySObjectFieldMap.keySet();
     }
 
+    // Serialization enrichment - re-express the graph in the shape put() rejects ----
+
+    /**
+     * New instances of the records at `getList(field)`, enriched per `config` -
+     * populated parent relationships, child subqueries, forced scalars - so code
+     * under test reads them straight off the SObject. Originals untouched. See
+     * `XFTY_BundleEnricher`.
+     */
+    public List<SObject> inject(SObjectField field, XFTY_InjectConfig config) {
+        return XFTY_BundleEnricher.enrich(this, field, config);
+    }
+
+    /** `inject` with everything the graph holds; throws if there is nothing to inject. */
+    public List<SObject> injectAll(SObjectField field) {
+        return XFTY_BundleEnricher.enrichEverything(this, field);
+    }
+
+    /** `inject` with every generated ancestor; children only if the config names them. */
+    public List<SObject> injectAllParents(SObjectField field) {
+        return this.inject(field, XFTY_InjectConfig.allParents());
+    }
+
+    /** `inject` with every generated child collection; parents only if the config names them. */
+    public List<SObject> injectAllChildren(SObjectField field) {
+        return this.inject(field, XFTY_InjectConfig.allChildren());
+    }
+
+    /**
+     * The primary records generated pointing at `getList(relationshipField)` row
+     * `ancestorRowIndex` - the inverse of the 1:1 parent alignment, so a shared
+     * ancestor returns the several primaries that resolved to it. Matched on the
+     * foreign key when Ids exist, else the 1:1 position. The upward counterpart of
+     * `childRecordsOf`. Empty when the row is out of range.
+     */
+    public List<SObject> primariesResolvingTo(SObjectField relationshipField, Integer ancestorRowIndex) {
+        List<SObject> ancestors = this.getList(relationshipField);
+        if (this.primaryRecords() == null || ancestors == null
+                || ancestorRowIndex < 0 || ancestorRowIndex >= ancestors.size()) {
+            return new List<SObject>();
+        }
+        return XFTY_InverseAlignment.childrenPerParent(ancestors, this.primaryRecords(), relationshipField)[ancestorRowIndex];
+    }
+
     // Up-flowing values - resolved during the DEFERRED flush, once the forest exists ----
 
-    private final List<DeferredValue> deferredValues = new List<DeferredValue>();
-
-    /** One primary row's field, still to be filled by an up-flow strategy. */
-    public class DeferredValue {
-        public final Integer primaryRow;
-        public final SObjectField field;
-        public final XFTY_DeferredExpressionIntf strategy;
-
-        public DeferredValue(Integer primaryRow, SObjectField field, XFTY_DeferredExpressionIntf strategy) {
-            this.primaryRow = primaryRow;
-            this.field = field;
-            this.strategy = strategy;
-        }
-    }
+    private final XFTY_DeferredValueQueue deferredValueQueue = new XFTY_DeferredValueQueue();
 
     /** Record that each primary row's `byField` entries are still to be resolved up from descendants. */
     public void deferValues(Map<SObjectField, XFTY_DeferredExpressionIntf> byField) {
-        List<SObject> primaries = this.primaryRecords();
-        for (Integer row = 0; row < primaries.size(); row++) {
-            for (SObjectField field : byField.keySet()) {
-                this.deferredValues.add(new DeferredValue(row, field, byField.get(field)));
-            }
-        }
+        this.deferredValueQueue.addForEachRow(this.primaryRecords().size(), byField);
     }
 
-    public List<DeferredValue> deferredValues() {
-        return this.deferredValues;
+    public List<XFTY_DeferredValueQueue.Entry> deferredValues() {
+        return this.deferredValueQueue.entries();
     }
 
     // Children - from XFTY_DummySObjectProvider.with(...) / withChildren(...) ----------------
@@ -244,35 +227,6 @@ public class XFTY_DummySObjectBundle {
         if (bundles.size() == 1) {
             return bundles[0];
         }
-        return mergedFrom(bundles);
-    }
-
-    private static XFTY_DummySObjectBundle mergedFrom(List<XFTY_DummySObjectBundle> bundles) {
-        XFTY_DummySObjectBundle merged = new XFTY_DummySObjectBundle();
-        SObjectField primaryField = bundles[0].primaryTargetField;
-        List<SObject> allPrimaries = new List<SObject>();
-        for (XFTY_DummySObjectBundle childBundle : bundles) {
-            List<SObject> primaries = childBundle.primaryRecords();
-            if (primaries != null) {
-                allPrimaries.addAll(primaries);
-            }
-            for (SObjectField parentField : childBundle.relationshipFields()) {
-                XFTY_DummySObjectBundle parentBundle = childBundle.getBundle(parentField);
-                XFTY_DummySObjectBundle mergedParent = merged.getBundle(parentField);
-                if (mergedParent == null) {
-                    merged.put(parentField, parentBundle);
-                } else {
-                    List<SObject> combined = new List<SObject>(mergedParent.primaryRecords());
-                    combined.addAll(parentBundle.primaryRecords());
-                    XFTY_DummySObjectBundle rebuilt = new XFTY_DummySObjectBundle();
-                    rebuilt.putPrimaries(parentBundle.primaryTargetField, combined);
-                    merged.put(parentField, rebuilt);
-                }
-            }
-        }
-        if (primaryField != null) {
-            merged.putPrimaries(primaryField, allPrimaries);
-        }
-        return merged;
+        return XFTY_BundleMerger.combine(bundles);
     }
 }

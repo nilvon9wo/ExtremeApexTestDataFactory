@@ -23,6 +23,8 @@ Then, as needed:
 - [context-aware-values](context-aware-values.md) — a field derived from a sibling, an ancestor, or (under `DEFERRED`) a child
 - [per-call-relationships](per-call-relationships.md) — one-off `includeOptional` / `excludeRelationship` for a single call
 - [child-records](child-records.md) — `with` / `withChildren`: generate the records *below* a primary
+- [enrichment](enrichment.md) — `inject` / `injectAll`: put parents, subqueries and read-only fields onto the SObject for the code under test
+- [sobject-injector](sobject-injector.md) — `XFTY_SObjectInjector`: the same round-trip on a plain `List<SObject>`, no bundle
 - [shared-ancestors](shared-ancestors.md) — many children under one parent (flat or deep, auto-detected)
 - [deferred-insert](deferred-insert.md) — `DEFERRED` + `.depthBatched()`
 - [provider-variants](provider-variants.md) — pick a record-type / flavour variant
@@ -56,6 +58,8 @@ examples compile and behave as documented.
 | `XFTY_SharedAncestor` — `get` / `put` / `putAsTemplate` / `putIfAbsent` / `getId` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorTest` |
 | `XFTY_SharedAncestor` — deep chains, batched pre-phase, `resolveNow` | [shared-ancestors](shared-ancestors.md) | `XFTY_SharedAncestorHierarchyTest` |
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
+| `bundle.inject(field, config)` / `injectAll*`, `XFTY_InjectConfig` | [enrichment](enrichment.md) | `XFTY_Ex_EnrichmentTest` |
+| `XFTY_SObjectInjector` — standalone round-trip (parents, subqueries, values, compound, `Blob`) | [sobject-injector](sobject-injector.md) | `XFTY_Ex_SObjectInjectorTest` |
 | insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
 | `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | `XFTY_Ex_DeferredInsertTest` |
 | `withVariant` / lookup-key ctor (flavour keys) | [provider-variants](provider-variants.md) | `XFTY_Ex_ProviderVariantsTest` |

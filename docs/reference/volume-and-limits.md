@@ -67,6 +67,12 @@ guard; re-run it against your own org.
 | `NOW`, 12 **independent** shared ancestors, 10 children each | ≤ 24 DML statements, CPU well under budget — but see the note below |
 | `NOW`, a **10-level** all-shared chain, 5 leaves | 10 Account rows, ≤ 12 DML statements — the chain depth-batches, one `insert` per level |
 | `DEFERRED`, 2,000 primaries + parents (4,000 records), then `flush()` | `flush()` alone ≈ **5 s CPU — half the limit** |
+| **`injectAll`**, 1,000 target records × 1 ancestor level (+ its inverse child) | 0 DML; CPU under budget — one round-trip per position, not per record |
+| **`injectAll`**, 200 target records × a 5-deep ancestor chain (User at each level) | passes with headroom |
+| **`injectAllChildren`**, 50 parents × 15 children each (~2k-record subtree) | passes with headroom |
+| **`injectAll` both directions**, 250 parents × 15 children | passes with headroom |
+| **`inject` + `childDepth(2).breakSoqlLimits()`**, nested grandchildren | works — the two-level subquery survives the round-trip on a real org |
+| **`XFTY_SObjectInjector`**, 3,000 rows, one parent graft each | one serialize + one deserialize; CPU under budget |
 
 **Practical ceilings for one transaction:**
 
@@ -97,6 +103,22 @@ many parent types at each level) adds records and CPU per primary. A graph that
 is 5 deep and 3 wide at each level is ~15 generated records per primary — so the
 row and CPU ceilings above divide by roughly that. `PREVENT_CASCADE` (one level)
 and tighter inclusivity are the levers.
+
+### Serialization enrichment
+
+[`inject` / `injectAll`](../use/enrichment.md) costs one `JSON.serialize` +
+`JSON.deserialize` **per graph position visited**, over the whole list at that
+position — not per record. So a wide-but-shallow graph is cheap regardless of
+width; cost climbs with **depth** (`parentDepth`, `childDepth`) and with the
+**total payload size** (records × fields serialized). It does no DML.
+
+`injectAll` / `everything()` visits the most positions — every ancestor with its
+inverse child, every downward child with its own ancestors — so it is the
+expensive mode. A tight `inject(field, config)` naming only what a test needs is
+much cheaper. The pass is wrapped in `XFTY_GovernorBudget`, which
+`System.debug(WARN)`s when it has eaten a large share of CPU or heap. The
+`XFTY_Load` suite (`XFTY_EnrichmentLoadTest`) exercises the shapes in the table
+above; a few thousand records total across all visited positions is comfortable.
 
 ---
 

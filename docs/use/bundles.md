@@ -110,6 +110,20 @@ map, so you never line rows up by arithmetic) and pull fields off the records it
 returns. Full detail — ordering, multiple child configs, grandchildren — is in
 [child-records](child-records.md).
 
+`bundle.primariesResolvingTo(relationshipField, ancestorRowIndex)` is the
+upward counterpart of `childRecordsOf` — the primary records that were generated
+pointing at that generated ancestor (a [shared ancestor](shared-ancestors.md)
+returns the several that resolved to it).
+
+---
+
+## Enriching for the code under test
+
+`getBundle` / `getValue` read the graph *for the test*. When the **code under
+test** needs `contact.Account.Name` or `account.Contacts` off the SObject
+itself, `bundle.inject(field, config)` / `injectAll(field)` write those onto new
+instances via a JSON round-trip. See [enrichment](enrichment.md).
+
 ▶ Runnable: `XFTY_Ex_BundlesTest`
 
 See also: [relationships](relationships.md) · [child-records](child-records.md) · [generating-records](generating-records.md)

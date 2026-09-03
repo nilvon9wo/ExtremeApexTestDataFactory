@@ -12,6 +12,8 @@
     <testClassName>XFTY_Ex_Adv_StaticDeferredFixtureTest</testClassName>
     <testClassName>XFTY_Ex_Adv_UnitVsIntegrationTest</testClassName>
     <testClassName>XFTY_Ex_BundlesTest</testClassName>
+    <testClassName>XFTY_Ex_EnrichmentTest</testClassName>
+    <testClassName>XFTY_Ex_SObjectInjectorTest</testClassName>
     <testClassName>XFTY_Ex_ContextAwareTest</testClassName>
     <testClassName>XFTY_Ex_DeferredInsertTest</testClassName>
     <testClassName>XFTY_Ex_Extend_CustomExpressionsTest</testClassName>

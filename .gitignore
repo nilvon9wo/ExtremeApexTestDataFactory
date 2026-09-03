@@ -21,6 +21,7 @@ node_modules/
 
 # Nimbus local Apex runtime — generated
 .nimbus/
+manifest/nimbus-missing.xml
 
 # Python
 __pycache__/

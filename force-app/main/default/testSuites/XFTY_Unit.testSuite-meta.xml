@@ -15,7 +15,22 @@
     <testClassName>XFTY_DummyDefaultRelationshipTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderChildGenTest</testClassName>
     <testClassName>XFTY_PathValueTest</testClassName>
+    <testClassName>XFTY_PathTargetValueTest</testClassName>
     <testClassName>XFTY_DummySObjectBundleTest</testClassName>
+    <testClassName>XFTY_BundleMergerTest</testClassName>
+    <testClassName>XFTY_AncestorPathWalkerTest</testClassName>
+    <testClassName>XFTY_DeferredValueQueueTest</testClassName>
+    <testClassName>XFTY_SObjectInjectorTest</testClassName>
+    <testClassName>XFTY_InjectionPathResolverTest</testClassName>
+    <testClassName>XFTY_InjectConfigTest</testClassName>
+    <testClassName>XFTY_BundleEnricherTest</testClassName>
+    <testClassName>XFTY_QueryableShapeValidatorTest</testClassName>
+    <testClassName>XFTY_EnrichmentSelectionTest</testClassName>
+    <testClassName>XFTY_ForcedValuesTest</testClassName>
+    <testClassName>XFTY_PathKeyTest</testClassName>
+    <testClassName>XFTY_EnrichmentTargetTest</testClassName>
+    <testClassName>XFTY_BlobCarrierTest</testClassName>
+    <testClassName>XFTY_InverseAlignmentTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>

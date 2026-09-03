@@ -22,6 +22,7 @@ Legend: ✅ built · 📋 designed, not built.
 | **Descendant (up-flowing) value reads** — `XFTY_CopyFromDescendantExpression` | `XFTY_CopyFromDescendantExpressionTest`, `XFTY_Ex_Adv_MatchingValuesTest` | [use](../use/context-aware-values.md#reading-up-from-a-child), [detail](descendant-value-reads.md) | `DEFERRED` / `.depthBatched()` only (throws otherwise); first matching child, single hop. **Not built:** multi-hop path, aggregates across children, a loud error when `flush()` is never called |
 | **Shared ancestors** — `XFTY_SharedAncestor.put/get`, flat + deep auto-detected, nested, cycle + depth guards, `XFTY_SharedAncestorProvider` per-record config, `XFTY_SharedAncestorDefaultsIntf` packaged defaults, `disable` / `manualResolutionOnly` / batch `resolveNow` | `XFTY_SharedAncestorTest`, `XFTY_SharedAncestorHierarchyTest`, `XFTY_SharedAncestorLoadTest`, `XFTY_SharedAncestorDeepHierarchyTest` (org) | [use](../use/shared-ancestors.md), [extend](../extend/shared-ancestors-in-templates.md), [detail](shared-ancestors.md) | S2 is one depth-batched pass **per sub-graph** — independent heavy shared ancestors cost a few extra inserts ([known limit](shared-ancestors.md)) |
 | **Governor-limit warnings + volume tests** — `XFTY_GovernorBudget`, `XFTY_Settings__c` | `XFTY_GovernorBudgetTest`, `XFTY_LoadTest` | [limits](../reference/volume-and-limits.md) | — |
+| **Serialization enrichment** — `bundle.inject(field, config)` / `injectAll` / `injectAllParents` / `injectAllChildren`, `XFTY_InjectConfig`, standalone `XFTY_SObjectInjector` | `XFTY_BundleEnricherTest`, `XFTY_SObjectInjectorTest`, `XFTY_EnrichmentSelectionTest`, `XFTY_Ex_EnrichmentTest`, `XFTY_Ex_SObjectInjectorTest`, `XFTY_EnrichmentLoadTest` (+ helper unit tests) | [use](../use/enrichment.md), [injector](../use/sobject-injector.md) | JSON round-trip returning `List<SObject>`; recursive (ancestors + inverse child + one child level, deeper with `breakSoqlLimits()`). `MOCK`-only in spirit — forced data is fiction a real `insert` overwrites. Polymorphic, compound and `Blob` round-trips verified on a real org |
 | **Framework coverage + split test suites** — `XFTY_Unit` / `XFTY_Integration` / `XFTY_Load` / `XFTY_Examples` / `XFTY_OrgOnly` / `XFTY_PersonAccount` | — | [coverage](../contribute/coverage-standards.md), [suites](../contribute/test-suites.md) | Line coverage is verified by stripping `@IsTest` and running on an org (the local runtime's coverage is unreliable); branch coverage is hand-checked (the platform can't measure it) |
 
 ## Designed, not built
@@ -29,7 +30,6 @@ Legend: ✅ built · 📋 designed, not built.
 | Feature | Detail |
 |---------|--------|
 | Sandbox data seeding — `XFTY_Seeder` (prototype on branch `sandbox-seeding`) | [sandbox-seeding.md](sandbox-seeding.md) |
-| Serialization-based mock enrichment — `bundle.getWithInjectedValues(config)` | [serialization-mock-enrichment.md](serialization-mock-enrichment.md) |
 | Namespace / AppExchange listing | [namespace-appexchange.md](namespace-appexchange.md) |
 
 ---
