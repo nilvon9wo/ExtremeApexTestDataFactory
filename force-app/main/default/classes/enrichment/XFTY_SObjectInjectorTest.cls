@@ -165,7 +165,6 @@ private class XFTY_SObjectInjectorTest {
         // Assert
         Assert.isNotNull(thrown);
     }
-
     @IsTest
     static void testResult_whenAParentListIsMisaligned_throws() {
         // Arrange
@@ -248,39 +247,55 @@ private class XFTY_SObjectInjectorTest {
     }
 
     @IsTest
-    static void testResult_whenABlobFieldIsForced_throwsBecauseTheDeserializeCannotHydrateIt() {
-        // Arrange - JSON.deserialize rejects a base64 field on a real org; fail loud rather than silently
+    static void testResult_whenABlobFieldIsForced_itIsCarriedAcrossTheRoundTrip() {
+        // Arrange - Blob can't pass through the JSON, so the injector captures and re-applies it
         List<Attachment> attachments = new List<Attachment>{ new Attachment(Name = 'f.txt') };
 
         // Act
-        XFTY_DummySObjectFtyProviderException thrown;
         Test.startTest();
-        try {
-            XFTY_SObjectInjector.inject(attachments).value(Attachment.Body, Blob.valueOf('x')).result();
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
+        List<Attachment> enriched = (List<Attachment>) XFTY_SObjectInjector.inject(attachments)
+                .value(Attachment.Body, Blob.valueOf('injected'))
+                .value(Attachment.CreatedDate, Datetime.newInstance(2020, 1, 1, 0, 0, 0))
+                .result();
         Test.stopTest();
 
         // Assert
-        Assert.isNotNull(thrown);
-        Assert.isTrue(thrown.getMessage().contains('Blob'));
+        Assert.areEqual('injected', enriched[0].Body.toString(), 'the forced Blob survives');
+        Assert.areEqual(Datetime.newInstance(2020, 1, 1, 0, 0, 0), enriched[0].CreatedDate, 'and the round-trip still ran');
     }
 
     @IsTest
-    static void testResult_whenACompoundFieldComponentIsForced_itRoundTrips() {
-        // Arrange - set the component (MailingCity), not the compound (MailingAddress)
+    static void testResult_whenARecordAlreadyHasABlob_theRoundTripKeepsIt() {
+        // Arrange
+        List<Attachment> attachments = new List<Attachment>{ new Attachment(Name = 'f', Body = Blob.valueOf('preset')) };
+
+        // Act
+        Test.startTest();
+        List<Attachment> enriched = (List<Attachment>) XFTY_SObjectInjector.inject(attachments)
+                .value(Attachment.LastModifiedDate, Datetime.newInstance(2021, 6, 1, 0, 0, 0))
+                .result();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('preset', enriched[0].Body.toString(), 'a pre-set Blob is not lost');
+    }
+
+    @IsTest
+    static void testResult_whenACompoundFieldIsForced_itReadsBackThroughTheCompound() {
+        // Arrange - a compound field takes a Map of its lowercase components
         List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'X') };
 
         // Act
         Test.startTest();
         List<Contact> enriched = (List<Contact>) XFTY_SObjectInjector.inject(contacts)
-                .value(Contact.MailingCity, 'Springfield')
+                .value(Contact.MailingAddress, new Map<String, Object>{ 'city' => 'Portland', 'street' => '2 Oak St' })
                 .result();
         Test.stopTest();
 
-        // Assert
-        Assert.areEqual('Springfield', enriched[0].MailingCity);
+        // Assert - code under test reading contact.MailingAddress.getCity() works
+        Address mailing = (Address) enriched[0].MailingAddress;
+        Assert.areEqual('Portland', mailing.getCity());
+        Assert.areEqual('2 Oak St', mailing.getStreet());
     }
 
     @IsTest

@@ -1,8 +1,8 @@
 /**
  * Writes onto SObject instances what `record.put(...)` rejects - a populated
  * parent relationship, a child subquery, a formula / roll-up / system /
- * read-only field - through one `JSON.serialize` / `JSON.deserialize` round-trip
- * over the whole list.
+ * read-only field, a compound field - through one `JSON.serialize` /
+ * `JSON.deserialize` round-trip over the whole list.
  *
  * Standalone: no bundle, no generation. Collect the grafts fluently, then
  * `result()` does exactly one serialize and one deserialize regardless of how
@@ -14,11 +14,18 @@
  *     .value(Contact.CreatedDate, aDatetime)
  *     .result();
  * ```
+ *
+ * `Blob` fields cannot pass through the JSON round-trip (the platform rejects a
+ * base64 field on a typed deserialize). They are carried across transparently -
+ * captured off the input records, stripped from the JSON, and re-applied to the
+ * result - so `.value(Attachment.Body, aBlob)` and a pre-set `Body` both survive.
+ * A `Blob` field on an injected *parent / child* record is dropped.
  */
 @IsTest
 public class XFTY_SObjectInjector {
 
     private static final Boolean DONE = true;
+    private static final String SERIALIZED_BLOB_MARKER = 'asByteArray';
 
     private final List<SObject> records;
     private final Map<String, List<SObject>> parentByRelationshipName = new Map<String, List<SObject>>();
@@ -37,7 +44,7 @@ public class XFTY_SObjectInjector {
         return new XFTY_SObjectInjector(records);
     }
 
-    /** Graft `parents[row]` onto `records[row]` as `relationshipName` (e.g. 'Account', 'Parent', 'Foo__r'). */
+    /** Graft `parents[row]` onto `records[row]` as `relationshipName` (e.g. 'Account', 'Parent', 'Who', 'Foo__r'). */
     public XFTY_SObjectInjector relationship(String relationshipName, List<SObject> parents) {
         this.parentByRelationshipName.put(relationshipName, parents);
         return this;
@@ -49,7 +56,11 @@ public class XFTY_SObjectInjector {
         return this;
     }
 
-    /** Set `field` to the same value on every row. */
+    /**
+     * Set `field` to the same value on every row. A compound field takes a
+     * `Map<String, Object>` of its lowercase components (`{ 'city' => 'X',
+     * 'street' => 'Y' }`).
+     */
     public XFTY_SObjectInjector value(SObjectField field, Object valueForEveryRow) {
         this.uniformValueByField.put(field, valueForEveryRow);
         return this;
@@ -66,11 +77,18 @@ public class XFTY_SObjectInjector {
             return new List<SObject>();
         }
         this.rejectMisalignedGrafts();
+        List<Map<String, Blob>> blobsByRow = this.captureBlobs();
         List<Object> rawRecords = (List<Object>) JSON.deserializeUntyped(JSON.serialize(this.records));
         for (Integer row = 0; row < rawRecords.size(); row++) {
-            this.graftRow((Map<String, Object>) rawRecords[row], row);
+            Map<String, Object> rawRecord = (Map<String, Object>) rawRecords[row];
+            for (String blobField : blobsByRow[row].keySet()) {
+                rawRecord.remove(blobField);
+            }
+            this.graftRow(rawRecord, row);
         }
-        return (List<SObject>) JSON.deserialize(JSON.serialize(rawRecords), this.listType());
+        List<SObject> grafted = (List<SObject>) JSON.deserialize(JSON.serialize(rawRecords), this.listType());
+        reapplyBlobs(grafted, blobsByRow);
+        return grafted;
     }
 
     private void graftRow(Map<String, Object> rawRecord, Integer row) {
@@ -81,29 +99,79 @@ public class XFTY_SObjectInjector {
             rawRecord.put(relationshipName, subqueryOf(this.childrenByRelationshipName.get(relationshipName)[row]));
         }
         for (SObjectField field : this.uniformValueByField.keySet()) {
-            rawRecord.put(fieldName(field), rawValue(this.uniformValueByField.get(field)));
+            putUnlessBlob(rawRecord, fieldName(field), this.uniformValueByField.get(field));
         }
         for (SObjectField field : this.perRowValuesByField.keySet()) {
-            rawRecord.put(fieldName(field), rawValue(this.perRowValuesByField.get(field)[row]));
+            putUnlessBlob(rawRecord, fieldName(field), this.perRowValuesByField.get(field)[row]);
         }
     }
 
-    /** `Blob` fields cannot survive the typed `JSON.deserialize` - the platform rejects a base64 field there. */
-    private static Object rawValue(Object value) {
-        if (value instanceof Blob) {
-            throw new XFTY_DummySObjectFtyProviderException(
-                    'XFTY_SObjectInjector: a Blob field cannot be injected - JSON.deserialize rejects it. '
-                            + 'Insert the record with the Blob instead.'
-            );
+    private static void putUnlessBlob(Map<String, Object> rawRecord, String key, Object value) {
+        if (!(value instanceof Blob)) {
+            rawRecord.put(key, value);
         }
-        return value;
     }
+
+    // Blob carry-across --------------------------------------------------
+
+    private List<Map<String, Blob>> captureBlobs() {
+        List<Map<String, Blob>> byRow = new List<Map<String, Blob>>();
+        for (Integer row = 0; row < this.records.size(); row++) {
+            Map<String, Blob> here = new Map<String, Blob>();
+            for (String populated : this.records[row].getPopulatedFieldsAsMap().keySet()) {
+                Object populatedValue = this.records[row].get(populated);
+                if (populatedValue instanceof Blob) {
+                    here.put(populated, (Blob) populatedValue);
+                }
+            }
+            this.addInjectedBlobs(here, row);
+            byRow.add(here);
+        }
+        return byRow;
+    }
+
+    private void addInjectedBlobs(Map<String, Blob> here, Integer row) {
+        for (SObjectField field : this.uniformValueByField.keySet()) {
+            if (this.uniformValueByField.get(field) instanceof Blob) {
+                here.put(fieldName(field), (Blob) this.uniformValueByField.get(field));
+            }
+        }
+        for (SObjectField field : this.perRowValuesByField.keySet()) {
+            if (this.perRowValuesByField.get(field)[row] instanceof Blob) {
+                here.put(fieldName(field), (Blob) this.perRowValuesByField.get(field)[row]);
+            }
+        }
+    }
+
+    private static void reapplyBlobs(List<SObject> grafted, List<Map<String, Blob>> blobsByRow) {
+        for (Integer row = 0; row < grafted.size(); row++) {
+            for (String field : blobsByRow[row].keySet()) {
+                grafted[row].put(field, blobsByRow[row].get(field));
+            }
+        }
+    }
+
+    private static void stripSerializedBlobs(Map<String, Object> rawRecord) {
+        for (String key : new List<String>(rawRecord.keySet())) {
+            Object value = rawRecord.get(key);
+            if (value instanceof Map<String, Object>
+                    && ((Map<String, Object>) value).containsKey(SERIALIZED_BLOB_MARKER)) {
+                rawRecord.remove(key);
+            }
+        }
+    }
+
+    // Raw building --------------------------------------------------
 
     private static Object rawOf(SObject record) {
         if (record == null) {
             return null;
         }
-        return JSON.deserializeUntyped(JSON.serialize(record));
+        Object raw = JSON.deserializeUntyped(JSON.serialize(record));
+        if (raw instanceof Map<String, Object>) {
+            stripSerializedBlobs((Map<String, Object>) raw);
+        }
+        return raw;
     }
 
     private static Map<String, Object> subqueryOf(List<SObject> children) {
@@ -128,6 +196,8 @@ public class XFTY_SObjectInjector {
                 .getName();
         return Type.forName('List<' + sObjectName + '>');
     }
+
+    // Alignment guard --------------------------------------------------
 
     private void rejectMisalignedGrafts() {
         Integer rows = this.records.size();
