@@ -86,6 +86,33 @@ private class XFTY_DeferredInsertBufferTest {
     }
 
     @IsTest
+    static void testInsertGraph_forOneParentSharedByManyChildren_pointsEveryChildAtIt() {
+        // Arrange - a shared ancestor: 3 Contacts, one Account bundle
+        Account sharedParent = new Account(Name = 'Shared Parent');
+        List<SObject> contacts = new List<SObject>{
+                new Contact(LastName = 'A'), new Contact(LastName = 'B'), new Contact(LastName = 'C')
+        };
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.primaryTargetField = Contact.Id;
+        bundle.put(Contact.Id, contacts);
+        bundle.put(Contact.AccountId, bundleOf(Account.Id, sharedParent));
+        bundle.put(Contact.AccountId, new List<SObject>{ sharedParent });
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_DeferredInsertBuffer.insertGraph(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, [SELECT COUNT() FROM Account WHERE Name = 'Shared Parent'], 'inserted once');
+        for (SObject contact : contacts) {
+            Assert.areEqual(sharedParent.Id, contact.get('AccountId'));
+        }
+    }
+
+    @IsTest
     static void testFlatten_returnsEveryRecordAndItsParentLink_withoutInserting() {
         // Arrange
         Account parent = new Account(Name = 'Flatten Parent');

@@ -137,13 +137,20 @@ public class XFTY_DeferredInsertBuffer {
             List<XFTY_IndexedRecord> parents,
             SObjectField field
     ) {
-        Integer childCount = children.size();
-        Integer parentCount = parents.size();
-        Integer rows = Math.min(childCount, parentCount);
+        if (parents.isEmpty()) {
+            return;
+        }
+        // One parent for many children is a shared ancestor collapsed to a single
+        // row - every child points at it. Otherwise it is the 1:1 alignment.
+        if (parents.size() == 1 && children.size() > 1) {
+            for (XFTY_IndexedRecord child : children) {
+                this.linkChild(child, parents[0], field);
+            }
+            return;
+        }
+        Integer rows = Math.min(children.size(), parents.size());
         for (Integer row = 0; row < rows; row++) {
-            XFTY_IndexedRecord child = children[row];
-            XFTY_IndexedRecord parent = parents[row];
-            this.linkChild(child, parent, field);
+            this.linkChild(children[row], parents[row], field);
         }
     }
 
