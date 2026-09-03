@@ -177,7 +177,8 @@ child subquery; it is also useful on its own.
 
 ## `XFTY_SObjectInjector` — the round-trip on its own
 
-The graft mechanism is public and needs no bundle:
+The graft mechanism is public and needs no bundle. Full guide, with examples:
+**[sobject-injector](sobject-injector.md)**.
 
 ```apex
 List<Contact> enriched = (List<Contact>) XFTY_SObjectInjector.inject(contacts)
@@ -185,23 +186,6 @@ List<Contact> enriched = (List<Contact>) XFTY_SObjectInjector.inject(contacts)
     .value(Contact.CreatedDate, Datetime.newInstance(2020, 1, 1, 0, 0, 0))
     .result();
 ```
-
-<!-- sketch -->
-```apex
-XFTY_SObjectInjector.inject(contacts)
-    .relationship('Who', whosAligned1to1)             // polymorphic - the parent keeps its concrete type
-    .childRelationship('Cases', casesPerContact)      // List<List<SObject>>, one list per contact
-    .valuePerRow(Contact.Department, deptPerRow)      // one value per contact
-    .result();
-```
-
-- Every graft must align 1:1 with the records — a mismatch throws a clear error.
-- `relationship` / `childRelationship` take the **relationship name**
-  (`'Account'`, `'Parent'`, `'Contacts'`, `'Who'`, `'Foo__r'`), not a field
-  token. Inside `inject` / `injectAll` the name is resolved for you.
-- `result()` does exactly **one** `JSON.serialize` and **one**
-  `JSON.deserialize` over the whole list, regardless of row or graft count.
-  Inputs are untouched.
 
 ---
 
@@ -218,16 +202,22 @@ only as a **`MOCK` unit test** — see
 [unit-vs-integration](advanced/unit-vs-integration.md) point 4. (After `NOW` the
 records already have real Ids; just `SELECT`.)
 
-### `Blob` fields can't be injected
+### `Blob` and compound fields
 
-`JSON.deserialize` rejects a base64 field on the platform, so `injectValue` /
-`XFTY_SObjectInjector.value` **throws** for a `Blob` field. Insert the record with
-the `Blob` instead.
+Both work. A `Blob` field can't pass through the JSON (the platform rejects a
+base64 field on a typed deserialize), so it is **carried across** — captured off
+the record, kept out of the round-trip, re-applied to the result:
+`injectValue(Attachment.Body, aBlob)` and a pre-set `Body` both survive. (A
+`Blob` on an injected *parent / child* record is dropped.)
 
-### Compound fields
+A **compound** field takes a `Map` of its **lowercase components** — setting the
+components individually does *not* compose it:
 
-Set the **components** (`MailingStreet`, `MailingCity`, …), not the read-only
-compound (`MailingAddress`). Components round-trip cleanly.
+```apex
+XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+    .injectValue(Contact.MailingAddress, new Map<String, Object>{ 'city' => 'Portland', 'street' => '2 Oak St' });
+// code under test can then read contact.MailingAddress.getCity()
+```
 
 ### Runs after generation
 
@@ -273,11 +263,13 @@ Rules of thumb, from `XFTY_EnrichmentLoadTest` (a quiet org, `MOCK`):
 Numbers and the practical per-transaction ceilings are in
 [volume-and-limits](../reference/volume-and-limits.md).
 
-### Not exercised
+### Verified
 
-None yet — polymorphic, compound components, `Blob` (throws), `Datetime` and the
-two-level subquery envelope are all covered by tests, verified on a real org.
+Polymorphic relationships (`WhoId` → `Who`), compound fields, `Blob` fields,
+`Datetime`, and the two-level subquery envelope are all covered by tests and
+confirmed on a real Salesforce org.
 
-See also: [bundles](bundles.md) · [child-records](child-records.md) ·
+See also: [sobject-injector](sobject-injector.md) · [bundles](bundles.md) ·
+[child-records](child-records.md) ·
 [value-expressions](value-expressions.md) ·
 [unit-vs-integration](advanced/unit-vs-integration.md)

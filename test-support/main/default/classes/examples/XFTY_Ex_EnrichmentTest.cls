@@ -187,6 +187,25 @@ private class XFTY_Ex_EnrichmentTest {
     }
 
     @IsTest
+    static void testInject_withACompoundFieldValue_readsBackThroughTheCompound() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectValue(Contact.MailingAddress, new Map<String, Object>{ 'city' => 'Portland', 'street' => '2 Oak St' });
+
+        // Act
+        Test.startTest();
+        List<Contact> contacts = (List<Contact>) bundle.inject(Contact.Id, config);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('Portland', ((Address) contacts[0].MailingAddress).getCity());
+    }
+
+    @IsTest
     static void testInject_usingXftySObjectInjectorDirectly_needsNoBundle() {
         // Arrange
         List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'Standalone') };
