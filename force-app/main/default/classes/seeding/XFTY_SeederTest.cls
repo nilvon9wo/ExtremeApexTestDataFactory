@@ -58,6 +58,120 @@ private class XFTY_SeederTest {
     }
 
     @IsTest
+    static void testSeed_aThreeLevelDownwardTree_wiresEveryLevel() {
+        // Arrange - Account -> 2 Contacts -> 2 reports each (Contact.ReportsToId)
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2)
+                                .with(new XFTY_SObjectChildProvider(Contact.ReportsToId).setQuantity(2))
+                )
+                .supplyBundle();
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Assert.areEqual(7, result.savedCount(), '1 Account + 2 Contacts + 4 reports');
+        Contact firstChild = (Contact) bundle.getChildList(Contact.AccountId)[0];
+        Assert.areEqual(bundle.primaryRecords()[0].Id, firstChild.AccountId);
+        SObject firstGrandchild = bundle.getChildBundle(Contact.AccountId).getChildList(Contact.ReportsToId)[0];
+        Assert.areEqual(firstChild.Id, firstGrandchild.get('ReportsToId'), 'grandchild wired to its Contact');
+    }
+
+    @IsTest
+    static void testSeed_twoChildConfigsOnTheSameField_seedsBoth() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
+                .withChildren(Contact.AccountId, 2)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Assert.areEqual(6, result.savedCount(), '1 Account + 5 Contacts across both configs');
+        for (SObject child : bundle.getChildList(Contact.AccountId)) {
+            Assert.areEqual(bundle.primaryRecords()[0].Id, child.get('AccountId'));
+        }
+    }
+
+    @IsTest
+    static void testSeed_aPolymorphicGraph_wiresEverySide() {
+        // Arrange - a Task with a generated Contact (WhoId) and Account (WhatId), hand-built
+        Contact who = new Contact(LastName = 'Who');
+        Account what = new Account(Name = 'What Co');
+        Task primary = new Task(Subject = 'Poly');
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Task.Id, new List<SObject>{ primary });
+        bundle.put(Task.WhoId, new List<SObject>{ who });
+        bundle.put(Task.WhoId, singletonBundle(Contact.Id, who));
+        bundle.put(Task.WhatId, new List<SObject>{ what });
+        bundle.put(Task.WhatId, singletonBundle(Account.Id, what));
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Assert.areEqual(who.Id, primary.WhoId);
+        Assert.areEqual(what.Id, primary.WhatId);
+    }
+
+    @IsTest
+    static void testSeed_aSelfReferentialAncestorChain_seedsFromTheTopDown() {
+        // Arrange - Account -> parent Account -> grandparent Account (terminated), hand-built
+        Account grandparent = new Account(Name = 'GP');
+        Account parent = new Account(Name = 'P');
+        Account child = new Account(Name = 'C');
+        XFTY_DummySObjectBundle gpBundle = singletonBundle(Account.Id, grandparent);
+        XFTY_DummySObjectBundle parentBundle = singletonBundle(Account.Id, parent);
+        parentBundle.put(Account.ParentId, new List<SObject>{ grandparent });
+        parentBundle.put(Account.ParentId, gpBundle);
+        XFTY_DummySObjectBundle bundle = singletonBundle(Account.Id, child);
+        bundle.put(Account.ParentId, new List<SObject>{ parent });
+        bundle.put(Account.ParentId, parentBundle);
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Assert.areEqual(parent.Id, child.ParentId);
+        Assert.areEqual(grandparent.Id, parent.ParentId);
+    }
+
+    private static XFTY_DummySObjectBundle singletonBundle(SObjectField primaryField, SObject record) {
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(primaryField, new List<SObject>{ record });
+        return bundle;
+    }
+
+    @IsTest
     static void testSeed_whenOnePrimaryIsInvalid_savesTheRestAndReportsTheFailure() {
         // Arrange - a hand-built bundle: one valid Contact, one with no LastName
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();

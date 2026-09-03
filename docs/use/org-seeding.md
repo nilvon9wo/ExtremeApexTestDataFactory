@@ -103,6 +103,24 @@ children point at it, it is not re-inserted, and it is not in the counts.
 `.putRequired(field, XFTY_SharedAncestor.get(name))` — seed correctly: the shared
 record is inserted **once** and every dependent points at it.
 
+### Graph shapes that seed cleanly
+
+Verified on a scratch org: deep downward trees (grandchildren and below), two or
+more child collections on the same relationship, polymorphic lookups
+(`Task.WhoId` / `WhatId`), self-referential ancestor chains (`Account.ParentId`),
+and — because an `@IntegrationTest` runs asynchronously — **a graph that spans
+setup objects (`User`, `Group`, …) and ordinary objects**, which a synchronous
+`NOW` test would reject with `MIXED_DML_OPERATION`.
+
+### Up-flow values don't seed
+
+`XFTY_CopyFromDescendantExpression` (reading a field up from a generated child)
+needs `DEFERRED` / `.depthBatched()` generation, which puts real Ids on the
+records — so the bundle can't go through `XFTY_Seeder`. In an `@IntegrationTest`,
+generate that graph with `.depthBatched()` **directly**; it commits and persists,
+no seeder needed. The same is true for any graph you would rather generate in
+`NOW` mode — inside an `@IntegrationTest` it already stays.
+
 ## `XFTY_SeedResult`
 
 | Member | |
@@ -128,8 +146,11 @@ sf data query -o <scratch-org> --query "SELECT Name, (SELECT LastName FROM Conta
 
 A seed is **not idempotent** — run it twice and you get two sets of records, and
 duplicate rules will start rejecting the second run (reported in `errors()`, not
-thrown). To reset, delete in another `@IntegrationTest` method first (there is no
-rollback, so the delete sticks too).
+thrown). Seeding `User` records is especially prone to this: username and
+federation-id are org-unique, so a second run — or a later plain `@IsTest` that
+builds a test admin — collides. To reset, delete (and for `User`, deactivate) in
+another `@IntegrationTest` method first; there is no rollback, so the cleanup
+sticks too.
 
 ## Limits
 
