@@ -30,12 +30,34 @@ public class XFTY_DeferredInsertBuffer {
         buffer.insertAll();
     }
 
+    /**
+     * The whole graph flattened to its records and parent links, with the up-flow
+     * value pass already run - for a caller that wants to persist it itself
+     * (`XFTY_Seeder`) rather than through the all-or-none `insertAll`.
+     */
+    public static XFTY_DeferredInsertBuffer flatten(XFTY_DummySObjectBundle bundle) {
+        XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
+        buffer.add(bundle);
+        buffer.resolveUpFlowValues();
+        return buffer;
+    }
+
     public void add(XFTY_DummySObjectBundle bundle) {
         this.collect(bundle);
     }
 
     public Integer pendingCount() {
         return this.pendingRecords.size();
+    }
+
+    /** Every record the graph holds, in collection order (not insert order). */
+    public List<SObject> records() {
+        return this.pendingRecords;
+    }
+
+    /** Each record's lookup to another record in `records()`, by index. */
+    public List<XFTY_DepthBatchedInserter.ParentLink> parentLinks() {
+        return this.pendingLinks;
     }
 
     public void insertAll() {

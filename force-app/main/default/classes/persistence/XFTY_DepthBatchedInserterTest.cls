@@ -147,6 +147,62 @@ private class XFTY_DepthBatchedInserterTest {
         assertCyclic(new List<SObject>{ new Account(Name = 'Loop') }, links(link(0, 0, Account.ParentId)));
     }
 
+    @IsTest
+    static void testSeedAll_forEmptyInput_returnsAnEmptyMap() {
+        // Arrange - nothing to seed
+
+        // Act
+        Map<Integer, Database.SaveResult> outcomes;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            outcomes = XFTY_DepthBatchedInserter.seedAll(new List<SObject>(), links());
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(0, outcomes.size());
+    }
+
+    @IsTest
+    static void testSeedAll_forAValidParentAndChild_savesBothAndWiresTheLookup() {
+        // Arrange
+        Contact child = new Contact(LastName = 'Child');
+        Account parent = new Account(Name = 'Parent Co');
+        List<SObject> records = new List<SObject>{ child, parent };
+
+        // Act
+        Map<Integer, Database.SaveResult> outcomes;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            outcomes = XFTY_DepthBatchedInserter.seedAll(records, links(link(0, 1, Contact.AccountId)));
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(outcomes.get(0).isSuccess() && outcomes.get(1).isSuccess());
+        Assert.areEqual(parent.Id, child.AccountId);
+    }
+
+    @IsTest
+    static void testSeedAll_whenOneRecordIsInvalid_savesTheRestAndReturnsBothOutcomes() {
+        // Arrange - a Contact with no LastName cannot be inserted
+        List<SObject> records = new List<SObject>{
+                new Account(Name = 'Good'), new Contact()
+        };
+
+        // Act
+        Map<Integer, Database.SaveResult> outcomes;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            outcomes = XFTY_DepthBatchedInserter.seedAll(records, links());
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(outcomes.get(0).isSuccess(), 'the valid record still landed');
+        Assert.isFalse(outcomes.get(1).isSuccess(), 'the invalid record was reported, not thrown');
+    }
+
     // Runners + helpers -------------------------------------
 
     static void assertInsertCount(

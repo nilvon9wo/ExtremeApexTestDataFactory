@@ -3,6 +3,10 @@
  * `insert` per dependency layer, pointing each child's lookup at its parent's new
  * Id as the layer above it lands.
  *
+ * `insertAll` / `resolveAll` are all-or-none (a fixture that half-lands is worse
+ * than one that throws). `seedAll` is the best-effort variant for org seeding -
+ * `Database.insert(layer, false)`, every record's outcome returned.
+ *
  * Records are addressed by their index in the list: Apex compares SObjects by
  * field value, not identity, so an index is the only stable handle on one.
  */
@@ -30,6 +34,11 @@ public class XFTY_DepthBatchedInserter {
     private final List<SObject> records;
     private final XFTY_InsertModeEnum mode;
 
+    // Set only by seedAll: Database.insert(_, false) per layer, no throw on a row
+    // failure, every SObjectType's outcome kept by record index.
+    private Boolean bestEffort = false;
+    private final Map<Integer, Database.SaveResult> saveResultsByIndex = new Map<Integer, Database.SaveResult>();
+
     private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links, XFTY_InsertModeEnum mode) {
         this.records = records;
         this.mode = mode;
@@ -40,6 +49,22 @@ public class XFTY_DepthBatchedInserter {
     /** Depth-batched real DML. */
     public static void insertAll(List<SObject> records, List<ParentLink> links) {
         resolveAll(records, links, XFTY_InsertModeEnum.NOW);
+    }
+
+    /**
+     * Best-effort depth-batched real DML for org seeding: each layer goes in with
+     * `Database.insert(layer, false)`, so a validation rule or missing permission
+     * on one record does not stop the rest. Returns each attempted record's
+     * `Database.SaveResult` keyed by its index in `records`.
+     */
+    public static Map<Integer, Database.SaveResult> seedAll(List<SObject> records, List<ParentLink> links) {
+        if (records == null || records.isEmpty()) {
+            return new Map<Integer, Database.SaveResult>();
+        }
+        XFTY_DepthBatchedInserter inserter = new XFTY_DepthBatchedInserter(records, links, XFTY_InsertModeEnum.NOW);
+        inserter.bestEffort = true;
+        inserter.insertLayerByLayer();
+        return inserter.saveResultsByIndex;
     }
 
     /**
@@ -90,6 +115,7 @@ public class XFTY_DepthBatchedInserter {
 
     private void insertLayer(List<Integer> indexes) {
         List<SObject> layer = new List<SObject>();
+        List<Integer> layerIndexes = new List<Integer>();
         for (Integer index : indexes) {
             this.pointAtParents(index);
             SObject record = this.records[index];
@@ -97,6 +123,7 @@ public class XFTY_DepthBatchedInserter {
             // already-resolved shared ancestor) - point children at it, don't re-insert.
             if (record.Id == null) {
                 layer.add(record);
+                layerIndexes.add(index);
             }
         }
         if (layer.isEmpty()) {
@@ -104,8 +131,17 @@ public class XFTY_DepthBatchedInserter {
         }
         if (this.mode == XFTY_InsertModeEnum.MOCK) {
             XFTY_IdMocker.addIds(layer);
+        } else if (this.bestEffort) {
+            this.saveBestEffort(layer, layerIndexes);
         } else {
             insert layer;
+        }
+    }
+
+    private void saveBestEffort(List<SObject> layer, List<Integer> layerIndexes) {
+        List<Database.SaveResult> results = Database.insert(layer, false);
+        for (Integer i = 0; i < results.size(); i++) {
+            this.saveResultsByIndex.put(layerIndexes[i], results[i]);
         }
     }
 
