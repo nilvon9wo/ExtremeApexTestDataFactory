@@ -166,12 +166,13 @@ accounts[0].Contacts[0].Cases.size();   // 3
 
 ## Children of a generated ancestor
 
-`bundle.primaryRowsResolvingTo(relationshipField, ancestorRow)` → `List<Integer>`
-gives the primary rows that were generated pointing at a given generated ancestor
-— the inverse of the 1:1 parent alignment (matched on the foreign key when Ids
-exist, else the 1:1 position; a [shared ancestor](shared-ancestors.md) returns
-the several rows that resolved to it). Enrichment uses this to graft the inverse
-child subquery; it is also useful on its own.
+`bundle.primariesResolvingTo(relationshipField, ancestorRowIndex)` → `List<SObject>`
+gives the primary records that were generated pointing at a given generated
+ancestor — the inverse of the 1:1 parent alignment (matched on the foreign key
+when Ids exist, else the 1:1 position; a [shared ancestor](shared-ancestors.md)
+returns the several primaries that resolved to it). The upward counterpart of
+`childRecordsOf`. Enrichment uses this to graft the inverse child subquery; it is
+also useful on its own.
 
 ---
 

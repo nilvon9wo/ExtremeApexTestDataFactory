@@ -92,34 +92,19 @@ public class XFTY_DummySObjectBundle {
     }
 
     /**
-     * Which primary rows were generated pointing at `getList(relationshipField)`
-     * row `ancestorRowIndex` - the inverse of the 1:1 parent alignment, so a
-     * shared ancestor returns the several rows that resolved to it. Matched on the
-     * foreign key when Ids exist, else the 1:1 position.
+     * The primary records generated pointing at `getList(relationshipField)` row
+     * `ancestorRowIndex` - the inverse of the 1:1 parent alignment, so a shared
+     * ancestor returns the several primaries that resolved to it. Matched on the
+     * foreign key when Ids exist, else the 1:1 position. The upward counterpart of
+     * `childRecordsOf`. Empty when the row is out of range.
      */
-    public List<Integer> primaryRowsResolvingTo(SObjectField relationshipField, Integer ancestorRowIndex) {
-        List<SObject> primaries = this.primaryRecords();
+    public List<SObject> primariesResolvingTo(SObjectField relationshipField, Integer ancestorRowIndex) {
         List<SObject> ancestors = this.getList(relationshipField);
-        List<Integer> rows = new List<Integer>();
-        Boolean cannotResolve = primaries == null
-                || ancestors == null
-                || ancestorRowIndex < 0
-                || ancestorRowIndex >= ancestors.size();
-        if (cannotResolve) {
-            return rows;
+        if (this.primaryRecords() == null || ancestors == null
+                || ancestorRowIndex < 0 || ancestorRowIndex >= ancestors.size()) {
+            return new List<SObject>();
         }
-        Object ancestorId = ancestors[ancestorRowIndex].get('Id');
-        if (ancestorId == null) {
-            return (ancestorRowIndex < primaries.size())
-                    ? new List<Integer>{ ancestorRowIndex }
-                    : rows;
-        }
-        for (Integer row = 0; row < primaries.size(); row++) {
-            if (primaries[row].get(relationshipField) == ancestorId) {
-                rows.add(row);
-            }
-        }
-        return rows;
+        return XFTY_InverseAlignment.childrenPerParent(ancestors, this.primaryRecords(), relationshipField)[ancestorRowIndex];
     }
 
     // Up-flowing values - resolved during the DEFERRED flush, once the forest exists ----

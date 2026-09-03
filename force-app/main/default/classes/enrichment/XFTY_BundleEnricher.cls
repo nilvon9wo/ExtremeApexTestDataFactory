@@ -10,6 +10,13 @@
  *
  * Returns the enriched target records (`getList(field)`) as new instances - the
  * originals are untouched. Entry: `bundle.inject(field, config)` / `injectAll`.
+ *
+ * `graftAncestors` / `graftChildren` are **mutually recursive** through
+ * `enrichPosition`, so they stay in one class - splitting them would only give
+ * each a back-reference to re-enter the recursion. The parts that do *not*
+ * recurse are their own classes: `XFTY_EnrichmentTarget`,
+ * `XFTY_EnrichmentSelection`, `XFTY_InverseAlignment`, `XFTY_ForcedValues`,
+ * `XFTY_QueryableShapeValidator`.
  */
 @IsTest
 public class XFTY_BundleEnricher {

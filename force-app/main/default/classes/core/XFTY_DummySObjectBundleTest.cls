@@ -177,4 +177,67 @@ private class XFTY_DummySObjectBundleTest {
         // Assert
         Assert.areEqual(0, none.size(), 'no children configured for that field');
     }
+
+    // primariesResolvingTo - the inverse of the 1:1 parent alignment -
+
+    @IsTest
+    static void testPrimariesResolvingTo_whenPrimariesShareAnAncestor_returnsEveryPrimaryOnThatAncestor() {
+        // Arrange - contacts 0 and 2 resolve to account 0, contact 1 to account 1
+        Id accountZero = XFTY_IdMocker.generateId(Account.SObjectType);
+        Id accountOne = XFTY_IdMocker.generateId(Account.SObjectType);
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{
+                new Contact(LastName = 'C0', AccountId = accountZero),
+                new Contact(LastName = 'C1', AccountId = accountOne),
+                new Contact(LastName = 'C2', AccountId = accountZero)
+        });
+        bundle.put(Contact.AccountId, new List<SObject>{
+                new Account(Id = accountZero), new Account(Id = accountOne)
+        });
+
+        // Act
+        Test.startTest();
+        List<SObject> onAccountZero = bundle.primariesResolvingTo(Contact.AccountId, 0);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(2, onAccountZero.size());
+        Assert.areEqual('C0', ((Contact) onAccountZero[0]).LastName);
+        Assert.areEqual('C2', ((Contact) onAccountZero[1]).LastName);
+    }
+
+    @IsTest
+    static void testPrimariesResolvingTo_whenNoIdsExist_fallsBackToPositionalAlignment() {
+        // Arrange - no Ids anywhere, so ancestor row N pairs with primary row N
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{
+                new Contact(LastName = 'C0'), new Contact(LastName = 'C1')
+        });
+        bundle.put(Contact.AccountId, new List<SObject>{ new Account(), new Account() });
+
+        // Act
+        Test.startTest();
+        List<SObject> onRowOne = bundle.primariesResolvingTo(Contact.AccountId, 1);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(1, onRowOne.size());
+        Assert.areEqual('C1', ((Contact) onRowOne[0]).LastName);
+    }
+
+    @IsTest
+    static void testPrimariesResolvingTo_whenTheAncestorRowIsOutOfRange_returnsAnEmptyList() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact(LastName = 'C0') });
+        bundle.put(Contact.AccountId, new List<SObject>{ new Account() });
+
+        // Act
+        Test.startTest();
+        List<SObject> none = bundle.primariesResolvingTo(Contact.AccountId, 5);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(0, none.size());
+    }
 }

@@ -2,7 +2,8 @@
  * The inverse of the 1:1 parent alignment: for each parent record, the child
  * records whose foreign key points at it. Matched on the Id when the parents
  * carry one, otherwise position for position (the `NEVER` / pre-`flush` case).
- * `XFTY_BundleEnricher` uses this to graft an ancestor's inverse child subquery.
+ * Behind `XFTY_DummySObjectBundle.primariesResolvingTo` and used by
+ * `XFTY_BundleEnricher` to graft an ancestor's inverse child subquery.
  */
 @IsTest
 public class XFTY_InverseAlignment {

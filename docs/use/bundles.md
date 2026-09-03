@@ -110,8 +110,8 @@ map, so you never line rows up by arithmetic) and pull fields off the records it
 returns. Full detail — ordering, multiple child configs, grandchildren — is in
 [child-records](child-records.md).
 
-`bundle.primaryRowsResolvingTo(relationshipField, ancestorRowIndex)` is the
-upward counterpart of `childRecordsOf` — which primary rows were generated
+`bundle.primariesResolvingTo(relationshipField, ancestorRowIndex)` is the
+upward counterpart of `childRecordsOf` — the primary records that were generated
 pointing at that generated ancestor (a [shared ancestor](shared-ancestors.md)
 returns the several that resolved to it).
 
