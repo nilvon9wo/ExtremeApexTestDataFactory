@@ -1,9 +1,9 @@
 /**
  * Re-expresses a generated graph in the shape `record.put(...)` rejects. Reads
  * the parents, children and alignment already on the bundle, drives
- * `XFTY_SObjectInjector` once per graph level (deepest first), and returns a new
- * carrier bundle whose `getList(field)` is the enriched instances. The original
- * bundle and its records are untouched.
+ * `XFTY_SObjectInjector` once per graph level (deepest first), and returns the
+ * enriched target records as new instances. The original bundle and its records
+ * are untouched.
  *
  * The entry points are `bundle.inject(field, config)` / `injectAll(field)`.
  */
@@ -23,7 +23,7 @@ public class XFTY_BundleEnricher {
         this.working = locate(bundle, field);
     }
 
-    public static XFTY_DummySObjectBundle enrich(
+    public static List<SObject> enrich(
             XFTY_DummySObjectBundle bundle,
             SObjectField field,
             XFTY_InjectConfig config
@@ -32,7 +32,7 @@ public class XFTY_BundleEnricher {
     }
 
     /** `enrich` with `XFTY_InjectConfig.everything()`; throws when the graph has nothing to inject. */
-    public static XFTY_DummySObjectBundle enrichEverything(XFTY_DummySObjectBundle bundle, SObjectField field) {
+    public static List<SObject> enrichEverything(XFTY_DummySObjectBundle bundle, SObjectField field) {
         if (!hasAnythingToInject(bundle, field)) {
             throw new XFTY_DummySObjectFtyProviderException(
                     'injectAll(' + field + '): the graph has no generated ancestor or child collection to inject. '
@@ -51,7 +51,7 @@ public class XFTY_BundleEnricher {
         return hasParents || hasChildren;
     }
 
-    private XFTY_DummySObjectBundle run() {
+    private List<SObject> run() {
         List<List<SObjectField>> parentPaths = XFTY_EnrichmentPaths.parentPaths(this.working.subBundle, this.config);
         XFTY_SObjectInjector injector = XFTY_SObjectInjector.inject(this.working.records);
         this.graftParents(injector, parentPaths);
@@ -59,7 +59,7 @@ public class XFTY_BundleEnricher {
         for (SObjectField valued : this.config.onRecordValues.keySet()) {
             injector.value(valued, resolved(this.config.onRecordValues.get(valued)));
         }
-        return this.carrier(injector.result());
+        return injector.result();
     }
 
     // Working list -----------------------------------------------------------
@@ -179,18 +179,6 @@ public class XFTY_BundleEnricher {
             perRow.add(children);
         }
         return perRow;
-    }
-
-    // Result carrier -----------------------------------------------------
-
-    private XFTY_DummySObjectBundle carrier(List<SObject> enrichedRecords) {
-        XFTY_DummySObjectBundle carrier = new XFTY_DummySObjectBundle();
-        if (this.field == this.bundle.primaryTargetField) {
-            carrier.putPrimaries(this.field, enrichedRecords);
-        } else {
-            carrier.put(this.field, enrichedRecords);
-        }
-        return carrier;
     }
 
     // Helpers ----------------------------------------------------------

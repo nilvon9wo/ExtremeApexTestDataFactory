@@ -208,6 +208,28 @@ private class XFTY_SObjectInjectorTest {
     }
 
     @IsTest
+    static void testResult_whenAChildAlreadyCarriesItsOwnSubquery_theNestingSurvivesTheRoundTrip() {
+        // Arrange - a Contact that already has its Cases populated (from a prior injector pass)
+        List<Contact> contactsWithCases = (List<Contact>) XFTY_SObjectInjector.inject(
+                new List<SObject>{ new Contact(LastName = 'Parent') }
+        )
+                .childRelationship('Cases', new List<List<SObject>>{
+                        new List<SObject>{ new Case(Subject = 'grandchild') }
+                })
+                .result();
+        List<Account> accounts = new List<Account>{ new Account(Name = 'Root') };
+
+        // Act
+        List<Account> enriched = (List<Account>) XFTY_SObjectInjector.inject(accounts)
+                .childRelationship('Contacts', new List<List<SObject>>{ contactsWithCases })
+                .result();
+
+        // Assert
+        Assert.areEqual('grandchild', enriched[0].Contacts[0].Cases[0].Subject,
+                'a two-level subquery survives serialize/deserialize');
+    }
+
+    @IsTest
     static void testResult_whenGraftsSpanAllThreeKinds_appliesEveryOneInOneRoundTrip() {
         // Arrange
         List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'Solo') };

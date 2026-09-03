@@ -157,7 +157,7 @@ private class XFTY_EnrichmentLoadTest {
 
     private static Usage enrich(XFTY_DummySObjectBundle bundle, SObjectField field, XFTY_InjectConfig config) {
         Usage used = new Usage();
-        used.records = bundle.inject(field, config).getList(field);
+        used.records = bundle.inject(field, config);
         used.recordEnd();
         return used;
     }

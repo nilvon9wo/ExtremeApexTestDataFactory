@@ -60,8 +60,8 @@ One line per public entry point. Follow the links for detail.
 
 ## Serialization enrichment — `XFTY_DummySObjectBundle`
 
-| `.inject(field, XFTY_InjectConfig)` | new carrier bundle; `getList(field)` is new instances with parents / subqueries / forced scalars written on |
-| `.injectAll(field)` / `.injectAllParents(field)` / `.injectAllChildren(field)` | `inject` with `everything()` / `allParents()` / `allChildren()`; `injectAll` throws if there is nothing to inject |
+| `.inject(field, XFTY_InjectConfig)` → `List<SObject>` | new instances of `getList(field)` with parents / subqueries / forced scalars written on |
+| `.injectAll(field)` / `.injectAllParents(field)` / `.injectAllChildren(field)` → `List<SObject>` | `inject` with `everything()` / `allParents()` / `allChildren()`; `injectAll` throws if there is nothing to inject |
 | `XFTY_InjectConfig.nothing() / allParents() / allChildren() / everything()` | the breadth to start from |
 | `.injectParent(path)` / `.injectChild(path)` | add a path and every hop along it |
 | `.excludeParent(path)` / `.excludeChild(path)` | prune a subtree from a breadth start |

@@ -11,7 +11,7 @@ subquery, a formula / roll-up-summary / system / read-only field — through a
 `JSON.serialize` / `JSON.deserialize` round-trip, so the code under test sees them
 exactly as it would after a real `SELECT`.
 
-It runs **after** generation, returns a **new** bundle of **new** instances, and
+It runs **after** generation, returns a **`List<SObject>` of new instances**, and
 never touches the originals or the records `DEFERRED` back-fills Ids onto.
 
 ▶ Runnable: `XFTY_Ex_EnrichmentTest`
@@ -27,9 +27,7 @@ XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectTy
     .setQuantityPerTemplate(2)
     .supplyBundle();
 
-XFTY_DummySObjectBundle enriched = bundle.injectAll(Contact.Id);
-
-List<Contact> contacts = (List<Contact>) enriched.getList(Contact.Id);
+List<Contact> contacts = (List<Contact>) bundle.injectAll(Contact.Id);
 contacts[0].Account.Name;     // the generated ancestor - was a null-pointer
 ```
 
@@ -138,9 +136,8 @@ the 1:1 parent alignment. `injectAll` / `allChildren` on a generated-ancestor
 field grafts it:
 
 ```apex
-XFTY_DummySObjectBundle enriched = bundle.injectAll(Contact.AccountId);
-Account generatedAccount = (Account) enriched.getList(Contact.AccountId)[0];
-generatedAccount.Contacts.size();   // 1 - the Contact that generated this Account
+List<Account> generatedAccounts = (List<Account>) bundle.injectAll(Contact.AccountId);
+generatedAccounts[0].Contacts.size();   // 1 - the Contact that generated this Account
 ```
 
 A [shared ancestor](shared-ancestors.md) returns the **several** children that
@@ -219,12 +216,12 @@ XFTY_DummySObjectBundle contacts = bundle.getChildBundle(Contact.AccountId).inje
 An injected parent / subquery is a fixed copy. Code under test that mutates it
 and expects re-query behaviour will not see the change.
 
-### The returned bundle is a thin carrier
+### Navigate off the SObjects
 
-`enriched.getList(field)` holds the new instances; that is the only list on it.
-`enriched.getBundle(...)`, `enriched.getChildBundle(...)` and
-`enriched.getList(<other field>)` are **empty** — navigate the injected
-relationships **off the SObject instances**, which is the whole point.
+`inject` / `injectAll` return a plain `List<SObject>` — the enriched target
+records. Read the injected parents, subqueries and scalars **off those SObject
+instances** (`contact.Account.Name`, `account.Contacts`), which is the whole
+point; there is no bundle to navigate.
 
 ### Cost
 

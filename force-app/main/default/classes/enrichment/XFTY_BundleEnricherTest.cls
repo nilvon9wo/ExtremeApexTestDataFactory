@@ -24,11 +24,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.injectAll(Contact.Id);
+        List<SObject> enriched = bundle.injectAll(Contact.Id);
         Test.stopTest();
 
         // Assert
-        List<Contact> contacts = (List<Contact>) enriched.getList(Contact.Id);
+        List<Contact> contacts = (List<Contact>) enriched;
         Assert.isNotNull(contacts[0].Account, 'row 0 Account grafted');
         Assert.isNotNull(contacts[1].Account.Name, 'row 1 Account grafted with fields');
     }
@@ -46,11 +46,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, config);
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
         Test.stopTest();
 
         // Assert
-        Contact enrichedContact = (Contact) enriched.getList(Contact.Id)[0];
+        Contact enrichedContact = (Contact) enriched[0];
         Assert.isNotNull(enrichedContact.Account.Parent, 'the grandparent Account is on the chain');
     }
 
@@ -67,11 +67,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, config);
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
         Test.stopTest();
 
         // Assert
-        Contact enrichedContact = (Contact) enriched.getList(Contact.Id)[0];
+        Contact enrichedContact = (Contact) enriched[0];
         Assert.isNotNull(enrichedContact.Account, 'depth 1 still grafts the Account');
         Assert.isNull(enrichedContact.Account.Parent, 'depth 1 stops before the grandparent');
     }
@@ -86,11 +86,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.injectAllChildren(Account.Id);
+        List<SObject> enriched = bundle.injectAllChildren(Account.Id);
         Test.stopTest();
 
         // Assert
-        Account enrichedAccount = (Account) enriched.getList(Account.Id)[0];
+        Account enrichedAccount = (Account) enriched[0];
         Assert.areEqual(3, enrichedAccount.Contacts.size());
     }
 
@@ -105,11 +105,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.injectAll(Contact.AccountId);
+        List<SObject> enriched = bundle.injectAll(Contact.AccountId);
         Test.stopTest();
 
         // Assert
-        Account firstAccount = (Account) enriched.getList(Contact.AccountId)[0];
+        Account firstAccount = (Account) enriched[0];
         Assert.areEqual(1, firstAccount.Contacts.size(), 'the Account carries the Contact that generated it');
     }
 
@@ -125,11 +125,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, config);
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(forced, ((Contact) enriched.getList(Contact.Id)[0]).CreatedDate);
+        Assert.areEqual(forced, ((Contact) enriched[0]).CreatedDate);
     }
 
     @IsTest
@@ -145,11 +145,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, config);
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(9999, ((Contact) enriched.getList(Contact.Id)[0]).Account.AnnualRevenue);
+        Assert.areEqual(9999, ((Contact) enriched[0]).Account.AnnualRevenue);
     }
 
     @IsTest
@@ -164,11 +164,11 @@ private class XFTY_BundleEnricherTest {
 
         // Act
         Test.startTest();
-        XFTY_DummySObjectBundle enriched = bundle.inject(Contact.Id, config);
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
         Test.stopTest();
 
         // Assert
-        Assert.isNull(((Contact) enriched.getList(Contact.Id)[0]).Account, 'the excluded ancestor was not grafted');
+        Assert.isNull(((Contact) enriched[0]).Account, 'the excluded ancestor was not grafted');
     }
 
     @IsTest

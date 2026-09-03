@@ -67,27 +67,27 @@ public class XFTY_DummySObjectBundle {
     // Serialization enrichment - re-express the graph in the shape put() rejects ----
 
     /**
-     * A new carrier bundle whose `getList(field)` is new instances of the
-     * records at `getList(field)`, enriched per `config` - populated parent
-     * relationships, child subqueries, forced scalars - so code under test reads
-     * them straight off the SObject. Originals untouched. See `XFTY_BundleEnricher`.
+     * New instances of the records at `getList(field)`, enriched per `config` -
+     * populated parent relationships, child subqueries, forced scalars - so code
+     * under test reads them straight off the SObject. Originals untouched. See
+     * `XFTY_BundleEnricher`.
      */
-    public XFTY_DummySObjectBundle inject(SObjectField field, XFTY_InjectConfig config) {
+    public List<SObject> inject(SObjectField field, XFTY_InjectConfig config) {
         return XFTY_BundleEnricher.enrich(this, field, config);
     }
 
     /** `inject` with everything the graph holds; throws if there is nothing to inject. */
-    public XFTY_DummySObjectBundle injectAll(SObjectField field) {
+    public List<SObject> injectAll(SObjectField field) {
         return XFTY_BundleEnricher.enrichEverything(this, field);
     }
 
     /** `inject` with every generated ancestor; children only if the config names them. */
-    public XFTY_DummySObjectBundle injectAllParents(SObjectField field) {
+    public List<SObject> injectAllParents(SObjectField field) {
         return this.inject(field, XFTY_InjectConfig.allParents());
     }
 
     /** `inject` with every generated child collection; parents only if the config names them. */
-    public XFTY_DummySObjectBundle injectAllChildren(SObjectField field) {
+    public List<SObject> injectAllChildren(SObjectField field) {
         return this.inject(field, XFTY_InjectConfig.allChildren());
     }
 
