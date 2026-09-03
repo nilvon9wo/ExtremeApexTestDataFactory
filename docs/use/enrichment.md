@@ -21,13 +21,11 @@ never touches the originals or the records `DEFERRED` back-fills Ids onto.
 ## The target records
 
 Everything below talks about the **target records** — the records `inject`
-operates on. They are `bundle.getList(field)` for **whatever bundle you call
-`inject` on** and whatever `field` you pass. That bundle may be the one your
-Provider returned, *or* one you navigated into
-(`bundle.getChildBundle(X).inject(...)`) — the target records are always "the
-list at `getList(field)` here", never "the root of the original generation".
-
-`field` selects which list:
+operates on. `field` must be one of exactly three things the bundle recognises
+(the table below); the bundle it operates on is **whichever bundle you call
+`inject` on** — the one your Provider returned, *or* one you navigated into
+(`bundle.getChildBundle(X).inject(...)`) — never "the root of the original
+generation".
 
 | `field` is… | target records | what they can carry |
 |---|---|---|
@@ -35,7 +33,11 @@ list at `getList(field)` here", never "the root of the original generation".
 | a **generated-ancestor** field (`Contact.AccountId`) | `bundle.getList(Contact.AccountId)` — the Accounts, 1:1 with the primaries | those Accounts' own ancestors; **the inverse child** — the Contacts that generated them |
 | a **child-relationship** field (`Case.ContactId`, after `withChildren`) | `bundle.getChildList(Case.ContactId)` | each child's own ancestors; its own `with(...)` children |
 
-Any other field throws, naming the fields the bundle holds.
+A `field` the bundle **does not recognise** throws, naming the fields it holds. A
+`field` it *does* recognise but generated **nothing** for — a relationship left
+out by `setInclusivity`, a child collection of quantity 0 — has an empty target
+list: `inject` returns `new List<SObject>()` and grafts nothing, it does not
+throw.
 
 ---
 
@@ -202,6 +204,17 @@ database, not your copy. A test that asserts on injected data is therefore valid
 only as a **`MOCK` unit test** — see
 [unit-vs-integration](advanced/unit-vs-integration.md) point 4. (After `NOW` the
 records already have real Ids; just `SELECT`.)
+
+**Nothing stops you running DML on an injected record — that is deliberate, not
+enforced — and it is at your own risk.** An injected instance may carry a mocked
+`Id`, populated relationship objects, a snapshot subquery, and read-only /
+formula values a real `insert` rejects or recomputes, so DML against one usually
+**throws** (`INVALID_FIELD_FOR_INSERT_UPDATE`, *field is not writeable*,
+`MALFORMED_ID` on update); when it does not, the test **passes on data the
+database would never hold**. The deserialized instances are also independent
+copies — mutating one end of a relationship does not update the other,
+`contact.Account.Contacts[0]` is not `contact`, and the subquery does not grow
+when code adds a child.
 
 ### `Blob` and compound fields
 

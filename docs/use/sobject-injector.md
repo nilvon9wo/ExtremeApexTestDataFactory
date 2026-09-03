@@ -163,8 +163,14 @@ dropped.
 - **`MOCK`-only in spirit.** A value or relationship you force in is fiction a
   real `insert` overwrites — see
   [unit-vs-integration](advanced/unit-vs-integration.md) point 4.
-- **Snapshot.** An injected subquery / parent is a fixed copy; code that mutates
-  it and re-queries won't see the change.
+- **DML at your own risk — not enforced.** Nothing blocks `insert` / `update` on
+  an enriched record, but a mocked `Id`, populated relationship objects and
+  read-only / formula values make it throw (`INVALID_FIELD_FOR_INSERT_UPDATE`,
+  *field is not writeable*, `MALFORMED_ID`) or, worse, pass silently on a shape
+  the database could never produce.
+- **Snapshot / independent copies.** An injected subquery or parent is a fixed
+  copy; code that mutates it and re-queries won't see the change, and the two
+  ends of a grafted relationship are not the same instance.
 - **Cost.** One `serialize` + `deserialize` per `result()` call — cheap for a
   wide-but-shallow shape, heavier as payload size grows. Nested levels are
   separate `result()` calls.

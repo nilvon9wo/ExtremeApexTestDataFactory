@@ -64,14 +64,30 @@ that, and none of them are bugs XFTY can remove:
    can reach past the SObject API — the well-known `JSON.serialize` /
    `deserialize` round-trip (e.g. Nebula's `TestingUtils`) writes read-only
    fields, system fields (`CreatedDate`, `LastModifiedById`), formula and
-   rollup-summary fields, or populates a parent relationship object in memory.
-   Under `MOCK` those stick and the assertions pass. Under `NOW` the same fields
-   come back to whatever a real `insert` (plus recalculation) produces — often
-   `null` or a different value — and the test fails in the *opposite* direction
-   from the cases above: the unit test is green, the integration test is red.
+   rollup-summary fields, or populates a parent relationship object or a child
+   subquery in memory. Under `MOCK` those stick and the assertions pass. Under
+   `NOW` the same fields come back to whatever a real `insert` (plus
+   recalculation) produces — often `null` or a different value — and the test
+   fails in the *opposite* direction from the cases above: the unit test is
+   green, the integration test is red.
+
    `bundle.inject(field, config)` / `injectAll` and `XFTY_SObjectInjector`
-   ([enrichment](../enrichment.md)) do exactly this, on purpose — a value that
-   only exists because it was forced in makes that test inherently `MOCK`-only.
+   ([enrichment](../enrichment.md)) do exactly this, on purpose. **XFTY does not
+   stop you running DML on an injected record — that is deliberate, not
+   enforced — but it is at your own risk.** An injected record is fiction: it may
+   carry a mocked `Id`, populated relationship objects, a *snapshot* child
+   subquery, and read-only / formula / roll-up values a real `insert` would
+   reject or recompute. Attempting DML against one typically **throws**
+   (`INVALID_FIELD_FOR_INSERT_UPDATE` on the `Id`, *field is not
+   writeable* on a formula, `MALFORMED_ID` / `ENTITY_IS_DELETED` on an update to
+   a mocked `Id`); when it does *not* throw, you get a **false positive** — the
+   assertion passes on a shape the database would never hold. Related traps: the
+   deserialized instances are independent copies (mutating one end of a
+   relationship does not update the other, and `contact.Account.Contacts[0]` is
+   not `contact`), the subquery is a fixed snapshot (add a child, re-read it, and
+   you still see the old list), and a `Blob` carried across the round-trip is
+   lost if that record is serialized again downstream. Treat an injected graph as
+   read-only input to a `MOCK` unit test and nothing else.
 
 The takeaway: default to `MOCK`, and treat a `NOW` run as its own thing that has
 to be *kept* green, not as a switch that is guaranteed to stay flipped.
