@@ -6,8 +6,8 @@
 > XFTY's own surface here is deliberately tiny — one method and a result object —
 > so that if the preview shifts, this is a small thing to re-fit.
 >
-> Built and proven: the direct-DML path below. Not built: a Bulk API path for
-> volumes past one transaction.
+> Built and proven: the direct-DML path below. A Bulk API path for larger volumes
+> is **not viable** without org setup — see [Limits](#limits).
 
 XFTY normally builds data *for a test* and rolls it back. `XFTY_Seeder` builds
 data that **stays** — a scratch org (or, once the preview widens, a sandbox)
@@ -134,9 +134,16 @@ rollback, so the delete sticks too).
 ## Limits
 
 - **Scratch orgs only** for now (the `@IntegrationTest` preview).
-- **One transaction.** The per-transaction DML-row (10,000) and CPU ceilings
-  apply; split a large seed across several `@IntegrationTest` methods.
-- `@IntegrationTest` runs **asynchronously** and **one at a time**.
+- **One transaction, and no way around it.** The per-transaction DML-row (10,000)
+  and trigger-bound CPU ceilings apply — roughly **1,000–1,500 primaries with a
+  parent each** per method. To seed more, write **several `@IntegrationTest`
+  methods**, each its own transaction. Scaling from *inside* one method is not
+  available: an `@IntegrationTest` cannot get a usable session to call its own
+  Bulk API without a Connected App + Named Credential (setup XFTY will not
+  impose), and `Queueable` / `Batch` jobs enqueued from an `@IntegrationTest`
+  never execute.
+- `@IntegrationTest` runs **asynchronously** and **one at a time**; a run cannot
+  mix `@IntegrationTest` and `@IsTest` classes.
 - A **cyclic** set of lookups (no order lands every parent before its child)
   throws — best effort covers row failures, not an impossible insert order.
 - No `@TearDown` — the point is that the data survives.

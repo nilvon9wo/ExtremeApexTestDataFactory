@@ -35,16 +35,30 @@ apply.
 
 ## Not built
 
-- **Bulk API / Composite Graph path** — for volumes past one transaction's
-  ceiling, and to (ab)use an external-Id field to load several generations
-  concurrently in one callout. Needs an org self-callout to work from an
-  `@IntegrationTest` (endpoint is free via `URL.getOrgDomainUrl()`; the open
-  question is a usable session in that context). A separate spike.
 - **A spec-list entry point** — `seed(lookup, List<XFTY_SeedSpec>)` generating
   then seeding, with `reusingParent` etc. The parked `sandbox-seeding` branch had
   this API; carry it forward if wanted.
 - **Sandbox support** — the `@IntegrationTest` preview is scratch-org-only for
   now.
+
+## Not viable (spiked)
+
+The **Bulk API / Composite Graph path** — one callout for volumes past a single
+transaction, and an external-Id field to load several generations concurrently —
+was spiked on a Winter '27 preview scratch org and does not work config-free:
+
+- Callouts to the org's own My Domain URL succeed with **no Remote Site Setting**
+  (`URL.getOrgDomainUrl()` + an unauthenticated `/services/data/` → 200).
+- But `UserInfo.getSessionId()` in an `@IntegrationTest` returns the fake
+  `…!ApexTestSession` placeholder — authenticated self-API calls get
+  `401 INVALID_SESSION_ID`. A real token needs a Connected App + Named Credential.
+- `Queueable` / `Batch` jobs enqueued from an `@IntegrationTest` are created but
+  **never execute** (stuck `Queued`), so chunking across transactions from inside
+  a seed method is out too.
+
+So `XFTY_Seeder` is one transaction; a large seed is several `@IntegrationTest`
+methods. A Bulk API path stays possible only as an **opt-in** that asks the
+consumer to wire a self-Named-Credential.
 
 ## Superseded
 
