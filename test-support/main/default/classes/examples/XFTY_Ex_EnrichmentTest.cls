@@ -7,6 +7,14 @@ private class XFTY_Ex_EnrichmentTest {
 
     private static final XFTY_DefaultSObjectProviderLookup LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 
+    private static XFTY_DummySObjectProviderLookupIntf withCases() {
+        return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
+                XFTY_LookupKey.get(Account.SObjectType) => new XFTY_DefaultAccountDataProvider(),
+                XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider(),
+                XFTY_LookupKey.get(Case.SObjectType) => new BlankCaseProvider()
+        });
+    }
+
     @IsTest
     static void testInjectAll_putsTheGeneratedAncestorOntoTheRecord() {
         // Arrange
@@ -70,12 +78,9 @@ private class XFTY_Ex_EnrichmentTest {
                 .setInsertMode(XFTY_InsertModeEnum.MOCK)
                 .withChildren(Contact.AccountId, 2)
                 .supplyBundle();
-        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
-                .injectChild(Contact.AccountId);
-
         // Act
         Test.startTest();
-        List<SObject> enriched = bundle.inject(Account.Id, config);
+        List<SObject> enriched = bundle.inject(Account.Id, XFTY_InjectConfig.nothing().injectChild(Contact.AccountId));
         Test.stopTest();
 
         // Assert
@@ -143,6 +148,45 @@ private class XFTY_Ex_EnrichmentTest {
     }
 
     @IsTest
+    static void testInjectAll_putsTheGeneratedAncestorsInverseChildBackOntoIt() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+
+        // Act
+        Test.startTest();
+        List<Contact> contacts = (List<Contact>) bundle.injectAll(Contact.Id);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(1, contacts[0].Account.Contacts.size(), 'the generated Account carries the Contact back');
+    }
+
+    @IsTest
+    static void testInject_withChildDepthTwoAndBreakSoqlLimits_graftsGrandchildren() {
+        // Arrange - Account -> 2 Contacts -> 3 Cases each
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, withCases())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(3))
+                )
+                .supplyBundle();
+
+        // Act
+        Test.startTest();
+        List<Account> accounts = (List<Account>) bundle.inject(
+                Account.Id, XFTY_InjectConfig.allChildren().childDepth(2).breakSoqlLimits()
+        );
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(3, accounts[0].Contacts[0].Cases.size());
+    }
+
+    @IsTest
     static void testInject_usingXftySObjectInjectorDirectly_needsNoBundle() {
         // Arrange
         List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'Standalone') };
@@ -158,5 +202,22 @@ private class XFTY_Ex_EnrichmentTest {
 
         // Assert
         Assert.areEqual('Grafted directly', enriched[0].Account.Name);
+    }
+
+    private class BlankCaseProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Case.Id)
+                .put(Case.Subject, new XFTY_IncrementingStringExpression('Example Case'));
+
+        public SObjectField getPrimaryTargetField() {
+            return Case.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
     }
 }

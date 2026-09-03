@@ -63,11 +63,13 @@ One line per public entry point. Follow the links for detail.
 | `.inject(field, XFTY_InjectConfig)` → `List<SObject>` | new instances of `getList(field)` with parents / subqueries / forced scalars written on |
 | `.injectAll(field)` / `.injectAllParents(field)` / `.injectAllChildren(field)` → `List<SObject>` | `inject` with `everything()` / `allParents()` / `allChildren()`; `injectAll` throws if there is nothing to inject |
 | `XFTY_InjectConfig.nothing() / allParents() / allChildren() / everything()` | the breadth to start from |
-| `.injectParent(path)` / `.injectChild(path)` | add a path and every hop along it |
-| `.excludeParent(path)` / `.excludeChild(path)` | prune a subtree from a breadth start |
-| `.injectValue(field, value)` / `.injectValue(path, value)` | force a scalar on the record / on a record `path` reaches |
-| `.parentDepth(n)` / `.breakSoqlLimits()` | cap the ancestor climb (default 5) · lift the ceiling. Child injection is one level only (`childDepth(n>1)` throws) |
-| `XFTY_SObjectInjector.inject(records).relationship(name, parents).childRelationship(name, perRow).value(field, v).valuePerRow(field, vs).result()` | the JSON round-trip, standalone — one serialize + one deserialize |
+| `.injectParent(path)` | inject the ancestor at `path` (target-relative) and every hop to it |
+| `.injectChild(childLookupField)` / `.excludeChild(childLookupField)` | one child collection, by its lookup field |
+| `.excludeParent(path)` | prune a subtree from a breadth start (prefix match) |
+| `.injectValue(field, value)` / `.injectValue(path, value)` | force a scalar on the target record / on a record `path` reaches |
+| `.parentDepth(n)` / `.childDepth(n)` / `.breakSoqlLimits()` | cap the ancestor climb (default 5) · nested-child levels (default 1, `n>1` needs breakSoqlLimits) · lift both ceilings |
+| `.primaryRowsResolvingTo(relField, ancestorRow)` → `List<Integer>` (on the bundle) | primary rows generated pointing at that ancestor — the inverse alignment |
+| `XFTY_SObjectInjector.inject(records).relationship(name, parents).childRelationship(name, perRow).value(field, v).valuePerRow(field, vs).result()` | the JSON round-trip, standalone — one serialize + one deserialize; `Blob` fields throw |
 
 `MOCK`-only (see [unit-vs-integration](../use/advanced/unit-vs-integration.md) point 4). Detail: [enrichment](../use/enrichment.md).
 
