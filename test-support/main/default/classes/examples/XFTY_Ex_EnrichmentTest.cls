@@ -208,6 +208,26 @@ private class XFTY_Ex_EnrichmentTest {
     }
 
     @IsTest
+    static void testInject_withAValueComputedFromTheGraph_readsTheInputsFirstThenForcesALiteral() {
+        // Arrange - the workaround for "an injected value can't feed a context-aware value"
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+        String parentName = (String) bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectValue(Contact.Description, parentName + ' (contact)');
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Contact.Id, config);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(parentName + ' (contact)', ((Contact) enriched[0]).Description);
+    }
+
+    @IsTest
     static void testInject_withACompoundFieldValue_readsBackThroughTheCompound() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)

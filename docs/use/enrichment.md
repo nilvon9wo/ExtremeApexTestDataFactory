@@ -265,9 +265,40 @@ XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
 // code under test can then read contact.MailingAddress.getCity()
 ```
 
+### Depth is capped to a queryable shape by default
+
+Enrichment can build a graph deeper than any single `SELECT` could return — a
+sixth ancestor hop, a nested (grandchild) subquery. It **deliberately refuses
+to**, unless you opt out: `parentDepth` defaults to 5 (the SOQL relationship-hop
+limit), `childDepth` to 1 (SOQL allows no nested subquery), and an `injectParent`
+/ `injectChildValue` path may not run past those. The reason is
+[unit-vs-integration](advanced/unit-vs-integration.md): a shape the platform
+could never produce is a landmine the day the same test runs `NOW`.
+
+`breakSoqlLimits()` lifts the ceiling — deeper `parentDepth`, `childDepth > 1`,
+longer paths. Past that point the injected structure is fiction no `SELECT` will
+ever match, and keeping the test honest is on you. (The one check it does *not*
+lift: `childDepth` must still reach as deep as every `injectChildValue` path —
+that is an internal consistency error, not a SOQL-shape one.)
+
 ### Runs after generation
 
-An injected value cannot feed a [context-aware value](context-aware-values.md).
+An injected value cannot feed a [context-aware value](context-aware-values.md):
+that pass ran during generation and is over. To force a value that *depends* on
+the graph — a formula off a parent, a roll-up off the children you just set with
+`injectChildValue` — read the inputs yourself and pass a literal or a
+`List<Object>`:
+
+```apex
+String parentName = (String) bundle.getValue(new List<SObjectField>{ Contact.AccountId, Account.Name });
+XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+    .injectValue(Contact.Description, parentName + ' (contact)');
+bundle.inject(Contact.Id, config);
+```
+
+`bundle.getValue(path[, row])`, `bundle.childRecordsOf(row, field)` and
+`bundle.primariesResolvingTo(...)` are the readers for that.
+
 Under `DEFERRED` **before** `flush()` the data is thin (no Ids, FKs partly wired)
 — a warning, not an error.
 
