@@ -27,7 +27,7 @@ jobs:
     env:
       DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # `schedule` runs against the default branch; pin it to the beta line
           # until 4.0 ships and master becomes the release.
