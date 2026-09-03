@@ -26,6 +26,9 @@
     <testClassName>XFTY_BundleEnricherTest</testClassName>
     <testClassName>XFTY_QueryableShapeValidatorTest</testClassName>
     <testClassName>XFTY_EnrichmentSelectionTest</testClassName>
+    <testClassName>XFTY_EnrichmentTargetTest</testClassName>
+    <testClassName>XFTY_BlobCarrierTest</testClassName>
+    <testClassName>XFTY_InverseAlignmentTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>

@@ -14,30 +14,20 @@ public class XFTY_QueryableShapeValidator {
         if (config.soqlLimitsLifted) {
             return;
         }
-        rejectOverDeep('parentDepth', config.parentDepthLimit, XFTY_InjectConfig.SOQL_PARENT_HOPS);
-        rejectOverDeep('childDepth', config.childDepthLimit, XFTY_InjectConfig.SOQL_CHILD_DEPTH);
+        rejectOverSoql('parentDepth ' + config.parentDepthLimit, config.parentDepthLimit, XFTY_InjectConfig.SOQL_PARENT_HOPS);
+        rejectOverSoql('childDepth ' + config.childDepthLimit, config.childDepthLimit, XFTY_InjectConfig.SOQL_CHILD_DEPTH);
         for (List<SObjectField> path : config.includedParentPaths) {
-            rejectOverLong('an injectParent path', path.size(), XFTY_InjectConfig.SOQL_PARENT_HOPS);
+            rejectOverSoql('an injectParent path of ' + path.size() + ' hops', path.size(), XFTY_InjectConfig.SOQL_PARENT_HOPS);
         }
     }
 
-    private static void rejectOverDeep(String name, Integer value, Integer soqlMax) {
+    private static void rejectOverSoql(String label, Integer value, Integer soqlMax) {
         if (value == null || value <= soqlMax) {
             return;
         }
-        throw offending(name + ' ' + value + ' exceeds the ' + soqlMax + ' a single SOQL query allows');
-    }
-
-    private static void rejectOverLong(String label, Integer hops, Integer soqlMax) {
-        if (hops <= soqlMax) {
-            return;
-        }
-        throw offending(label + ' is ' + hops + ' hops, past the ' + soqlMax + ' a single SOQL query allows');
-    }
-
-    private static XFTY_DummySObjectFtyProviderException offending(String detail) {
-        return new XFTY_DummySObjectFtyProviderException(
-                'inject: ' + detail + '. Call breakSoqlLimits() on the config to allow it.'
+        throw new XFTY_DummySObjectFtyProviderException(
+                'inject: ' + label + ' exceeds the ' + soqlMax + ' a single SOQL query allows. '
+                        + 'Call breakSoqlLimits() on the config to allow it.'
         );
     }
 }

@@ -7,6 +7,7 @@
  * Standalone: no bundle, no generation. Collect the grafts fluently, then
  * `result()` does exactly one serialize and one deserialize regardless of how
  * many rows or grafts. Inputs are untouched; the returned list is new instances.
+ * `Blob` fields are carried across by `XFTY_BlobCarrier`.
  *
  * ```
  * List<Contact> withAccount = (List<Contact>) XFTY_SObjectInjector.inject(contacts)
@@ -14,18 +15,11 @@
  *     .value(Contact.CreatedDate, aDatetime)
  *     .result();
  * ```
- *
- * `Blob` fields cannot pass through the JSON round-trip (the platform rejects a
- * base64 field on a typed deserialize). They are carried across transparently -
- * captured off the input records, stripped from the JSON, and re-applied to the
- * result - so `.value(Attachment.Body, aBlob)` and a pre-set `Body` both survive.
- * A `Blob` field on an injected *parent / child* record is dropped.
  */
 @IsTest
 public class XFTY_SObjectInjector {
 
     private static final Boolean DONE = true;
-    private static final String SERIALIZED_BLOB_MARKER = 'asByteArray';
 
     private final List<SObject> records;
     private final Map<String, List<SObject>> parentByRelationshipName = new Map<String, List<SObject>>();
@@ -58,8 +52,7 @@ public class XFTY_SObjectInjector {
 
     /**
      * Set `field` to the same value on every row. A compound field takes a
-     * `Map<String, Object>` of its lowercase components (`{ 'city' => 'X',
-     * 'street' => 'Y' }`).
+     * `Map<String, Object>` of its lowercase components (`{ 'city' => 'X' }`).
      */
     public XFTY_SObjectInjector value(SObjectField field, Object valueForEveryRow) {
         this.uniformValueByField.put(field, valueForEveryRow);
@@ -77,100 +70,70 @@ public class XFTY_SObjectInjector {
             return new List<SObject>();
         }
         this.rejectMisalignedGrafts();
-        List<Map<String, Blob>> blobsByRow = this.captureBlobs();
+        List<Map<String, Object>> forcedValues = this.forcedValuesPerRow();
+        List<Map<String, Blob>> blobsByRow = XFTY_BlobCarrier.capture(this.records, forcedValues);
         List<Object> rawRecords = (List<Object>) JSON.deserializeUntyped(JSON.serialize(this.records));
-        for (Integer row = 0; row < rawRecords.size(); row++) {
-            Map<String, Object> rawRecord = (Map<String, Object>) rawRecords[row];
-            for (String blobField : blobsByRow[row].keySet()) {
-                rawRecord.remove(blobField);
-            }
-            this.graftRow(rawRecord, row);
-        }
+        this.graftInto(rawRecords, forcedValues, blobsByRow);
         List<SObject> grafted = (List<SObject>) JSON.deserialize(JSON.serialize(rawRecords), this.listType());
-        reapplyBlobs(grafted, blobsByRow);
+        XFTY_BlobCarrier.restore(grafted, blobsByRow);
         return grafted;
     }
 
-    private void graftRow(Map<String, Object> rawRecord, Integer row) {
+    private void graftInto(
+            List<Object> rawRecords,
+            List<Map<String, Object>> forcedValues,
+            List<Map<String, Blob>> blobsByRow
+    ) {
+        for (Integer row = 0; row < rawRecords.size(); row++) {
+            Map<String, Object> rawRecord = (Map<String, Object>) rawRecords[row];
+            XFTY_BlobCarrier.keepOut(rawRecord, blobsByRow[row].keySet());
+            this.graftRow(rawRecord, row, forcedValues[row]);
+        }
+    }
+
+    private void graftRow(Map<String, Object> rawRecord, Integer row, Map<String, Object> forcedForRow) {
         for (String relationshipName : this.parentByRelationshipName.keySet()) {
             rawRecord.put(relationshipName, rawOf(this.parentByRelationshipName.get(relationshipName)[row]));
         }
         for (String relationshipName : this.childrenByRelationshipName.keySet()) {
             rawRecord.put(relationshipName, subqueryOf(this.childrenByRelationshipName.get(relationshipName)[row]));
         }
-        for (SObjectField field : this.uniformValueByField.keySet()) {
-            putUnlessBlob(rawRecord, fieldName(field), this.uniformValueByField.get(field));
-        }
-        for (SObjectField field : this.perRowValuesByField.keySet()) {
-            putUnlessBlob(rawRecord, fieldName(field), this.perRowValuesByField.get(field)[row]);
+        for (String field : forcedForRow.keySet()) {
+            putUnlessBlob(rawRecord, field, forcedForRow.get(field));
         }
     }
 
-    private static void putUnlessBlob(Map<String, Object> rawRecord, String key, Object value) {
+    private static void putUnlessBlob(Map<String, Object> rawRecord, String field, Object value) {
         if (!(value instanceof Blob)) {
-            rawRecord.put(key, value);
+            rawRecord.put(field, value);
         }
     }
 
-    // Blob carry-across --------------------------------------------------
-
-    private List<Map<String, Blob>> captureBlobs() {
-        List<Map<String, Blob>> byRow = new List<Map<String, Blob>>();
+    private List<Map<String, Object>> forcedValuesPerRow() {
+        List<Map<String, Object>> perRow = new List<Map<String, Object>>();
         for (Integer row = 0; row < this.records.size(); row++) {
-            Map<String, Blob> here = new Map<String, Blob>();
-            for (String populated : this.records[row].getPopulatedFieldsAsMap().keySet()) {
-                Object populatedValue = this.records[row].get(populated);
-                if (populatedValue instanceof Blob) {
-                    here.put(populated, (Blob) populatedValue);
-                }
-            }
-            this.addInjectedBlobs(here, row);
-            byRow.add(here);
+            perRow.add(this.forcedValuesForRow(row));
         }
-        return byRow;
+        return perRow;
     }
 
-    private void addInjectedBlobs(Map<String, Blob> here, Integer row) {
+    private Map<String, Object> forcedValuesForRow(Integer row) {
+        Map<String, Object> here = new Map<String, Object>();
         for (SObjectField field : this.uniformValueByField.keySet()) {
-            if (this.uniformValueByField.get(field) instanceof Blob) {
-                here.put(fieldName(field), (Blob) this.uniformValueByField.get(field));
-            }
+            here.put(fieldName(field), this.uniformValueByField.get(field));
         }
         for (SObjectField field : this.perRowValuesByField.keySet()) {
-            if (this.perRowValuesByField.get(field)[row] instanceof Blob) {
-                here.put(fieldName(field), (Blob) this.perRowValuesByField.get(field)[row]);
-            }
+            here.put(fieldName(field), this.perRowValuesByField.get(field)[row]);
         }
+        return here;
     }
-
-    private static void reapplyBlobs(List<SObject> grafted, List<Map<String, Blob>> blobsByRow) {
-        for (Integer row = 0; row < grafted.size(); row++) {
-            for (String field : blobsByRow[row].keySet()) {
-                grafted[row].put(field, blobsByRow[row].get(field));
-            }
-        }
-    }
-
-    private static void stripSerializedBlobs(Map<String, Object> rawRecord) {
-        for (String key : new List<String>(rawRecord.keySet())) {
-            Object value = rawRecord.get(key);
-            if (value instanceof Map<String, Object>
-                    && ((Map<String, Object>) value).containsKey(SERIALIZED_BLOB_MARKER)) {
-                rawRecord.remove(key);
-            }
-        }
-    }
-
-    // Raw building --------------------------------------------------
 
     private static Object rawOf(SObject record) {
         if (record == null) {
             return null;
         }
-        Object raw = JSON.deserializeUntyped(JSON.serialize(record));
-        if (raw instanceof Map<String, Object>) {
-            stripSerializedBlobs((Map<String, Object>) raw);
-        }
+        Map<String, Object> raw = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(record));
+        XFTY_BlobCarrier.keepOut(raw, XFTY_BlobCarrier.blobFieldNames(record));
         return raw;
     }
 
@@ -196,8 +159,6 @@ public class XFTY_SObjectInjector {
                 .getName();
         return Type.forName('List<' + sObjectName + '>');
     }
-
-    // Alignment guard --------------------------------------------------
 
     private void rejectMisalignedGrafts() {
         Integer rows = this.records.size();

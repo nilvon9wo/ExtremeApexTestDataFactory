@@ -53,14 +53,20 @@ public class XFTY_EnrichmentSelection {
             wanted.addAll(present);
         }
         if (isRoot) {
-            for (SObjectField named : this.config.includedChildFields) {
-                if (present.contains(named)) {
-                    wanted.add(named);
-                }
-            }
+            wanted.addAll(this.namedChildFieldsPresentIn(present));
         }
         wanted.removeAll(this.config.excludedChildFields);
         return wanted;
+    }
+
+    private Set<SObjectField> namedChildFieldsPresentIn(Set<SObjectField> present) {
+        Set<SObjectField> named = new Set<SObjectField>();
+        for (SObjectField childField : this.config.includedChildFields) {
+            if (present.contains(childField)) {
+                named.add(childField);
+            }
+        }
+        return named;
     }
 
     /** The `>`-joined key for a path; `''` for an empty or null path. */

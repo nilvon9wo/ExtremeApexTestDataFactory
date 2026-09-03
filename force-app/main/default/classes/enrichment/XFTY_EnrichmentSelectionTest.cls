@@ -1,164 +1,152 @@
 /**
  * Proves `XFTY_EnrichmentSelection` - "does this config want the ancestor / child
- * / inverse here?". Pure in-memory, no DML/SOQL.
+ * / inverse here?". Pure in-memory, no DML/SOQL. Parameterised: the `@IsTest`
+ * methods are data rows; the runners hold the AAA.
  */
 @IsTest
 private class XFTY_EnrichmentSelectionTest {
 
+    static List<SObjectField> account() {
+        return new List<SObjectField>{ Contact.AccountId };
+    }
+
+    static List<SObjectField> accountParent() {
+        return new List<SObjectField>{ Contact.AccountId, Account.ParentId };
+    }
+
+    static List<SObjectField> owner() {
+        return new List<SObjectField>{ Contact.OwnerId };
+    }
+
+    // wantsAncestor -------------------------------------------------------
+
     @IsTest
     static void testWantsAncestor_fromNothing_isFalse() {
-        // Arrange
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(XFTY_InjectConfig.nothing());
-
-        // Act
-        Test.startTest();
-        Boolean wanted = selection.wantsAncestor(new List<SObjectField>{ Contact.AccountId });
-        Test.stopTest();
-
-        // Assert
-        Assert.isFalse(wanted);
+        testWantsAncestor(XFTY_InjectConfig.nothing(), account(), false);
     }
 
     @IsTest
     static void testWantsAncestor_fromAllParents_isTrueForAnyUpwardPath() {
-        // Arrange
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(XFTY_InjectConfig.allParents());
-
-        // Act
-        Test.startTest();
-        Boolean wanted = selection.wantsAncestor(new List<SObjectField>{ Contact.AccountId, Account.ParentId });
-        Test.stopTest();
-
-        // Assert
-        Assert.isTrue(wanted);
+        testWantsAncestor(XFTY_InjectConfig.allParents(), accountParent(), true);
     }
 
     @IsTest
-    static void testWantsAncestor_forAnInjectParentLeaf_isTrueForEveryPrefix() {
-        // Arrange
-        XFTY_InjectConfig config = XFTY_InjectConfig.nothing().injectParent(
-                new List<SObjectField>{ Contact.AccountId, Account.ParentId }
-        );
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(config);
+    static void testWantsAncestor_fromAllParentsWhenTheWalkHasTurnedDownward_isTrue() {
+        testWantsAncestor(XFTY_InjectConfig.allParents(), null, true);
+    }
 
-        // Act
-        Test.startTest();
-        Boolean prefixWanted = selection.wantsAncestor(new List<SObjectField>{ Contact.AccountId });
-        Test.stopTest();
+    @IsTest
+    static void testWantsAncestor_fromNothingWhenTheWalkHasTurnedDownward_isFalse() {
+        testWantsAncestor(XFTY_InjectConfig.nothing().injectParent(account()), null, false);
+    }
 
-        // Assert
-        Assert.isTrue(prefixWanted, 'the hop on the way to the named leaf is wanted');
-        Assert.isTrue(selection.wantsAncestor(new List<SObjectField>{ Contact.AccountId, Account.ParentId }));
-        Assert.isFalse(selection.wantsAncestor(new List<SObjectField>{ Contact.OwnerId }), 'an unrelated hop is not');
+    @IsTest
+    static void testWantsAncestor_forAPrefixOfAnInjectParentLeaf_isTrue() {
+        testWantsAncestor(XFTY_InjectConfig.nothing().injectParent(accountParent()), account(), true);
+    }
+
+    @IsTest
+    static void testWantsAncestor_forAnInjectParentLeafItself_isTrue() {
+        testWantsAncestor(XFTY_InjectConfig.nothing().injectParent(accountParent()), accountParent(), true);
+    }
+
+    @IsTest
+    static void testWantsAncestor_forAnUnrelatedHop_isFalse() {
+        testWantsAncestor(XFTY_InjectConfig.nothing().injectParent(accountParent()), owner(), false);
     }
 
     @IsTest
     static void testWantsAncestor_whenAPrefixIsExcluded_isFalse() {
+        testWantsAncestor(XFTY_InjectConfig.allParents().excludeParent(account()), accountParent(), false);
+    }
+
+    static void testWantsAncestor(XFTY_InjectConfig config, List<SObjectField> pathFromEntry, Boolean expected) {
         // Arrange
-        XFTY_InjectConfig config = XFTY_InjectConfig.allParents()
-                .excludeParent(new List<SObjectField>{ Contact.AccountId });
         XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(config);
 
         // Act
         Test.startTest();
-        Boolean wanted = selection.wantsAncestor(new List<SObjectField>{ Contact.AccountId, Account.ParentId });
+        Boolean wanted = selection.wantsAncestor(pathFromEntry);
         Test.stopTest();
 
         // Assert
-        Assert.isFalse(wanted, 'excluding the head prunes the whole chain');
+        Assert.areEqual(expected, wanted);
+    }
+
+    // wantsInverse ------------------------------------------------------
+
+    @IsTest
+    static void testWantsInverse_fromAllChildren_isTrue() {
+        testWantsInverse(XFTY_InjectConfig.allChildren(), true);
     }
 
     @IsTest
-    static void testWantsAncestor_whenTheWalkHasTurnedDownward_followsOnlyFromAllParents() {
-        // Arrange - a null path means "inside a child's ancestors"
-        XFTY_EnrichmentSelection namedOnly = new XFTY_EnrichmentSelection(
-                XFTY_InjectConfig.nothing().injectParent(new List<SObjectField>{ Contact.AccountId })
-        );
-        XFTY_EnrichmentSelection breadth = new XFTY_EnrichmentSelection(XFTY_InjectConfig.allParents());
-
-        // Act
-        Test.startTest();
-        Boolean namedReaches = namedOnly.wantsAncestor(null);
-        Test.stopTest();
-
-        // Assert
-        Assert.isFalse(namedReaches, 'injectParent does not reach into a child\'s ancestors');
-        Assert.isTrue(breadth.wantsAncestor(null), 'allParents does');
+    static void testWantsInverse_fromNothing_isFalse() {
+        testWantsInverse(XFTY_InjectConfig.nothing(), false);
     }
 
     @IsTest
-    static void testWantsInverse_needsFromAllChildrenAndNoExclude() {
+    static void testWantsInverse_whenTheRelationshipIsExcluded_isFalse() {
+        testWantsInverse(XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId), false);
+    }
+
+    static void testWantsInverse(XFTY_InjectConfig config, Boolean expected) {
         // Arrange
-        XFTY_EnrichmentSelection all = new XFTY_EnrichmentSelection(XFTY_InjectConfig.allChildren());
-        XFTY_EnrichmentSelection excluded = new XFTY_EnrichmentSelection(
-                XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId)
-        );
+        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(config);
 
         // Act
         Test.startTest();
-        Boolean wanted = all.wantsInverse(Contact.AccountId);
+        Boolean wanted = selection.wantsInverse(Contact.AccountId);
         Test.stopTest();
 
         // Assert
-        Assert.isTrue(wanted);
-        Assert.isFalse(excluded.wantsInverse(Contact.AccountId));
-        Assert.isFalse(new XFTY_EnrichmentSelection(XFTY_InjectConfig.nothing()).wantsInverse(Contact.AccountId));
+        Assert.areEqual(expected, wanted);
     }
 
-    @IsTest
-    static void testChildFieldsOn_fromAllChildren_returnsThePresentChildFields() {
-        // Arrange
-        XFTY_DummySObjectBundle bundle = accountBundleWithChildren();
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(XFTY_InjectConfig.allChildren());
-
-        // Act
-        Test.startTest();
-        Set<SObjectField> fields = selection.childFieldsOn(bundle, true);
-        Test.stopTest();
-
-        // Assert
-        Assert.isTrue(fields.contains(Contact.AccountId));
-    }
+    // childFieldsOn ----------------------------------------------------
 
     @IsTest
-    static void testChildFieldsOn_forAnInjectChildField_appliesOnlyAtTheRoot() {
-        // Arrange
-        XFTY_DummySObjectBundle bundle = accountBundleWithChildren();
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(
-                XFTY_InjectConfig.nothing().injectChild(Contact.AccountId)
-        );
-
-        // Act
-        Test.startTest();
-        Set<SObjectField> atRoot = selection.childFieldsOn(bundle, true);
-        Test.stopTest();
-
-        // Assert
-        Assert.isTrue(atRoot.contains(Contact.AccountId));
-        Assert.isTrue(selection.childFieldsOn(bundle, false).isEmpty(), 'a named child collection is not injected on a nested position');
+    static void testChildFieldsOn_fromAllChildren_includesThePresentField() {
+        testChildFieldsOnContains(XFTY_InjectConfig.allChildren(), true, true);
     }
 
     @IsTest
     static void testChildFieldsOn_whenExcluded_dropsTheField() {
-        // Arrange
-        XFTY_DummySObjectBundle bundle = accountBundleWithChildren();
-        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(
-                XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId)
-        );
-
-        // Act
-        Test.startTest();
-        Set<SObjectField> fields = selection.childFieldsOn(bundle, true);
-        Test.stopTest();
-
-        // Assert
-        Assert.isFalse(fields.contains(Contact.AccountId));
+        testChildFieldsOnContains(XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId), true, false);
     }
 
     @IsTest
-    static void testKeyOf_isPositionalAndNullSafe() {
+    static void testChildFieldsOn_forAnInjectChildFieldAtTheRoot_includesIt() {
+        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), true, true);
+    }
+
+    @IsTest
+    static void testChildFieldsOn_forAnInjectChildFieldNotAtTheRoot_excludesIt() {
+        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), false, false);
+    }
+
+    static void testChildFieldsOnContains(XFTY_InjectConfig config, Boolean isRoot, Boolean expectedToContain) {
         // Arrange
-        List<SObjectField> path = new List<SObjectField>{ Contact.AccountId, Account.ParentId };
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Account.Id, new List<SObject>{ new Account() });
+        bundle.putChild(Contact.AccountId, new XFTY_DummySObjectBundle(), new List<Integer>());
+        XFTY_EnrichmentSelection selection = new XFTY_EnrichmentSelection(config);
+
+        // Act
+        Test.startTest();
+        Set<SObjectField> fields = selection.childFieldsOn(bundle, isRoot);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(expectedToContain, fields.contains(Contact.AccountId));
+    }
+
+    // keyOf ----------------------------------------------------------
+
+    @IsTest
+    static void testKeyOf_joinsTheFieldNamesPositionally() {
+        // Arrange
+        List<SObjectField> path = accountParent();
 
         // Act
         Test.startTest();
@@ -167,13 +155,19 @@ private class XFTY_EnrichmentSelectionTest {
 
         // Assert
         Assert.areEqual('AccountId>ParentId>', key);
-        Assert.areEqual('', XFTY_EnrichmentSelection.keyOf(null));
     }
 
-    static XFTY_DummySObjectBundle accountBundleWithChildren() {
-        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
-        bundle.putPrimaries(Account.Id, new List<SObject>{ new Account() });
-        bundle.putChild(Contact.AccountId, new XFTY_DummySObjectBundle(), new List<Integer>());
-        return bundle;
+    @IsTest
+    static void testKeyOf_forANullPath_isEmpty() {
+        // Arrange
+        List<SObjectField> nullPath = null;
+
+        // Act
+        Test.startTest();
+        String key = XFTY_EnrichmentSelection.keyOf(nullPath);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('', key);
     }
 }

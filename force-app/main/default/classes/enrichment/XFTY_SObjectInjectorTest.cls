@@ -165,6 +165,7 @@ private class XFTY_SObjectInjectorTest {
         // Assert
         Assert.isNotNull(thrown);
     }
+
     @IsTest
     static void testResult_whenAParentListIsMisaligned_throws() {
         // Arrange
@@ -219,9 +220,11 @@ private class XFTY_SObjectInjectorTest {
         List<Account> accounts = new List<Account>{ new Account(Name = 'Root') };
 
         // Act
+        Test.startTest();
         List<Account> enriched = (List<Account>) XFTY_SObjectInjector.inject(accounts)
                 .childRelationship('Contacts', new List<List<SObject>>{ contactsWithCases })
                 .result();
+        Test.stopTest();
 
         // Assert
         Assert.areEqual('grandchild', enriched[0].Contacts[0].Cases[0].Subject,
