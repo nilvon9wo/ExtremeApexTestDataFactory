@@ -67,7 +67,7 @@ serialize round-trip **per graph level**, which a tight config avoids.
 ```apex
 // one child collection, nothing else
 XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
-    .injectChild(new List<SObjectField>{ Contact.AccountId });
+    .injectChild(Contact.AccountId);
 
 bundle.inject(Account.Id, config);
 ```

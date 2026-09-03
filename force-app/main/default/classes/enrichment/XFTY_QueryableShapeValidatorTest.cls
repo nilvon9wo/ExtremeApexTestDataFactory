@@ -40,7 +40,7 @@ private class XFTY_QueryableShapeValidatorTest {
     }
 
     @IsTest
-    static void testValidate_whenChildDepthIsAboveOne_throwsAsUnsupported() {
+    static void testValidate_whenChildDepthExceedsOneWithoutBreakSoqlLimits_throws() {
         // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.allChildren().childDepth(2);
 
@@ -56,48 +56,21 @@ private class XFTY_QueryableShapeValidatorTest {
 
         // Assert
         Assert.isNotNull(thrown);
-        Assert.isTrue(thrown.getMessage().contains('one level'), 'the message explains child injection is one level');
+        Assert.isTrue(thrown.getMessage().contains('breakSoqlLimits'), 'the message points at the escape hatch');
     }
 
     @IsTest
-    static void testValidate_whenChildDepthIsAboveOneEvenWithBreakSoqlLimits_stillThrows() {
-        // Arrange - childDepth is a capability limit, not a SOQL-shape one
+    static void testValidate_whenChildDepthExceedsOneWithBreakSoqlLimits_passes() {
+        // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.allChildren().childDepth(3).breakSoqlLimits();
 
         // Act
-        XFTY_DummySObjectFtyProviderException thrown;
         Test.startTest();
-        try {
-            XFTY_QueryableShapeValidator.validate(config);
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
+        XFTY_QueryableShapeValidator.validate(config);
         Test.stopTest();
 
         // Assert
-        Assert.isNotNull(thrown);
-    }
-
-    @IsTest
-    static void testValidate_whenAnInjectChildPathHasMoreThanOneHop_throws() {
-        // Arrange
-        XFTY_InjectConfig config = XFTY_InjectConfig.nothing().injectChild(
-                new List<SObjectField>{ Contact.AccountId, Case.AccountId }
-        );
-
-        // Act
-        XFTY_DummySObjectFtyProviderException thrown;
-        Test.startTest();
-        try {
-            XFTY_QueryableShapeValidator.validate(config);
-        } catch (XFTY_DummySObjectFtyProviderException ex) {
-            thrown = ex;
-        }
-        Test.stopTest();
-
-        // Assert
-        Assert.isNotNull(thrown);
-        Assert.isTrue(thrown.getMessage().contains('single child-lookup field'));
+        Assert.isTrue(true, 'nested subqueries are allowed once the ceiling is lifted');
     }
 
     @IsTest

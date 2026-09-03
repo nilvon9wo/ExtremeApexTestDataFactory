@@ -25,7 +25,7 @@
     <testClassName>XFTY_InjectConfigTest</testClassName>
     <testClassName>XFTY_BundleEnricherTest</testClassName>
     <testClassName>XFTY_QueryableShapeValidatorTest</testClassName>
-    <testClassName>XFTY_EnrichmentPathsTest</testClassName>
+    <testClassName>XFTY_EnrichmentSelectionTest</testClassName>
     <testClassName>XFTY_DummySObjectFactoryTest</testClassName>
     <testClassName>XFTY_DummySObjectMasterTemplateTest</testClassName>
     <testClassName>XFTY_DummySObjectProviderApiTest</testClassName>

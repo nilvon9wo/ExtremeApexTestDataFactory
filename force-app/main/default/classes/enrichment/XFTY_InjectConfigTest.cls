@@ -98,18 +98,17 @@ private class XFTY_InjectConfigTest {
     }
 
     @IsTest
-    static void testInjectChild_addsThePath() {
+    static void testInjectChild_addsTheChildField() {
         // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.nothing();
-        List<SObjectField> path = new List<SObjectField>{ Contact.AccountId };
 
         // Act
         Test.startTest();
-        config.injectChild(path);
+        config.injectChild(Contact.AccountId);
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(path, config.includedChildPaths[0]);
+        Assert.isTrue(config.includedChildFields.contains(Contact.AccountId));
     }
 
     @IsTest
@@ -128,18 +127,17 @@ private class XFTY_InjectConfigTest {
     }
 
     @IsTest
-    static void testExcludeChild_addsThePath() {
+    static void testExcludeChild_addsTheChildField() {
         // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.everything();
-        List<SObjectField> path = new List<SObjectField>{ Contact.AccountId };
 
         // Act
         Test.startTest();
-        config.excludeChild(path);
+        config.excludeChild(Contact.AccountId);
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(path, config.excludedChildPaths[0]);
+        Assert.isTrue(config.excludedChildFields.contains(Contact.AccountId));
     }
 
     @IsTest

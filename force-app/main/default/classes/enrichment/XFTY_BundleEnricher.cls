@@ -1,26 +1,31 @@
 /**
- * Re-expresses a generated graph in the shape `record.put(...)` rejects. Reads
- * the parents, children and alignment already on the bundle, drives
- * `XFTY_SObjectInjector` once per graph level (deepest first), and returns the
- * enriched target records as new instances. The original bundle and its records
- * are untouched.
+ * Re-expresses a generated graph in the shape `record.put(...)` rejects, so code
+ * under test reads relationships and read-only fields straight off the SObject.
  *
- * The entry points are `bundle.inject(field, config)` / `injectAll(field)`.
+ * A single recursive unit (`enrichPosition`) walks the graph deepest-first via
+ * the call stack: at each bundle position it collects the enriched parents and
+ * child subqueries below it, then does **one** `XFTY_SObjectInjector` round-trip.
+ * Ancestors carry their one-level inverse child; downward children carry their
+ * own ancestors and, to `childDepth`, their own nested children.
+ *
+ * Returns the enriched **target records** (`getList(field)`) as new instances -
+ * the originals are untouched. Entry: `bundle.inject(field, config)` /
+ * `injectAll(field)`.
  */
 @IsTest
 public class XFTY_BundleEnricher {
 
-    private final XFTY_DummySObjectBundle bundle;
-    private final SObjectField field;
+    private final XFTY_DummySObjectBundle entryBundle;
+    private final SObjectField entryField;
     private final XFTY_InjectConfig config;
-    private final WorkingList working;
+    private final XFTY_EnrichmentSelection selection;
 
     private XFTY_BundleEnricher(XFTY_DummySObjectBundle bundle, SObjectField field, XFTY_InjectConfig config) {
         XFTY_QueryableShapeValidator.validate(config);
-        this.bundle = bundle;
-        this.field = field;
+        this.entryBundle = bundle;
+        this.entryField = field;
         this.config = config;
-        this.working = locate(bundle, field);
+        this.selection = new XFTY_EnrichmentSelection(config);
     }
 
     public static List<SObject> enrich(
@@ -44,49 +49,54 @@ public class XFTY_BundleEnricher {
 
     /** True when the graph has any generated ancestor or child collection reachable from `field`. */
     public static Boolean hasAnythingToInject(XFTY_DummySObjectBundle bundle, SObjectField field) {
-        WorkingList working = locate(bundle, field);
-        Boolean hasParents = working.subBundle != null && !working.subBundle.relationshipFields().isEmpty();
-        Boolean hasChildren = (working.subBundle != null && !working.subBundle.childRelationshipFields().isEmpty())
-                || working.isGeneratedAncestor;
+        Target target = locate(bundle, field);
+        Boolean hasParents = target.subBundle != null && !target.subBundle.relationshipFields().isEmpty();
+        Boolean hasChildren = (target.subBundle != null && !target.subBundle.childRelationshipFields().isEmpty())
+                || target.isGeneratedAncestor;
         return hasParents || hasChildren;
     }
 
     private List<SObject> run() {
-        List<List<SObjectField>> parentPaths = XFTY_EnrichmentPaths.parentPaths(this.working.subBundle, this.config);
-        XFTY_SObjectInjector injector = XFTY_SObjectInjector.inject(this.working.records);
-        this.graftParents(injector, parentPaths);
-        this.graftChildren(injector);
-        for (SObjectField valued : this.config.onRecordValues.keySet()) {
-            injector.value(valued, resolved(this.config.onRecordValues.get(valued)));
+        XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
+        Target target = locate(this.entryBundle, this.entryField);
+        Position root = new Position(target.subBundle, target.records);
+        root.pathFromEntry = new List<SObjectField>();
+        root.parentDepthLeft = this.config.parentDepthLimit;
+        root.childDepthLeft = this.config.childDepthLimit;
+        root.isRoot = true;
+        if (target.isGeneratedAncestor) {
+            root.inverseChildField = this.entryField;
+            root.inverseChildrenPerRow =
+                    inverseAlign(target.records, this.entryBundle.primaryRecords(), this.entryField);
         }
-        return injector.result();
+        List<SObject> result = this.enrichPosition(root);
+        budget.warnIfExpensive();
+        return result;
     }
 
-    // Working list -----------------------------------------------------------
+    // Entry location ------------------------------------------------------
 
-    private class WorkingList {
+    private class Target {
         private final List<SObject> records;
         private final XFTY_DummySObjectBundle subBundle;
-        private final SObjectType workingType;
         private final Boolean isGeneratedAncestor;
 
-        private WorkingList(List<SObject> records, XFTY_DummySObjectBundle subBundle, Boolean isGeneratedAncestor) {
+        private Target(List<SObject> records, XFTY_DummySObjectBundle subBundle, Boolean isGeneratedAncestor) {
             this.records = records;
             this.subBundle = subBundle;
-            this.workingType = (records == null || records.isEmpty()) ? null : records[0].getSObjectType();
             this.isGeneratedAncestor = isGeneratedAncestor;
         }
     }
 
-    private static WorkingList locate(XFTY_DummySObjectBundle bundle, SObjectField field) {
+    private static Target locate(XFTY_DummySObjectBundle bundle, SObjectField field) {
         if (field == bundle.primaryTargetField) {
-            return new WorkingList(bundle.primaryRecords(), bundle, false);
+            return new Target(bundle.primaryRecords(), bundle, false);
         }
         if (materialised(bundle.relationshipFields()).contains(field)) {
-            return new WorkingList(bundle.getList(field), bundle.getBundle(field), true);
+            return new Target(bundle.getList(field), bundle.getBundle(field), true);
         }
         if (materialised(bundle.childRelationshipFields()).contains(field)) {
-            return new WorkingList(bundle.getChildList(field), bundle.getChildBundle(field), false);
+            return new Target(bundle.getChildList(field), bundle.getChildBundle(field), false);
         }
         throw new XFTY_DummySObjectFtyProviderException(
                 'inject: ' + field + ' is not this bundle\'s primary field, a generated ancestor field '
@@ -94,94 +104,165 @@ public class XFTY_BundleEnricher {
         );
     }
 
-    // Parents - deepest first, one round-trip per level --------------------
+    // The recursive unit -----------------------------------------------
 
-    private void graftParents(XFTY_SObjectInjector injector, List<List<SObjectField>> parentPaths) {
-        if (this.working.subBundle == null) {
-            return;
+    private class Position {
+        private final XFTY_DummySObjectBundle subBundle;
+        private final List<SObject> records;
+        private List<SObjectField> pathFromEntry;    // null once the walk turns downward
+        private Integer parentDepthLeft = 0;
+        private Integer childDepthLeft = 0;
+        private Boolean isRoot = false;
+        private SObjectField inverseChildField;
+        private List<List<SObject>> inverseChildrenPerRow;
+
+        private Position(XFTY_DummySObjectBundle subBundle, List<SObject> records) {
+            this.subBundle = subBundle;
+            this.records = records;
         }
-        Map<String, List<SObject>> enrichedByPath = new Map<String, List<SObject>>();
-        for (List<SObjectField> path : XFTY_EnrichmentPaths.longestFirst(parentPaths)) {
-            enrichedByPath.put(XFTY_EnrichmentPaths.keyOf(path), this.enrichedLevel(path, enrichedByPath));
-        }
-        for (List<SObjectField> path : parentPaths) {
-            List<SObject> parents = enrichedByPath.get(XFTY_EnrichmentPaths.keyOf(path));
-            if (path.size() == 1 && parents != null) {
-                injector.relationship(relationshipName(path[0]), parents);
-            }
+
+        private SObjectType positionType() {
+            return (this.records == null || this.records.isEmpty())
+                    ? null
+                    : this.records[0].getSObjectType();
         }
     }
 
-    private List<SObject> enrichedLevel(List<SObjectField> path, Map<String, List<SObject>> enrichedByPath) {
-        List<SObject> records = listAt(this.working.subBundle, path);
-        if (records == null) {
-            return null;
+    private List<SObject> enrichPosition(Position pos) {
+        if (pos.records == null || pos.records.isEmpty()) {
+            return pos.records;
         }
-        XFTY_SObjectInjector injector = XFTY_SObjectInjector.inject(records);
-        XFTY_DummySObjectBundle here = bundleAt(this.working.subBundle, path);
-        if (here != null) {
-            for (SObjectField relationshipField : here.relationshipFields()) {
-                List<SObject> deeper = enrichedByPath.get(XFTY_EnrichmentPaths.keyOf(append(path, relationshipField)));
-                if (deeper != null) {
-                    injector.relationship(relationshipName(relationshipField), deeper);
-                }
-            }
-        }
-        this.applyAncestorValues(injector, path);
+        XFTY_SObjectInjector injector = XFTY_SObjectInjector.inject(pos.records);
+        this.graftAncestors(injector, pos);
+        this.graftInverse(injector, pos);
+        this.graftChildren(injector, pos);
+        this.graftValues(injector, pos);
         return injector.result();
     }
 
-    private void applyAncestorValues(XFTY_SObjectInjector injector, List<SObjectField> path) {
+    private void graftAncestors(XFTY_SObjectInjector injector, Position pos) {
+        if (pos.subBundle == null || pos.parentDepthLeft <= 0) {
+            return;
+        }
+        for (SObjectField relField : materialised(pos.subBundle.relationshipFields())) {
+            List<SObjectField> childPath = (pos.pathFromEntry == null)
+                    ? null
+                    : append(pos.pathFromEntry, relField);
+            if (!this.selection.wantsAncestor(childPath)) {
+                continue;
+            }
+            List<SObject> parents = pos.subBundle.getList(relField);
+            if (parents == null) {
+                continue;
+            }
+            Position up = new Position(pos.subBundle.getBundle(relField), parents);
+            up.pathFromEntry = childPath;
+            up.parentDepthLeft = pos.parentDepthLeft - 1;
+            if (this.selection.wantsInverse(relField)) {
+                up.inverseChildField = relField;
+                up.inverseChildrenPerRow = inverseAlign(parents, pos.records, relField);
+            }
+            injector.relationship(
+                    XFTY_InjectionPathResolver.parentRelationshipName(relField),
+                    this.enrichPosition(up)
+            );
+        }
+    }
+
+    private void graftInverse(XFTY_SObjectInjector injector, Position pos) {
+        if (pos.inverseChildField == null) {
+            return;
+        }
+        injector.childRelationship(
+                XFTY_InjectionPathResolver.childRelationshipName(pos.positionType(), pos.inverseChildField),
+                pos.inverseChildrenPerRow
+        );
+    }
+
+    private void graftChildren(XFTY_SObjectInjector injector, Position pos) {
+        if (pos.subBundle == null || pos.childDepthLeft <= 0) {
+            return;
+        }
+        for (SObjectField childField : this.selection.childFieldsOn(pos.subBundle, pos.isRoot)) {
+            injector.childRelationship(
+                    XFTY_InjectionPathResolver.childRelationshipName(pos.positionType(), childField),
+                    this.childCollectionPerRow(pos, childField)
+            );
+        }
+    }
+
+    private List<List<SObject>> childCollectionPerRow(Position pos, SObjectField childField) {
+        List<List<SObject>> perRow = new List<List<SObject>>();
+        for (Integer row = 0; row < pos.records.size(); row++) {
+            perRow.add(new List<SObject>());
+        }
+        for (XFTY_DummySObjectBundle.ChildEntry entry : pos.subBundle.childEntries(childField)) {
+            List<SObject> entryChildren = entry.bundle.primaryRecords();
+            if (entryChildren == null || entryChildren.isEmpty()) {
+                continue;
+            }
+            Position down = new Position(entry.bundle, entryChildren);
+            down.parentDepthLeft = this.config.parentDepthLimit;
+            down.childDepthLeft = pos.childDepthLeft - 1;
+            List<SObject> enrichedChildren = this.enrichPosition(down);
+            for (Integer childRow = 0; childRow < enrichedChildren.size(); childRow++) {
+                perRow[entry.parentRowByChildRow[childRow]].add(enrichedChildren[childRow]);
+            }
+        }
+        return perRow;
+    }
+
+    private void graftValues(XFTY_SObjectInjector injector, Position pos) {
+        if (pos.isRoot) {
+            for (SObjectField valued : this.config.onRecordValues.keySet()) {
+                injector.value(valued, resolved(this.config.onRecordValues.get(valued)));
+            }
+        }
+        if (pos.pathFromEntry == null) {
+            return;
+        }
+        String hereKey = XFTY_EnrichmentSelection.keyOf(pos.pathFromEntry);
         for (XFTY_InjectConfig.AncestorValue ancestorValue : this.config.ancestorValues) {
-            if (XFTY_EnrichmentPaths.keyOf(ancestorValue.relationshipPrefix()) == XFTY_EnrichmentPaths.keyOf(path)) {
+            if (XFTY_EnrichmentSelection.keyOf(ancestorValue.relationshipPrefix()) == hereKey) {
                 injector.value(ancestorValue.targetField(), resolved(ancestorValue.value));
             }
         }
     }
 
-    // Children - downward collections + the generated-ancestor inverse -----
+    // Helpers --------------------------------------------------------
 
-    private void graftChildren(XFTY_SObjectInjector injector) {
-        if (this.working.subBundle == null) {
-            return;
+    /** For each parent, the records among `children` whose FK points at it - by Id, else the 1:1 position. */
+    private static List<List<SObject>> inverseAlign(
+            List<SObject> parents,
+            List<SObject> children,
+            SObjectField relationshipField
+    ) {
+        List<List<SObject>> perParent = new List<List<SObject>>();
+        for (Integer p = 0; p < parents.size(); p++) {
+            Object parentId = (parents[p] == null) ? null : parents[p].get('Id');
+            List<SObject> matches = (parentId == null)
+                    ? positionalFallback(children, p)
+                    : childrenPointingAt(children, relationshipField, parentId);
+            perParent.add(matches);
         }
-        for (SObjectField childField : XFTY_EnrichmentPaths.childFields(this.working.subBundle, this.config)) {
-            injector.childRelationship(
-                    XFTY_InjectionPathResolver.childRelationshipName(this.working.workingType, childField),
-                    this.downwardChildrenPerRow(childField)
-            );
-        }
-        if (this.working.isGeneratedAncestor && this.config.fromAllChildren) {
-            injector.childRelationship(
-                    XFTY_InjectionPathResolver.childRelationshipName(this.working.workingType, this.field),
-                    this.inverseChildrenPerRow()
-            );
-        }
+        return perParent;
     }
 
-    private List<List<SObject>> downwardChildrenPerRow(SObjectField childField) {
-        List<List<SObject>> perRow = new List<List<SObject>>();
-        for (Integer row = 0; row < this.working.records.size(); row++) {
-            perRow.add(this.working.subBundle.childRecordsOf(row, childField));
-        }
-        return perRow;
-    }
-
-    private List<List<SObject>> inverseChildrenPerRow() {
-        List<SObject> primaries = this.bundle.primaryRecords();
-        List<SObject> ancestors = this.bundle.getList(this.field);
-        List<List<SObject>> perRow = new List<List<SObject>>();
-        for (Integer row = 0; row < ancestors.size(); row++) {
-            List<SObject> children = new List<SObject>();
-            for (Integer primaryRow : this.bundle.primaryRowsResolvingTo(this.field, row)) {
-                children.add(primaries[primaryRow]);
+    private static List<SObject> childrenPointingAt(List<SObject> children, SObjectField relationshipField, Object parentId) {
+        List<SObject> matches = new List<SObject>();
+        for (SObject child : children) {
+            if (child != null && child.get(relationshipField) == parentId) {
+                matches.add(child);
             }
-            perRow.add(children);
         }
-        return perRow;
+        return matches;
     }
 
-    // Helpers ----------------------------------------------------------
+    private static List<SObject> positionalFallback(List<SObject> children, Integer parentRow) {
+        return (parentRow < children.size())
+                ? new List<SObject>{ children[parentRow] }
+                : new List<SObject>();
+    }
 
     private static Object resolved(Object value) {
         return (value instanceof XFTY_ValueExpressionIntf)
@@ -189,36 +270,10 @@ public class XFTY_BundleEnricher {
                 : value;
     }
 
-    private static List<SObject> listAt(XFTY_DummySObjectBundle source, List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = source;
-        for (Integer hop = 0; hop < path.size() - 1; hop++) {
-            bundle = (bundle == null)
-                    ? null
-                    : bundle.getBundle(path[hop]);
-        }
-        return (bundle == null)
-                ? null
-                : bundle.getList(path[path.size() - 1]);
-    }
-
-    private static XFTY_DummySObjectBundle bundleAt(XFTY_DummySObjectBundle source, List<SObjectField> path) {
-        XFTY_DummySObjectBundle bundle = source;
-        for (SObjectField hop : path) {
-            bundle = (bundle == null)
-                    ? null
-                    : bundle.getBundle(hop);
-        }
-        return bundle;
-    }
-
     private static List<SObjectField> append(List<SObjectField> path, SObjectField extra) {
         List<SObjectField> longer = new List<SObjectField>(path);
         longer.add(extra);
         return longer;
-    }
-
-    private static String relationshipName(SObjectField relationshipField) {
-        return XFTY_InjectionPathResolver.parentRelationshipName(relationshipField);
     }
 
     private static Set<SObjectField> materialised(Set<SObjectField> keySet) {

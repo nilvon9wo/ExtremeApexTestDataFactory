@@ -71,7 +71,7 @@ private class XFTY_Ex_EnrichmentTest {
                 .withChildren(Contact.AccountId, 2)
                 .supplyBundle();
         XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
-                .injectChild(new List<SObjectField>{ Contact.AccountId });
+                .injectChild(Contact.AccountId);
 
         // Act
         Test.startTest();

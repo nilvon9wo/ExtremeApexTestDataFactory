@@ -3,19 +3,21 @@
  * `nothing()` (name everything you want), `allParents()`, `allChildren()`,
  * `everything()` - then layer refiners on:
  *
- * - `injectParent(path)` / `injectChild(path)` - add a path (and, in the
- *   enricher, every hop along it);
- * - `excludeParent(path)` / `excludeChild(path)` - prune a subtree from a
- *   breadth start;
- * - `injectValue(field, value)` - a scalar on the working record itself
+ * - `injectParent(path)` - inject the ancestor at `path` (relationship hops from
+ *   the target record) and every hop along the way;
+ * - `injectChild(childField)` - inject that one child collection (one hop) on the
+ *   target records;
+ * - `excludeParent(path)` / `excludeChild(childField)` - prune from a breadth
+ *   start;
+ * - `injectValue(field, value)` - a scalar on the target record itself
  *   (formula / roll-up / system / read-only);
  * - `injectValue(path, value)` - a scalar on a record several hops up, where
  *   `path` is the relationship hops then the target field;
- * - `parentDepth(n)` - cap the ancestor climb (default: 5, the SOQL limit);
- * - `childDepth(n)` - reserved; only 1 is supported (a subquery cannot nest),
- *   `n > 1` throws;
- * - `breakSoqlLimits()` - lift the ceiling on `parentDepth` and the `injectParent`
- *   path lengths.
+ * - `parentDepth(n)` - cap the ancestor climb (default 5, the SOQL limit);
+ * - `childDepth(n)` - how many levels of nested child collections (default 1;
+ *   `n > 1` needs `breakSoqlLimits()` - a nested subquery is not queryable);
+ * - `breakSoqlLimits()` - lift the ceiling on `parentDepth`, `childDepth`, and
+ *   the `injectParent` path length.
  *
  * A plain state carrier - the enricher reads the fields, nothing here acts.
  * `injectAll(field)` on the bundle is `inject(field, everything())`.
@@ -30,9 +32,9 @@ public class XFTY_InjectConfig {
     public final Boolean fromAllChildren;
 
     public final List<List<SObjectField>> includedParentPaths = new List<List<SObjectField>>();
-    public final List<List<SObjectField>> includedChildPaths = new List<List<SObjectField>>();
     public final List<List<SObjectField>> excludedParentPaths = new List<List<SObjectField>>();
-    public final List<List<SObjectField>> excludedChildPaths = new List<List<SObjectField>>();
+    public final Set<SObjectField> includedChildFields = new Set<SObjectField>();
+    public final Set<SObjectField> excludedChildFields = new Set<SObjectField>();
     public final Map<SObjectField, Object> onRecordValues = new Map<SObjectField, Object>();
     public final List<AncestorValue> ancestorValues = new List<AncestorValue>();
 
@@ -50,12 +52,12 @@ public class XFTY_InjectConfig {
         return new XFTY_InjectConfig(false, false);
     }
 
-    /** Every generated ancestor, to the SOQL parent-hop limit; children only if named. */
+    /** Every generated ancestor, to `parentDepth`; children only if named. */
     public static XFTY_InjectConfig allParents() {
         return new XFTY_InjectConfig(true, false);
     }
 
-    /** Every generated child collection; parents only if named. */
+    /** Every generated child collection, to `childDepth`; parents only if named. */
     public static XFTY_InjectConfig allChildren() {
         return new XFTY_InjectConfig(false, true);
     }
@@ -70,22 +72,23 @@ public class XFTY_InjectConfig {
         return this;
     }
 
-    public XFTY_InjectConfig injectChild(List<SObjectField> path) {
-        this.includedChildPaths.add(path);
-        return this;
-    }
-
     public XFTY_InjectConfig excludeParent(List<SObjectField> path) {
         this.excludedParentPaths.add(path);
         return this;
     }
 
-    public XFTY_InjectConfig excludeChild(List<SObjectField> path) {
-        this.excludedChildPaths.add(path);
+    /** Inject the child collection this lookup field defines (e.g. `Case.ContactId` -> the Contact's Cases). */
+    public XFTY_InjectConfig injectChild(SObjectField childLookupField) {
+        this.includedChildFields.add(childLookupField);
         return this;
     }
 
-    /** A scalar on the working record - the formula / roll-up / system / read-only case. */
+    public XFTY_InjectConfig excludeChild(SObjectField childLookupField) {
+        this.excludedChildFields.add(childLookupField);
+        return this;
+    }
+
+    /** A scalar on the target record - the formula / roll-up / system / read-only case. */
     public XFTY_InjectConfig injectValue(SObjectField field, Object value) {
         this.onRecordValues.put(field, value);
         return this;
@@ -102,13 +105,13 @@ public class XFTY_InjectConfig {
         return this;
     }
 
-    /** Reserved. Only `1` is honoured - a SOQL subquery cannot nest; `hops > 1` throws at `inject`. */
+    /** How many levels of nested child collections. Default 1; `hops > 1` needs `breakSoqlLimits()`. */
     public XFTY_InjectConfig childDepth(Integer hops) {
         this.childDepthLimit = hops;
         return this;
     }
 
-    /** Allow the depths and the `injectParent` / `injectChild` path lengths to exceed what one SOQL could return. */
+    /** Allow `parentDepth`, `childDepth` and the `injectParent` path length to exceed what one SOQL could return. */
     public XFTY_InjectConfig breakSoqlLimits() {
         this.soqlLimitsLifted = true;
         return this;

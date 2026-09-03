@@ -9,7 +9,8 @@ private class XFTY_BundleEnricherTest {
     private static XFTY_DummySObjectProviderLookupIntf lookup() {
         return XFTY_ProviderLookups.of(new Map<XFTY_LookupKeyIntf, XFTY_DummySobjectProviderIntf>{
                 XFTY_LookupKey.get(Account.SObjectType) => new AccountWithParentProvider(),
-                XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider()
+                XFTY_LookupKey.get(Contact.SObjectType) => new XFTY_DefaultContactDataProvider(),
+                XFTY_LookupKey.get(Case.SObjectType) => new CaseProvider()
         });
     }
 
@@ -232,6 +233,122 @@ private class XFTY_BundleEnricherTest {
         // Assert
         Assert.isNotNull(thrown);
         Assert.isTrue(thrown.getMessage().contains('breakSoqlLimits'), 'the error points at the escape hatch');
+    }
+
+    @IsTest
+    static void testInjectAll_forThePrimary_alsoPutsTheAncestorsInverseChildOntoIt() {
+        // Arrange - one Contact; injectAll should give it contact.Account and contact.Account.Contacts
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .supplyBundle();
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.injectAll(Contact.Id);
+        Test.stopTest();
+
+        // Assert
+        Contact enrichedContact = (Contact) enriched[0];
+        Assert.areEqual(1, enrichedContact.Account.Contacts.size(), 'the ancestor carries the Contact that generated it');
+    }
+
+    @IsTest
+    static void testInjectAll_forThePrimary_givesEachDownwardChildItsOwnAncestor() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .withChildren(Contact.AccountId, 2)
+                .supplyBundle();
+
+        // Act - everything() covers ancestors at every position, including inside a subquery
+        Test.startTest();
+        List<SObject> enriched = bundle.injectAll(Account.Id);
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(((Account) enriched[0]).Contacts[0].Account, 'the child Contact carries its generated Account');
+    }
+
+    @IsTest
+    static void testInject_withChildDepthTwoAndBreakSoqlLimits_graftsGrandchildren() {
+        // Arrange - Account -> 2 Contacts -> 3 Cases each
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .with(
+                        new XFTY_SObjectChildProvider(Contact.AccountId).setQuantity(2)
+                                .with(new XFTY_SObjectChildProvider(Case.ContactId).setQuantity(3))
+                )
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.allChildren().childDepth(2).breakSoqlLimits();
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Account.Id, config);
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(3, ((Account) enriched[0]).Contacts[0].Cases.size(), 'the nested subquery is grafted');
+    }
+
+    @IsTest
+    static void testInject_withChildDepthTwoButNoBreakSoqlLimits_throws() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 1)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.allChildren().childDepth(2);
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
+        try {
+            bundle.inject(Account.Id, config);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+    }
+
+    @IsTest
+    static void testInject_returnsThePlainListOfEnrichedTargetRecords() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setQuantityPerTemplate(2)
+                .supplyBundle();
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Contact.Id, XFTY_InjectConfig.allParents());
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(2, enriched.size());
+        Assert.isInstanceOfType(enriched[0], Contact.class);
+    }
+
+    private class CaseProvider implements XFTY_DummySobjectProviderIntf {
+        private final XFTY_DummySObjectMasterTemplate template = new XFTY_DummySObjectMasterTemplate(Case.Id)
+                .put(Case.Subject, new XFTY_IncrementingStringExpression('Enricher Case'));
+
+        public SObjectField getPrimaryTargetField() {
+            return Case.Id;
+        }
+
+        public XFTY_DummySObjectMasterTemplate getMasterTemplate() {
+            return this.template;
+        }
+
+        public XFTY_DummySObjectBundle createBundle(XFTY_GenerationContext context, List<SObject> templates) {
+            return XFTY_DummySObjectFactory.createBundle(context, this.template, templates);
+        }
     }
 
     private class AccountWithParentProvider implements XFTY_DummySobjectProviderIntf {
