@@ -48,6 +48,42 @@ private class XFTY_SeedResultTest {
         Assert.areEqual(1, result.failedRecords().size());
     }
 
+    @IsTest
+    static void testIsFullySeeded_whenEveryRecordSaved_isTrue() {
+        // Arrange
+        List<SObject> records = new List<SObject>{ new Account(Name = 'One'), new Account(Name = 'Two') };
+        XFTY_SeedResult result;
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = new XFTY_SeedResult(records, outcomesFor(records));
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded());
+        Assert.areEqual(2, result.savedRecords().size());
+        Assert.isTrue(result.errors().isEmpty());
+    }
+
+    @IsTest
+    static void testEmptyOutcomes_readAsAFullySeededNoOp() {
+        // Arrange
+        XFTY_SeedResult result = new XFTY_SeedResult(
+                new List<SObject>(), new Map<Integer, Database.SaveResult>()
+        );
+
+        // Act
+        Test.startTest();
+        Boolean full = result.isFullySeeded();
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(full);
+        Assert.areEqual(0, result.attemptedCount());
+    }
+
     private static Map<Integer, Database.SaveResult> outcomesFor(List<SObject> records) {
         Map<Integer, Database.SaveResult> outcomes = new Map<Integer, Database.SaveResult>();
         List<Database.SaveResult> saveResults = Database.insert(records, false);

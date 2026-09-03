@@ -81,6 +81,79 @@ private class XFTY_SeederTest {
     }
 
     @IsTest
+    static void testSeed_aTwoLevelAncestorChain_savesFromTheTopDown() {
+        // Arrange - Contact -> Account -> parent Account, hand-built, nothing persisted
+        Account grandparent = new Account(Name = 'Grandparent Co');
+        Account parent = new Account(Name = 'Parent Co');
+        Contact primary = new Contact(LastName = 'Leaf');
+
+        XFTY_DummySObjectBundle grandparentBundle = new XFTY_DummySObjectBundle();
+        grandparentBundle.putPrimaries(Account.Id, new List<SObject>{ grandparent });
+        XFTY_DummySObjectBundle parentBundle = new XFTY_DummySObjectBundle();
+        parentBundle.putPrimaries(Account.Id, new List<SObject>{ parent });
+        parentBundle.put(Account.ParentId, new List<SObject>{ grandparent });
+        parentBundle.put(Account.ParentId, grandparentBundle);
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{ primary });
+        bundle.put(Contact.AccountId, new List<SObject>{ parent });
+        bundle.put(Contact.AccountId, parentBundle);
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Assert.areEqual(parent.Id, primary.AccountId);
+        Assert.areEqual(grandparent.Id, parent.ParentId);
+    }
+
+    @IsTest
+    static void testSeed_whenAPrimaryAlreadyHasAnId_doesNotCountItAsAttempted() {
+        // Arrange - one anchor (pre-set Id), one to insert
+        Contact anchor = new Contact(LastName = 'Anchor', Id = XFTY_IdMocker.generateId(Contact.SObjectType));
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{ anchor, new Contact(LastName = 'Fresh') });
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, result.attemptedCount(), 'the anchor was not re-inserted');
+        Assert.areEqual(1, result.savedCount());
+    }
+
+    @IsTest
+    static void testSeed_splitsSavedFromFailedRecords() {
+        // Arrange
+        Contact good = new Contact(LastName = 'Kept');
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{ good, new Contact() });
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, result.savedRecords().size());
+        Assert.areEqual('Kept', ((Contact) result.savedRecords()[0]).LastName);
+        Assert.areEqual(1, result.failedRecords().size());
+    }
+
+    @IsTest
     static void testSeed_anEmptyBundle_reportsNothingAttempted() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();

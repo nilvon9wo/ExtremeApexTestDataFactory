@@ -85,6 +85,29 @@ private class XFTY_DeferredInsertBufferTest {
         Assert.isNotNull(onlyRecord.Id);
     }
 
+    @IsTest
+    static void testFlatten_returnsEveryRecordAndItsParentLink_withoutInserting() {
+        // Arrange
+        Account parent = new Account(Name = 'Flatten Parent');
+        Contact child = new Contact(LastName = 'Flatten Child');
+        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, child);
+        childBundle.put(Contact.AccountId, bundleOf(Account.Id, parent));
+        childBundle.put(Contact.AccountId, new List<SObject>{ parent });
+
+        // Act
+        Test.startTest();
+        Integer before = Limits.getDmlStatements();
+        XFTY_DeferredInsertBuffer graph = XFTY_DeferredInsertBuffer.flatten(childBundle);
+        Integer dml = Limits.getDmlStatements() - before;
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(0, dml, 'flatten does not insert');
+        Assert.areEqual(2, graph.records().size(), 'the child and its parent');
+        Assert.areEqual(1, graph.parentLinks().size(), 'one lookup to wire');
+        Assert.isNull(child.Id, 'nothing was persisted');
+    }
+
     // Helpers -----------------------------------------------
 
     private static XFTY_DummySObjectBundle bundleOf(SObjectField primaryField, SObject record) {

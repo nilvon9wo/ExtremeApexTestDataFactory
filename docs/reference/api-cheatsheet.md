@@ -133,6 +133,14 @@ One line per public entry point. Follow the links for detail.
 | `XFTY_DeferredInserter.flush()` | insert every `DEFERRED` graph so far, depth-batched, Ids back-filled |
 | `XFTY_DeferredInserter.pendingCount()` | registered-but-uninserted record count |
 
+## Org seeding — `XFTY_Seeder` (preview, `@IntegrationTest`)
+
+| `XFTY_Seeder.seed(bundle)` → `XFTY_SeedResult` | best-effort save of the whole bundle into the running org — data persists (no rollback) |
+| `result.attemptedCount()` / `savedCount()` / `failedCount()` / `isFullySeeded()` | how it went |
+| `result.savedRecords()` / `failedRecords()` / `errors()` | which records, and why the failures |
+
+Needs a Winter '27 preview scratch org. Detail: [org-seeding](../use/org-seeding.md).
+
 ## Test-user helpers — `XFTY_DefaultUserDataProvider`
 
 | `TEST_ADMIN_USER` | inserted System Administrator, for `System.runAs` |

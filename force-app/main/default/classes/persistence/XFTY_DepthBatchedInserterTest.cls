@@ -203,6 +203,68 @@ private class XFTY_DepthBatchedInserterTest {
         Assert.isFalse(outcomes.get(1).isSuccess(), 'the invalid record was reported, not thrown');
     }
 
+    @IsTest
+    static void testSeedAll_forAChain_savesEachLayerBeforeTheNext() {
+        // Arrange - Account <- Contact <- Contact
+        Account gen1 = new Account(Name = 'Chain 1');
+        Contact gen2 = new Contact(LastName = 'Chain 2');
+        Contact gen3 = new Contact(LastName = 'Chain 3');
+        List<SObject> records = new List<SObject>{ gen1, gen2, gen3 };
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_DepthBatchedInserter.seedAll(records, links(link(1, 0, Contact.AccountId), link(2, 1, Contact.ReportsToId)));
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(gen1.Id, gen2.AccountId);
+        Assert.areEqual(gen2.Id, gen3.ReportsToId);
+    }
+
+    @IsTest
+    static void testSeedAll_whenAParentIsRejected_theChildIsStillAttemptedWithoutIt() {
+        // Arrange - the parent Account has no Name; the child Contact links to it
+        Account badParent = new Account();
+        Contact child = new Contact(LastName = 'Orphaned');
+        List<SObject> records = new List<SObject>{ badParent, child };
+
+        // Act
+        Map<Integer, Database.SaveResult> outcomes;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            outcomes = XFTY_DepthBatchedInserter.seedAll(records, links(link(1, 0, Contact.AccountId)));
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isFalse(outcomes.get(0).isSuccess(), 'the parent was rejected');
+        Assert.isTrue(outcomes.get(1).isSuccess(), 'the child still lands, just without the lookup');
+        Assert.isNull(child.AccountId, 'no parent Id to point at');
+    }
+
+    @IsTest
+    static void testSeedAll_forACyclicGraph_stillThrows() {
+        // Arrange - best effort covers row failures, not an impossible insert order
+        List<SObject> records = new List<SObject>{ new Account(Name = 'A'), new Account(Name = 'B') };
+
+        // Act
+        XFTY_DepthBatchedInserter.CyclicGraphException thrown;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            try {
+                XFTY_DepthBatchedInserter.seedAll(records, links(link(0, 1, Account.ParentId), link(1, 0, Account.ParentId)));
+            } catch (XFTY_DepthBatchedInserter.CyclicGraphException ex) {
+                thrown = ex;
+            }
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isNotNull(thrown);
+    }
+
     // Runners + helpers -------------------------------------
 
     static void assertInsertCount(

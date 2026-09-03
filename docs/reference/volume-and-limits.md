@@ -120,6 +120,14 @@ much cheaper. The pass is wrapped in `XFTY_GovernorBudget`, which
 `XFTY_Load` suite (`XFTY_EnrichmentLoadTest`) exercises the shapes in the table
 above; a few thousand records total across all visited positions is comfortable.
 
+### Org seeding
+
+[`XFTY_Seeder.seed(bundle)`](../use/org-seeding.md) runs real DML in **one
+transaction**, so the same ceilings as a `NOW` generation apply — the DML-row cap
+(10,000) first, then trigger-bound CPU. Roughly **~1,000–1,500 primaries with a
+parent each** per `@IntegrationTest` method; split a bigger seed across several
+methods. (The Bulk API path that would lift this is not built.)
+
 ---
 
 ## Keeping generation cheap
