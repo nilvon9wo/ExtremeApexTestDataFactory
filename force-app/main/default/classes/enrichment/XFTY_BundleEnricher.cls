@@ -18,6 +18,7 @@ public class XFTY_BundleEnricher {
     private final SObjectField entryField;
     private final XFTY_InjectConfig config;
     private final XFTY_EnrichmentSelection selection;
+    private final XFTY_ForcedValues forcedValues;
 
     private XFTY_BundleEnricher(XFTY_DummySObjectBundle bundle, SObjectField field, XFTY_InjectConfig config) {
         XFTY_QueryableShapeValidator.validate(config);
@@ -25,6 +26,7 @@ public class XFTY_BundleEnricher {
         this.entryField = field;
         this.config = config;
         this.selection = new XFTY_EnrichmentSelection(config);
+        this.forcedValues = new XFTY_ForcedValues(config);
     }
 
     public static List<SObject> enrich(
@@ -62,7 +64,7 @@ public class XFTY_BundleEnricher {
         this.graftAncestors(injector, pos);
         this.graftInverse(injector, pos);
         this.graftChildren(injector, pos);
-        this.graftValues(injector, pos);
+        this.forcedValues.applyTo(injector, pos.pathFromEntry, pos.isRoot);
         return injector.result();
     }
 
@@ -130,30 +132,6 @@ public class XFTY_BundleEnricher {
         }
     }
 
-    private void graftValues(XFTY_SObjectInjector injector, Position pos) {
-        if (pos.isRoot) {
-            this.graftRecordValues(injector);
-        }
-        if (pos.pathFromEntry != null) {
-            this.graftAncestorValues(injector, pos.pathFromEntry);
-        }
-    }
-
-    private void graftRecordValues(XFTY_SObjectInjector injector) {
-        for (SObjectField field : this.config.onRecordValues.keySet()) {
-            injector.value(field, resolved(this.config.onRecordValues.get(field)));
-        }
-    }
-
-    private void graftAncestorValues(XFTY_SObjectInjector injector, List<SObjectField> pathFromEntry) {
-        String hereKey = XFTY_EnrichmentSelection.keyOf(pathFromEntry);
-        for (XFTY_InjectConfig.AncestorValue ancestorValue : this.config.ancestorValues) {
-            if (XFTY_EnrichmentSelection.keyOf(ancestorValue.relationshipPrefix()) == hereKey) {
-                injector.value(ancestorValue.targetField(), resolved(ancestorValue.value));
-            }
-        }
-    }
-
     private Position rootPosition(XFTY_EnrichmentTarget target) {
         Position root = new Position(target.subBundle, target.records);
         root.pathFromEntry = new List<SObjectField>();
@@ -189,12 +167,6 @@ public class XFTY_BundleEnricher {
         return (pos.pathFromEntry == null)
                 ? null
                 : append(pos.pathFromEntry, relationshipField);
-    }
-
-    private static Object resolved(Object value) {
-        return (value instanceof XFTY_ValueExpressionIntf)
-                ? ((XFTY_ValueExpressionIntf) value).get()
-                : value;
     }
 
     private static List<SObjectField> append(List<SObjectField> path, SObjectField extra) {

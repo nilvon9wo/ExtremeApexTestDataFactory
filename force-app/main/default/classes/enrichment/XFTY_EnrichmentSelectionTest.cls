@@ -18,8 +18,6 @@ private class XFTY_EnrichmentSelectionTest {
         return new List<SObjectField>{ Contact.OwnerId };
     }
 
-    // wantsAncestor -------------------------------------------------------
-
     @IsTest
     static void testWantsAncestor_fromNothing_isFalse() {
         testWantsAncestor(XFTY_InjectConfig.nothing(), account(), false);
@@ -73,8 +71,6 @@ private class XFTY_EnrichmentSelectionTest {
         Assert.areEqual(expected, wanted);
     }
 
-    // wantsInverse ------------------------------------------------------
-
     @IsTest
     static void testWantsInverse_fromAllChildren_isTrue() {
         testWantsInverse(XFTY_InjectConfig.allChildren(), true);
@@ -102,8 +98,6 @@ private class XFTY_EnrichmentSelectionTest {
         // Assert
         Assert.areEqual(expected, wanted);
     }
-
-    // childFieldsOn ----------------------------------------------------
 
     @IsTest
     static void testChildFieldsOn_fromAllChildren_includesThePresentField() {
@@ -141,33 +135,4 @@ private class XFTY_EnrichmentSelectionTest {
         Assert.areEqual(expectedToContain, fields.contains(Contact.AccountId));
     }
 
-    // keyOf ----------------------------------------------------------
-
-    @IsTest
-    static void testKeyOf_joinsTheFieldNamesPositionally() {
-        // Arrange
-        List<SObjectField> path = accountParent();
-
-        // Act
-        Test.startTest();
-        String key = XFTY_EnrichmentSelection.keyOf(path);
-        Test.stopTest();
-
-        // Assert
-        Assert.areEqual('AccountId>ParentId>', key);
-    }
-
-    @IsTest
-    static void testKeyOf_forANullPath_isEmpty() {
-        // Arrange
-        List<SObjectField> nullPath = null;
-
-        // Act
-        Test.startTest();
-        String key = XFTY_EnrichmentSelection.keyOf(nullPath);
-        Test.stopTest();
-
-        // Assert
-        Assert.areEqual('', key);
-    }
 }

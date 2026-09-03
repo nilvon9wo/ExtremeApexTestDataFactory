@@ -26,6 +26,8 @@
     <testClassName>XFTY_BundleEnricherTest</testClassName>
     <testClassName>XFTY_QueryableShapeValidatorTest</testClassName>
     <testClassName>XFTY_EnrichmentSelectionTest</testClassName>
+    <testClassName>XFTY_ForcedValuesTest</testClassName>
+    <testClassName>XFTY_PathKeyTest</testClassName>
     <testClassName>XFTY_EnrichmentTargetTest</testClassName>
     <testClassName>XFTY_BlobCarrierTest</testClassName>
     <testClassName>XFTY_InverseAlignmentTest</testClassName>

@@ -1,9 +1,7 @@
 /**
  * Answers "does this config want the ancestor / child / inverse at this position?"
- * for `XFTY_BundleEnricher`'s recursive walk. Built once from the config.
- *
- * A path is keyed as a `>`-joined string of field names (built with `+=`, not
- * `String.join` - `join` is on the check-apex-style reserved list).
+ * for `XFTY_BundleEnricher`'s recursive walk. Built once from the config; paths
+ * are compared as `XFTY_PathKey` strings.
  */
 @IsTest
 public class XFTY_EnrichmentSelection {
@@ -21,7 +19,7 @@ public class XFTY_EnrichmentSelection {
             this.includeWithPrefixes(ancestorValue.relationshipPrefix());
         }
         for (List<SObjectField> path : config.excludedParentPaths) {
-            this.excludedParentKeys.add(keyOf(path));
+            this.excludedParentKeys.add(XFTY_PathKey.of(path));
         }
     }
 
@@ -37,7 +35,7 @@ public class XFTY_EnrichmentSelection {
         if (this.hasExcludedPrefix(pathFromEntry)) {
             return false;
         }
-        return this.config.fromAllParents || this.includedParentKeys.contains(keyOf(pathFromEntry));
+        return this.config.fromAllParents || this.includedParentKeys.contains(XFTY_PathKey.of(pathFromEntry));
     }
 
     /** Whether an ancestor generated for the level below should carry that level back as its child subquery. */
@@ -69,27 +67,15 @@ public class XFTY_EnrichmentSelection {
         return named;
     }
 
-    /** The `>`-joined key for a path; `''` for an empty or null path. */
-    public static String keyOf(List<SObjectField> path) {
-        if (path == null) {
-            return '';
-        }
-        String key = '';
-        for (SObjectField step : path) {
-            key += step + '>';
-        }
-        return key;
-    }
-
     private void includeWithPrefixes(List<SObjectField> path) {
         for (Integer length = 1; length <= path.size(); length++) {
-            this.includedParentKeys.add(keyOf(prefixOf(path, length)));
+            this.includedParentKeys.add(XFTY_PathKey.of(prefixOf(path, length)));
         }
     }
 
     private Boolean hasExcludedPrefix(List<SObjectField> path) {
         for (Integer length = 1; length <= path.size(); length++) {
-            if (this.excludedParentKeys.contains(keyOf(prefixOf(path, length)))) {
+            if (this.excludedParentKeys.contains(XFTY_PathKey.of(prefixOf(path, length)))) {
                 return true;
             }
         }
