@@ -85,6 +85,25 @@ private class XFTY_SeedResultTest {
     }
 
     @IsTest
+    static void testSavedRecordsOfType_returnsOnlyThatTypesSavedRecords() {
+        // Arrange - an Account and a Contact both save
+        List<SObject> records = new List<SObject>{ new Account(Name = 'A'), new Contact(LastName = 'C') };
+        XFTY_SeedResult result;
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = new XFTY_SeedResult(records, outcomesFor(records), true);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, result.savedRecordsOfType(Account.SObjectType).size());
+        Assert.isTrue(result.savedRecordsOfType(Account.SObjectType)[0] instanceof Account);
+        Assert.areEqual(0, result.savedRecordsOfType(Lead.SObjectType).size());
+    }
+
+    @IsTest
     static void testRanInIntegrationTest_carriesTheFlagItWasBuiltWith() {
         // Arrange
         XFTY_SeedResult outside = new XFTY_SeedResult(

@@ -49,9 +49,20 @@ public class XFTY_SeedResult {
         return this.failedCount() == 0;
     }
 
-    /** The saved records (Id populated), in graph order. */
+    /** The saved records (Id populated), in graph order - what this run created, to undo it. */
     public List<SObject> savedRecords() {
         return this.recordsWhereSuccess(true);
+    }
+
+    /** The saved records of one type - e.g. `savedRecordsOfType(User.SObjectType)` to deactivate rather than delete. */
+    public List<SObject> savedRecordsOfType(SObjectType type) {
+        List<SObject> matching = new List<SObject>();
+        for (SObject record : this.savedRecords()) {
+            if (record.getSObjectType() == type) {
+                matching.add(record);
+            }
+        }
+        return matching;
     }
 
     /** The records the platform rejected, in graph order. */

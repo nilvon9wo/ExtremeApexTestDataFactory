@@ -107,10 +107,14 @@ record is inserted **once** and every dependent points at it.
 
 Verified on a scratch org: deep downward trees (grandchildren and below), two or
 more child collections on the same relationship, polymorphic lookups
-(`Task.WhoId` / `WhatId`), self-referential ancestor chains (`Account.ParentId`),
-and — because an `@IntegrationTest` runs asynchronously — **a graph that spans
-setup objects (`User`, `Group`, …) and ordinary objects**, which a synchronous
-`NOW` test would reject with `MIXED_DML_OPERATION`.
+(`Task.WhoId` / `WhatId`), self-referential ancestor chains (`Account.ParentId`).
+
+Because an `@IntegrationTest` runs asynchronously, a graph that spans **setup
+objects (`User`, `Group`, …) and ordinary objects** — which a synchronous `NOW`
+test rejects with `MIXED_DML_OPERATION` — mostly seeds fine. Only mostly: this is
+a preview, and the exemption has been seen to lapse after a long run of
+interleaved setup / non-setup DML. Keep setup-object seeding in its own
+`@IntegrationTest` method when you can.
 
 ### Up-flow values don't seed
 
@@ -129,6 +133,8 @@ no seeder needed. The same is true for any graph you would rather generate in
 | `savedCount()` / `failedCount()` | how many landed / were rejected |
 | `isFullySeeded()` | `failedCount() == 0` |
 | `savedRecords()` / `failedRecords()` | the records, in graph order |
+| `savedRecordsOfType(type)` | just the saved records of one SObject type — for targeted cleanup |
+| `ranInIntegrationTest()` | `false` means the DML rolled back with the transaction |
 | `errors()` | one line per rejected record — SObject type, status code, platform message |
 
 ## Verifying it worked
@@ -146,11 +152,31 @@ sf data query -o <scratch-org> --query "SELECT Name, (SELECT LastName FROM Conta
 
 A seed is **not idempotent** — run it twice and you get two sets of records, and
 duplicate rules will start rejecting the second run (reported in `errors()`, not
-thrown). Seeding `User` records is especially prone to this: username and
-federation-id are org-unique, so a second run — or a later plain `@IsTest` that
-builds a test admin — collides. To reset, delete (and for `User`, deactivate) in
-another `@IntegrationTest` method first; there is no rollback, so the cleanup
-sticks too.
+thrown).
+
+The bundled `User` Provider generates a **globally-unique** `Username` /
+`FederationIdentifier` (via `XFTY_UniqueAcrossRunsExpression`), so re-runs don't
+collide there — but **every run adds a User**, and an org has a hard cap on user
+licences. Seed `User` records only when you mean to, and clean them up.
+
+## Cleaning up
+
+`result.savedRecords()` is exactly what *this run* created, with Ids — undo it
+precisely rather than wiping the org:
+
+```apex
+XFTY_SeedResult result = XFTY_Seeder.seed(bundle);
+// ... assertions ...
+
+// in a @TearDown, or a later @IntegrationTest method:
+delete result.savedRecordsOfType(Contact.SObjectType);
+delete result.savedRecordsOfType(Account.SObjectType);
+```
+
+`User` records can't be deleted — collect them with
+`result.savedRecordsOfType(User.SObjectType)`, set `IsActive = false`, and
+`update`. `XFTY_Seeder` never deletes anything on its own; a seed that assumed
+most `User` (or any) records were safe to remove would be dangerous.
 
 ## Limits
 

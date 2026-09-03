@@ -17,6 +17,10 @@
  * org has no such Profile / UserRole. They are accessors - a caller asking for an
  * Id it then relies on should hear about a missing one immediately, not receive a
  * null that surfaces later as an opaque DML error.
+ *
+ * `Username` and `FederationIdentifier` use {@link XFTY_UniqueAcrossRunsExpression},
+ * not the transaction-scoped counter - the platform requires them globally unique,
+ * so a *persisted* User (e.g. from `XFTY_Seeder`) must not repeat a previous run's.
  */
 @IsTest
 public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIntf {
@@ -42,14 +46,14 @@ public class XFTY_DefaultUserDataProvider implements XFTY_DummySobjectProviderIn
                     .put(User.Alias, new XFTY_IncrementingStringExpression(DEFAULT_ALIAS_PREFIX))
                     .put(User.EmailEncodingKey, new XFTY_LiteralExpression(DEFAULT_EMAIL_ENCODING))
                     .put(User.Email, new XFTY_UniqueEmailExpression(DEFAULT_EMAIL_PREFIX))
-                    .put(User.FederationIdentifier, new XFTY_UniqueStringExpression(DEFAULT_FEDERATION_ID_PREFIX))
+                    .put(User.FederationIdentifier, new XFTY_UniqueAcrossRunsExpression(DEFAULT_FEDERATION_ID_PREFIX + ' ', ''))
                     .put(User.FirstName, new XFTY_IncrementingStringExpression(DEFAULT_FIRST_NAME_PREFIX))
                     .put(User.LanguageLocaleKey, new XFTY_LiteralExpression(DEFAULT_LANGUAGE_LOCAL))
                     .put(User.LastName, new XFTY_IncrementingStringExpression(DEFAULT_LAST_NAME_PREFIX))
                     .put(User.LocaleSidKey, new XFTY_LiteralExpression(DEFAULT_LOCALE_SID))
                     .put(User.ProfileId, new XFTY_LiteralExpression(profileIdFor(SYSTEM_ADMIN)))
                     .put(User.TimeZoneSidKey, new XFTY_LiteralExpression(DEFAULT_TIME_ZONE))
-                    .put(User.Username, new XFTY_UniqueEmailExpression(DEFAULT_USERNAME_PREFIX));
+                    .put(User.Username, new XFTY_UniqueAcrossRunsExpression(DEFAULT_USERNAME_PREFIX + '.', '@example.com'));
 
     private static final XFTY_DummySObjectProviderLookupIntf DEFAULT_SOBJECT_PROVIDER_LOOKUP = new XFTY_DefaultSObjectProviderLookup();
 

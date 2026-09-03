@@ -32,4 +32,25 @@ private class XFTY_Ex_OrgSeedingTest {
         Assert.isTrue(result.isFullySeeded());
         Assert.isNotNull(bundle.primaryRecords()[0].Id);
     }
+
+    @IsTest
+    static void testCleanup_undoesExactlyWhatTheSeedCreated() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
+                .withChildren(Contact.AccountId, 2)
+                .supplyBundle();
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_SeedResult result = XFTY_Seeder.seed(bundle);
+            delete result.savedRecordsOfType(Contact.SObjectType);
+            delete result.savedRecordsOfType(Account.SObjectType);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(0, [SELECT COUNT() FROM Contact WHERE Id = :bundle.getChildList(Contact.AccountId)[0].Id]);
+    }
 }

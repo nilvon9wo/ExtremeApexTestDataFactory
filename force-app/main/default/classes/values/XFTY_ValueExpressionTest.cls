@@ -102,7 +102,7 @@ private class XFTY_ValueExpressionTest {
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(25, produced.size(), 'the counter is static, so values are globally unique');
+        Assert.areEqual(25, produced.size(), 'the static counter keeps values distinct within a transaction');
     }
 
     @IsTest
@@ -195,6 +195,39 @@ private class XFTY_ValueExpressionTest {
         Assert.isTrue(twoCalls[0] instanceof Decimal, 'produces a Decimal');
         Assert.areEqual(Decimal.valueOf('1'), (Decimal) twoCalls[0]);
         Assert.areEqual(Decimal.valueOf('2'), (Decimal) twoCalls[1]);
+    }
+
+    // XFTY_UniqueAcrossRunsExpression ------------------------
+
+    @IsTest
+    static void testGet_forAUniqueAcrossRunsValue_wrapsACounterInAPrefixAndSuffix() {
+        // Arrange
+        XFTY_UniqueAcrossRunsExpression expression = new XFTY_UniqueAcrossRunsExpression('u.', '@example.com');
+
+        // Act
+        Test.startTest();
+        List<Object> two = new List<Object>{ expression.get(), expression.get() };
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(((String) two[0]).startsWith('u.'), (String) two[0]);
+        Assert.isTrue(((String) two[0]).endsWith('@example.com'), (String) two[0]);
+        Assert.areNotEqual(two[0], two[1], 'the counter still moves within a transaction');
+    }
+
+    @IsTest
+    static void testGet_forAUniqueAcrossRunsValue_carriesAPerTransactionToken() {
+        // Arrange - the token is what makes two persisted runs not collide
+        XFTY_UniqueAcrossRunsExpression expression = new XFTY_UniqueAcrossRunsExpression('User Federation Id ', '');
+
+        // Act
+        Test.startTest();
+        String value = (String) expression.get();
+        Test.stopTest();
+
+        // Assert - prefix, then digits from the token + counter (no 'User Federation Id 1' literal)
+        Assert.isTrue(value.startsWith('User Federation Id '), value);
+        Assert.isTrue(value.length() > 'User Federation Id 1'.length(), value);
     }
 
     // Runner -----------------------------------------------
