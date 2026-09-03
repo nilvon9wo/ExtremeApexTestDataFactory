@@ -27,6 +27,7 @@ Then, as needed:
 - [sobject-injector](sobject-injector.md) — `XFTY_SObjectInjector`: the same round-trip on a plain `List<SObject>`, no bundle
 - [shared-ancestors](shared-ancestors.md) — many children under one parent (flat or deep, auto-detected)
 - [deferred-insert](deferred-insert.md) — `DEFERRED` + `.depthBatched()`
+- [org-seeding](org-seeding.md) — `XFTY_Seeder.seed(bundle)`: leave a generated graph in the org (preview, `@IntegrationTest`)
 - [provider-variants](provider-variants.md) — pick a record-type / flavour variant
 - [test-user-helpers](test-user-helpers.md) — `TEST_ADMIN_USER`, `profileIdFor`, `roleIdFor`
 - [advanced/](advanced/) — combining features
@@ -62,6 +63,7 @@ examples compile and behave as documented.
 | `XFTY_SObjectInjector` — standalone round-trip (parents, subqueries, values, compound, `Blob`) | [sobject-injector](sobject-injector.md) | `XFTY_Ex_SObjectInjectorTest` |
 | insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
 | `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | `XFTY_Ex_DeferredInsertTest` |
+| `XFTY_Seeder.seed(bundle)` / `XFTY_SeedResult` — leave a graph in the org (`@IntegrationTest`) | [org-seeding](org-seeding.md) | `XFTY_Ex_OrgSeedingTest` |
 | `withVariant` / lookup-key ctor (flavour keys) | [provider-variants](provider-variants.md) | `XFTY_Ex_ProviderVariantsTest` |
 | record-type override template | [provider-variants](provider-variants.md) | `XFTY_RecordTypeRealRtTest` (org-only) |
 | `TEST_ADMIN_USER` | [test-user-helpers](test-user-helpers.md) | `XFTY_Ex_TestUserHelpersTest` |

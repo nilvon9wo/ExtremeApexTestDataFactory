@@ -1,68 +1,52 @@
-# Roadmap: Sandbox Data Seeding
+# Roadmap: Org Data Seeding
 
-Status: **📋 blocked on a project decision** —
-[the open question on distribution](open-questions.md#does-xfty-commit-to-a-deployable-non-istest-distribution).
-Seeding needs deployable (non-`@IsTest`) code. That is the same decision the
-[namespace / AppExchange work](namespace-appexchange.md) faces, and it is
-almost certainly **not** something a consumer can defer and switch later — you
-cannot swap a file from another package after install. So XFTY has to commit,
-once, to shipping `@IsTest`-only or shipping deployable.
+Status: **🔧 prototype on branch `org-seeding`** — `XFTY_Seeder.seed(bundle)`
+(DML path) built and proven on a scratch org. See
+**[docs/use/org-seeding.md](../use/org-seeding.md)** for usage.
 
-This page is what seeding would look like *if* that decision goes toward
-deployable.
-
----
-
-## The idea
-
-XFTY's declarative model would also generate representative **sandbox** data, not
-just test data. The obstacle: the framework is `@IsTest` today, which keeps it
-(and consumers' Providers / value expressions) out of production code and its
-limits. Seeding needs deployable, non-`@IsTest` code.
+**No longer blocked on the `@IsTest` distribution question.** The earlier design
+assumed seeding needed a deployable, non-`@IsTest` build of the framework.
+Salesforce's **Apex Integration Tests** (`@IntegrationTest`, Winter '27 developer
+preview) removed that: `@IntegrationTest` methods commit real DML with no
+rollback, and — while they cannot themselves be `@IsTest` — they *can* call
+`@IsTest` code. So the `@IsTest` framework seeds real data directly, from a
+consumer's `@IntegrationTest` class. No strip, no module split, no config.
 
 ---
 
-## The shape
+## Proven (scratch org, API 68.0 preview)
 
-Split XFTY into:
+- `@IntegrationTest` class deploys and runs; cannot also be `@IsTest`; can call
+  `@IsTest` code, whose DML **persists** (verified by external `sf data query`).
+- The whole `@IsTest` XFTY framework deploys and is driven from an
+  `@IntegrationTest` class.
+- `XFTY_Seeder.seed(bundle)` lands the whole graph — ancestors, primaries,
+  downward children, mixed SObjectTypes, foreign keys wired — best effort, and
+  reports each rejected record (`DUPLICATES_DETECTED`, `REQUIRED_FIELD_MISSING`,
+  …) via `XFTY_SeedResult` instead of throwing.
 
-- a **deployable base** — engine, bundle, master template, lookup, the
-  value/relationship interfaces + generators;
-- a thin **`@IsTest` layer** on top — `XFTY_IdMocker`, the admin-user bootstrap,
-  the bundled Default Providers.
+## The DML path (built)
 
-Everyone installs the base; the layer is the add-on. A seeding consumer takes the
-base plus a thin `XFTY_Seeder` (a list of `XFTY_DummySObjectProvider` configs →
-`insert`).
+`XFTY_Seeder.seed(bundle)` → `XFTY_SeedResult`, over
+`XFTY_DepthBatchedInserter.seedAll` (best-effort variant of the existing
+depth-batched inserter) and `XFTY_DeferredInsertBuffer.flatten` (the existing
+whole-graph walk). One transaction, so the per-transaction DML-row / CPU limits
+apply.
 
----
+## Not built
 
-## Why the split is hard
+- **Bulk API / Composite Graph path** — for volumes past one transaction's
+  ceiling, and to (ab)use an external-Id field to load several generations
+  concurrently in one callout. Needs an org self-callout to work from an
+  `@IntegrationTest` (endpoint is free via `URL.getOrgDomainUrl()`; the open
+  question is a usable session in that context). A separate spike.
+- **A spec-list entry point** — `seed(lookup, List<XFTY_SeedSpec>)` generating
+  then seeding, with `reusingParent` etc. The parked `sandbox-seeding` branch had
+  this API; carry it forward if wanted.
+- **Sandbox support** — the `@IntegrationTest` preview is scratch-org-only for
+  now.
 
-Salesforce likely will not let a consumer install the base without the layer
-cleanly — you cannot replace a file from another package, so you may have to
-delete the layer's files and everything depending on them. For a ~half-dozen-file
-difference that may not be worth it.
+## Superseded
 
-If it genuinely cannot be done cleanly (the working assumption), there is no
-per-consumer switch: the package either carries `@IsTest` or it does not. That is
-[the open question on distribution](open-questions.md#does-xfty-commit-to-a-deployable-non-istest-distribution).
-
-The [namespace / AppExchange work](namespace-appexchange.md) forces the same
-decision (step 4 there).
-
----
-
-## Prior seeder recipe (for reference)
-
-From a lost implementation: strip `@IsTest`; take the Provider Lookup's keys as
-the type list; chain one queueable per type running
-`new XFTY_DummySObjectProvider(type, lookup).setQuantityPerTemplate(100).setInsertMode(NOW).setInclusivity(ALL).supplyList()`
-with best-effort exception swallowing. A few types failed (federated users /
-unique-value collisions on `User`); a real version needs per-type opt-out and a
-way to reuse already-inserted ancestors.
-
-**Publish-time `@IsTest` strip** as a lighter alternative: a source transform
-before `sf package version create`, producing an `@IsTest` package and a
-deployable one from the same source. Cheaper than a real module split if it can
-be made reliable.
+The `sandbox-seeding` branch (`XFTY_Seeder` + `scripts/build-deployable.sh`
+`@IsTest` strip) is obsolete — keep it only for the `XFTY_SeedSpec` API sketch.

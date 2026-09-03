@@ -1,0 +1,10 @@
+{
+  "orgName": "XFTY - Apex Integration Test spike",
+  "edition": "Developer",
+  "features": ["ApexIntegrationTests"],
+  "settings": {
+    "lightningExperienceSettings": {
+      "enableS1DesktopEnabled": true
+    }
+  }
+}

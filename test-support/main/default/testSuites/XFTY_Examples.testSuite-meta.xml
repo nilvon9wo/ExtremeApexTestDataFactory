@@ -19,6 +19,7 @@
     <testClassName>XFTY_Ex_Extend_CustomExpressionsTest</testClassName>
     <testClassName>XFTY_Ex_GeneratingRecordsTest</testClassName>
     <testClassName>XFTY_Ex_InsertModesTest</testClassName>
+    <testClassName>XFTY_Ex_OrgSeedingTest</testClassName>
     <testClassName>XFTY_Ex_OverrideTemplatesTest</testClassName>
     <testClassName>XFTY_Ex_PerCallRelationshipsTest</testClassName>
     <testClassName>XFTY_Ex_ProviderVariantsTest</testClassName>

@@ -29,7 +29,7 @@ Legend: ✅ built · 📋 designed, not built.
 
 | Feature | Detail |
 |---------|--------|
-| Sandbox data seeding — `XFTY_Seeder` (prototype on branch `sandbox-seeding`) | [sandbox-seeding.md](sandbox-seeding.md) |
+| Org data seeding — `XFTY_Seeder.seed(bundle)` via `@IntegrationTest` (DML path built on branch `org-seeding`; Bulk API path not built) | [sandbox-seeding.md](sandbox-seeding.md), [use](../use/org-seeding.md) |
 | Namespace / AppExchange listing | [namespace-appexchange.md](namespace-appexchange.md) |
 
 ---

@@ -26,3 +26,6 @@ manifest/nimbus-missing.xml
 # Python
 __pycache__/
 *.pyc
+
+# local org-seeding spike scratch (not part of the package)
+spike/
