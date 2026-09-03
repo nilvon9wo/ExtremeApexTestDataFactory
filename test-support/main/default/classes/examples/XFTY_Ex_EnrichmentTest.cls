@@ -187,6 +187,27 @@ private class XFTY_Ex_EnrichmentTest {
     }
 
     @IsTest
+    static void testInject_withInjectChildValue_forcesADistinctScalarOnEveryChild() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectChildValue(Contact.AccountId, Contact.Description, new XFTY_IncrementingStringExpression('note'));
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Account.Id, config);
+        Test.stopTest();
+
+        // Assert - each child got its own resolution of the expression
+        List<Contact> children = ((Account) enriched[0]).Contacts;
+        Assert.areEqual('note 1', children[0].Description);
+        Assert.areEqual('note 3', children[2].Description);
+    }
+
+    @IsTest
     static void testInject_withACompoundFieldValue_readsBackThroughTheCompound() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)

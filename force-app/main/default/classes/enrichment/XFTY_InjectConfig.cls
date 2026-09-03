@@ -13,6 +13,12 @@
  *   (formula / roll-up / system / read-only);
  * - `injectValue(path, value)` - a scalar on a record several hops up, where
  *   `path` is the relationship hops then the target field;
+ * - `injectChildValue(childField, leafField, value)` /
+ *   `injectChildValue(path, value)` - a scalar on the records of a child
+ *   collection (or grandchild), `path` being the child-lookup hops read
+ *   downward then the field to set. `value` is a literal (every child gets it),
+ *   a `List<Object>` (one per child, in `getChildList` order), or an
+ *   `XFTY_ValueExpressionIntf` (resolved fresh per child);
  * - `parentDepth(n)` - cap the ancestor climb (default 5, the SOQL limit);
  * - `childDepth(n)` - how many levels of nested child collections (default 1;
  *   `n > 1` needs `breakSoqlLimits()` - a nested subquery is not queryable);
@@ -37,6 +43,7 @@ public class XFTY_InjectConfig {
     public final Set<SObjectField> excludedChildFields = new Set<SObjectField>();
     public final Map<SObjectField, Object> onRecordValues = new Map<SObjectField, Object>();
     public final List<AncestorValue> ancestorValues = new List<AncestorValue>();
+    public final List<ChildValue> childValues = new List<ChildValue>();
 
     public Integer parentDepthLimit = SOQL_PARENT_HOPS;
     public Integer childDepthLimit = SOQL_CHILD_DEPTH;
@@ -100,6 +107,25 @@ public class XFTY_InjectConfig {
         return this;
     }
 
+    /**
+     * A scalar on every record of the child collection `childField` defines
+     * (`Case.ContactId` -> the target's Cases). `value` is a literal, a
+     * `List<Object>` (one per child), or an `XFTY_ValueExpressionIntf`.
+     */
+    public XFTY_InjectConfig injectChildValue(SObjectField childField, SObjectField leafField, Object value) {
+        return this.injectChildValue(new List<SObjectField>{ childField, leafField }, value);
+    }
+
+    /**
+     * A scalar on a child (or grandchild) record - `path` is the child-lookup
+     * hops read downward, then the field to set. Same `value` forms as the
+     * three-argument overload.
+     */
+    public XFTY_InjectConfig injectChildValue(List<SObjectField> pathToLeaf, Object value) {
+        this.childValues.add(new ChildValue(pathToLeaf, value));
+        return this;
+    }
+
     public XFTY_InjectConfig parentDepth(Integer hops) {
         this.parentDepthLimit = hops;
         return this;
@@ -128,15 +154,42 @@ public class XFTY_InjectConfig {
         }
 
         public List<SObjectField> relationshipPrefix() {
-            List<SObjectField> prefix = new List<SObjectField>();
-            for (Integer i = 0; i < this.path.size() - 1; i++) {
-                prefix.add(this.path[i]);
-            }
-            return prefix;
+            return relationshipPrefixOf(this.path);
         }
 
         public SObjectField targetField() {
-            return this.path[this.path.size() - 1];
+            return leafOf(this.path);
         }
+    }
+
+    /** A forced scalar on the records of a child collection `path` reaches downward. */
+    public class ChildValue {
+        public final List<SObjectField> path;
+        public final Object value;
+
+        public ChildValue(List<SObjectField> path, Object value) {
+            this.path = path;
+            this.value = value;
+        }
+
+        public List<SObjectField> relationshipPrefix() {
+            return relationshipPrefixOf(this.path);
+        }
+
+        public SObjectField targetField() {
+            return leafOf(this.path);
+        }
+    }
+
+    private static List<SObjectField> relationshipPrefixOf(List<SObjectField> path) {
+        List<SObjectField> prefix = new List<SObjectField>();
+        for (Integer i = 0; i < path.size() - 1; i++) {
+            prefix.add(path[i]);
+        }
+        return prefix;
+    }
+
+    private static SObjectField leafOf(List<SObjectField> path) {
+        return path[path.size() - 1];
     }
 }

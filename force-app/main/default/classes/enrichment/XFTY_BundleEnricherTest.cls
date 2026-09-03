@@ -316,6 +316,130 @@ private class XFTY_BundleEnricherTest {
     }
 
     @IsTest
+    static void testInject_withInjectChildValue_forcesTheScalarOnEveryChild() {
+        // Arrange - Account with 3 Contacts
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectChildValue(Contact.AccountId, Contact.LastActivityDate, Date.newInstance(2021, 6, 1));
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Account.Id, config);
+        Test.stopTest();
+
+        // Assert
+        List<Contact> children = ((Account) enriched[0]).Contacts;
+        Assert.areEqual(Date.newInstance(2021, 6, 1), children[0].LastActivityDate);
+        Assert.areEqual(Date.newInstance(2021, 6, 1), children[2].LastActivityDate);
+    }
+
+    @IsTest
+    static void testInject_withInjectChildValueExpression_givesEachChildADistinctValue() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 3)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing().injectChildValue(
+                Contact.AccountId, Contact.Description, new XFTY_IncrementingStringExpression('note')
+        );
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = bundle.inject(Account.Id, config);
+        Test.stopTest();
+
+        // Assert
+        List<Contact> children = ((Account) enriched[0]).Contacts;
+        Set<String> distinct = new Set<String>{ children[0].Description, children[1].Description, children[2].Description };
+        Assert.areEqual(3, distinct.size(), 'the expression resolved fresh for each child');
+    }
+
+    @IsTest
+    static void testInject_onASelfHierarchy_childValueTargetsTheChildrenAndPathValueTheParent() {
+        // Arrange - a middle Account, one parent Account and two child Accounts, all via Account.ParentId
+        XFTY_DummySObjectBundle parentSub = new XFTY_DummySObjectBundle();
+        parentSub.putPrimaries(Account.Id, new List<SObject>{ new Account(Name = 'original parent') });
+        XFTY_DummySObjectBundle childrenSub = new XFTY_DummySObjectBundle();
+        childrenSub.putPrimaries(Account.Id, new List<SObject>{
+                new Account(Name = 'original c0'), new Account(Name = 'original c1')
+        });
+        XFTY_DummySObjectBundle middle = new XFTY_DummySObjectBundle();
+        middle.putPrimaries(Account.Id, new List<SObject>{ new Account(Name = 'Middle') });
+        middle.put(Account.ParentId, parentSub.primaryRecords());
+        middle.put(Account.ParentId, parentSub);
+        middle.putChild(Account.ParentId, childrenSub, new List<Integer>{ 0, 0 });
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectValue(new List<SObjectField>{ Account.ParentId, Account.Name }, 'parent name')
+                .injectChildValue(Account.ParentId, Account.Name, 'child name');
+
+        // Act
+        Test.startTest();
+        List<SObject> enriched = middle.inject(Account.Id, config);
+        Test.stopTest();
+
+        // Assert
+        Account enrichedMiddle = (Account) enriched[0];
+        Assert.areEqual('parent name', enrichedMiddle.Parent.Name, 'injectValue(path) walked up to the parent');
+        Assert.areEqual('child name', enrichedMiddle.ChildAccounts[0].Name, 'injectChildValue walked down to the children');
+        Assert.areEqual('child name', enrichedMiddle.ChildAccounts[1].Name);
+    }
+
+    @IsTest
+    static void testInject_withAnInjectChildValuePathTheGraphNeverProduced_throws() {
+        // Arrange - no Cases generated, so the injectChildValue path is never reached
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 1)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+                .injectChildValue(Case.ContactId, Case.Subject, 'x');
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
+        try {
+            bundle.inject(Account.Id, config);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('injectChildValue'), 'the error names the unreached path');
+    }
+
+    @IsTest
+    static void testInject_withAnInjectChildValueDeeperThanChildDepth_throws() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .withChildren(Contact.AccountId, 1)
+                .supplyBundle();
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing().injectChildValue(
+                new List<SObjectField>{ Contact.AccountId, Case.ContactId, Case.Subject }, 'x'
+        );
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
+        try {
+            bundle.inject(Account.Id, config);
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('childDepth'), 'the error points at childDepth');
+    }
+
+    @IsTest
     static void testInject_returnsThePlainListOfEnrichedTargetRecords() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup())

@@ -66,7 +66,8 @@ One line per public entry point. Follow the links for detail.
 | `.injectParent(path)` | inject the ancestor at `path` (target-relative) and every hop to it |
 | `.injectChild(childLookupField)` / `.excludeChild(childLookupField)` | one child collection, by its lookup field |
 | `.excludeParent(path)` | prune a subtree from a breadth start (prefix match) |
-| `.injectValue(field, value)` / `.injectValue(path, value)` | force a scalar on the target record / on a record `path` reaches |
+| `.injectValue(field, value)` / `.injectValue(path, value)` | force a scalar on the target record / on a record `path` reaches **upward** |
+| `.injectChildValue(childField, leafField, value)` / `.injectChildValue(path, value)` | force a scalar on every record of a child collection **downward** — `value` is a literal, a `List<Object>` (per child), or an `XFTY_ValueExpressionIntf` (fresh per child) |
 | `.parentDepth(n)` / `.childDepth(n)` / `.breakSoqlLimits()` | cap the ancestor climb (default 5) · nested-child levels (default 1, `n>1` needs breakSoqlLimits) · lift both ceilings |
 | `.primariesResolvingTo(relField, ancestorRow)` → `List<SObject>` (on the bundle) | the primary records generated pointing at that ancestor — the inverse alignment |
 | `XFTY_SObjectInjector.inject(records).relationship(name, parents).childRelationship(name, perRow).value(field, v).valuePerRow(field, vs).result()` | the JSON round-trip, standalone — one serialize + one deserialize; `Blob` values are carried across the round-trip, not serialized |

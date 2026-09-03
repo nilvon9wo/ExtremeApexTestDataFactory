@@ -171,6 +171,41 @@ private class XFTY_InjectConfigTest {
     }
 
     @IsTest
+    static void testInjectChildValue_withTwoFields_addsAChildValueOnTheOneHopPath() {
+        // Arrange
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing();
+
+        // Act
+        Test.startTest();
+        config.injectChildValue(Contact.AccountId, Contact.Description, 'note');
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('note', config.childValues[0].value);
+        Assert.areEqual(Contact.Description, config.childValues[0].targetField());
+        Assert.areEqual(
+                new List<SObjectField>{ Contact.AccountId },
+                config.childValues[0].relationshipPrefix()
+        );
+    }
+
+    @IsTest
+    static void testInjectChildValue_withAPath_keepsEveryHop() {
+        // Arrange
+        XFTY_InjectConfig config = XFTY_InjectConfig.nothing();
+        List<SObjectField> path = new List<SObjectField>{ Contact.AccountId, Case.ContactId, Case.Subject };
+
+        // Act
+        Test.startTest();
+        config.injectChildValue(path, 'x');
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual(path, config.childValues[0].path);
+        Assert.areEqual(Case.Subject, config.childValues[0].targetField());
+    }
+
+    @IsTest
     static void testParentDepth_overridesTheLimit() {
         // Arrange
         XFTY_InjectConfig config = XFTY_InjectConfig.allParents();

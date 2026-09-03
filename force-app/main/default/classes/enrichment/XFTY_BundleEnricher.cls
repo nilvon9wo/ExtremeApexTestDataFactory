@@ -59,6 +59,7 @@ public class XFTY_BundleEnricher {
         XFTY_GovernorBudget budget = new XFTY_GovernorBudget();
         XFTY_EnrichmentTarget target = XFTY_EnrichmentTarget.locate(this.entryBundle, this.entryField);
         List<SObject> result = this.enrichPosition(this.rootPosition(target));
+        this.forcedValues.assertEveryPathWasReached();
         budget.warnIfExpensive();
         return result;
     }
@@ -71,8 +72,21 @@ public class XFTY_BundleEnricher {
         this.graftAncestors(injector, pos);
         this.graftInverse(injector, pos);
         this.graftChildren(injector, pos);
-        this.forcedValues.applyTo(injector, pos.pathFromEntry, pos.isRoot);
+        this.applyForcedValues(injector, pos);
         return injector.result();
+    }
+
+    private void applyForcedValues(XFTY_SObjectInjector injector, Position pos) {
+        Integer rowCount = pos.records.size();
+        if (pos.isRoot) {
+            this.forcedValues.applyRecordValues(injector, rowCount);
+        }
+        if (pos.pathFromEntry != null && !pos.pathFromEntry.isEmpty()) {
+            this.forcedValues.applyAncestorValues(injector, pos.pathFromEntry, rowCount);
+        }
+        if (pos.childPathFromEntry != null && !pos.childPathFromEntry.isEmpty()) {
+            this.forcedValues.applyChildValues(injector, pos.childPathFromEntry, rowCount);
+        }
     }
 
     private void graftAncestors(XFTY_SObjectInjector injector, Position pos) {
@@ -112,7 +126,7 @@ public class XFTY_BundleEnricher {
         if (pos.subBundle == null || pos.childDepthLeft <= 0) {
             return;
         }
-        for (SObjectField childField : this.selection.childFieldsOn(pos.subBundle, pos.isRoot)) {
+        for (SObjectField childField : this.selection.childFieldsOn(pos.subBundle, childPathOf(pos))) {
             injector.childRelationship(
                     XFTY_InjectionPathResolver.childRelationshipName(pos.positionType(), childField),
                     this.childrenPerRow(pos, childField)
@@ -123,17 +137,20 @@ public class XFTY_BundleEnricher {
     private List<List<SObject>> childrenPerRow(Position pos, SObjectField childField) {
         List<List<SObject>> perRow = emptyListsFor(pos.records.size());
         for (XFTY_DummySObjectBundle.ChildEntry entry : pos.subBundle.childEntries(childField)) {
-            this.enrichEntryInto(perRow, pos, entry);
+            this.enrichEntryInto(perRow, this.childrenPosition(pos, entry, childField), entry);
         }
         return perRow;
     }
 
-    private void enrichEntryInto(List<List<SObject>> perRow, Position pos, XFTY_DummySObjectBundle.ChildEntry entry) {
-        List<SObject> entryChildren = entry.bundle.primaryRecords();
-        if (entryChildren == null || entryChildren.isEmpty()) {
+    private void enrichEntryInto(
+            List<List<SObject>> perRow,
+            Position childPos,
+            XFTY_DummySObjectBundle.ChildEntry entry
+    ) {
+        if (childPos.records == null || childPos.records.isEmpty()) {
             return;
         }
-        List<SObject> enriched = this.enrichPosition(this.childrenPosition(pos, entry.bundle, entryChildren));
+        List<SObject> enriched = this.enrichPosition(childPos);
         for (Integer childRow = 0; childRow < enriched.size(); childRow++) {
             perRow[entry.parentRowByChildRow[childRow]].add(enriched[childRow]);
         }
@@ -142,6 +159,7 @@ public class XFTY_BundleEnricher {
     private Position rootPosition(XFTY_EnrichmentTarget target) {
         Position root = new Position(target.subBundle, target.records);
         root.pathFromEntry = new List<SObjectField>();
+        root.childPathFromEntry = new List<SObjectField>();
         root.parentDepthLeft = this.config.parentDepthLimit;
         root.childDepthLeft = this.config.childDepthLimit;
         root.isRoot = true;
@@ -163,11 +181,18 @@ public class XFTY_BundleEnricher {
         return up;
     }
 
-    private Position childrenPosition(Position pos, XFTY_DummySObjectBundle childBundle, List<SObject> childRecords) {
-        Position down = new Position(childBundle, childRecords);
+    private Position childrenPosition(Position pos, XFTY_DummySObjectBundle.ChildEntry entry, SObjectField childField) {
+        Position down = new Position(entry.bundle, entry.bundle.primaryRecords());
         down.parentDepthLeft = this.config.parentDepthLimit;
         down.childDepthLeft = pos.childDepthLeft - 1;
+        down.childPathFromEntry = append(childPathOf(pos), childField);
         return down;
+    }
+
+    private static List<SObjectField> childPathOf(Position pos) {
+        return (pos.childPathFromEntry == null)
+                ? new List<SObjectField>()
+                : pos.childPathFromEntry;
     }
 
     private static List<SObjectField> ancestorPath(Position pos, SObjectField relationshipField) {
@@ -203,7 +228,8 @@ public class XFTY_BundleEnricher {
     private class Position {
         private final XFTY_DummySObjectBundle subBundle;
         private final List<SObject> records;
-        private List<SObjectField> pathFromEntry;    // null once the walk turns downward
+        private List<SObjectField> pathFromEntry;         // null once the walk turns downward
+        private List<SObjectField> childPathFromEntry;    // the child hops walked so far; null on an ancestor
         private Integer parentDepthLeft = 0;
         private Integer childDepthLeft = 0;
         private Boolean isRoot = false;

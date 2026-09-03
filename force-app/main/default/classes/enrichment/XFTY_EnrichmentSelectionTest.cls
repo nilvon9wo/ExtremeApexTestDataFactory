@@ -99,27 +99,48 @@ private class XFTY_EnrichmentSelectionTest {
         Assert.areEqual(expected, wanted);
     }
 
+    static List<SObjectField> rootPath() {
+        return new List<SObjectField>();
+    }
+
+    static List<SObjectField> oneChildHop() {
+        return new List<SObjectField>{ Contact.AccountId };
+    }
+
     @IsTest
     static void testChildFieldsOn_fromAllChildren_includesThePresentField() {
-        testChildFieldsOnContains(XFTY_InjectConfig.allChildren(), true, true);
+        testChildFieldsOnContains(XFTY_InjectConfig.allChildren(), rootPath(), true);
     }
 
     @IsTest
     static void testChildFieldsOn_whenExcluded_dropsTheField() {
-        testChildFieldsOnContains(XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId), true, false);
+        testChildFieldsOnContains(XFTY_InjectConfig.allChildren().excludeChild(Contact.AccountId), rootPath(), false);
     }
 
     @IsTest
     static void testChildFieldsOn_forAnInjectChildFieldAtTheRoot_includesIt() {
-        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), true, true);
+        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), rootPath(), true);
     }
 
     @IsTest
     static void testChildFieldsOn_forAnInjectChildFieldNotAtTheRoot_excludesIt() {
-        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), false, false);
+        testChildFieldsOnContains(XFTY_InjectConfig.nothing().injectChild(Contact.AccountId), oneChildHop(), false);
     }
 
-    static void testChildFieldsOnContains(XFTY_InjectConfig config, Boolean isRoot, Boolean expectedToContain) {
+    @IsTest
+    static void testChildFieldsOn_forAnInjectChildValuePathAtTheRoot_includesItsFirstHop() {
+        testChildFieldsOnContains(
+                XFTY_InjectConfig.nothing().injectChildValue(Contact.AccountId, Contact.Description, 'x'),
+                rootPath(),
+                true
+        );
+    }
+
+    static void testChildFieldsOnContains(
+            XFTY_InjectConfig config,
+            List<SObjectField> childPathHere,
+            Boolean expectedToContain
+    ) {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
         bundle.putPrimaries(Account.Id, new List<SObject>{ new Account() });
@@ -128,7 +149,7 @@ private class XFTY_EnrichmentSelectionTest {
 
         // Act
         Test.startTest();
-        Set<SObjectField> fields = selection.childFieldsOn(bundle, isRoot);
+        Set<SObjectField> fields = selection.childFieldsOn(bundle, childPathHere);
         Test.stopTest();
 
         // Assert

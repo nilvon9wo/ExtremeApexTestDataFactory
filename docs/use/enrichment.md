@@ -122,7 +122,9 @@ then layers refiners on it:
 | `.injectChild(childLookupField)` | inject the child collection that lookup defines (`Case.ContactId` → the target's Cases). One field, one hop. |
 | `.excludeParent(path)` / `.excludeChild(childLookupField)` | drop anything an `exclude` covers from a breadth start (prefix match for parents). |
 | `.injectValue(field, value)` | force `value` onto `field` on the **target record**. |
-| `.injectValue(path, value)` | force `value` onto the field at the end of `path`, on a record several hops up (materialises the chain to it). Entry-spine only, like `injectParent`. |
+| `.injectValue(path, value)` | force `value` onto the field at the end of `path`, on a record several hops **up** (materialises the chain to it). Entry-spine only, like `injectParent`. |
+| `.injectChildValue(childField, leafField, value)` | force `value` onto `leafField` on **every record** of the child collection `childField` defines. |
+| `.injectChildValue(path, value)` | the same, `path` being the child-lookup hops read **downward** then the field to set — a grandchild needs `childDepth` (and `breakSoqlLimits()`) to match. |
 | `.parentDepth(n)` | cap the ancestor climb. Default 5. |
 | `.childDepth(n)` | how many levels of nested child collections. Default 1; **`n > 1` needs `breakSoqlLimits()`**. |
 | `.breakSoqlLimits()` | let `parentDepth`, `childDepth` and the `injectParent` path length exceed what one `SELECT` could return. Past that point the injected shape is fiction the platform could never produce — on you. |
@@ -136,9 +138,39 @@ XFTY_InjectConfig config = XFTY_InjectConfig.everything()
 bundle.inject(Contact.Id, config);
 ```
 
-A forced `value` may be a literal or an `XFTY_ValueExpressionIntf` (resolved
-through `get()`). It **cannot** be a context-aware expression — the pass has no
-generation context.
+```apex
+// a formula-like value on every Contact of the target Account
+XFTY_InjectConfig config = XFTY_InjectConfig.nothing()
+    .injectChildValue(Contact.AccountId, Contact.Description, new XFTY_IncrementingStringExpression('note'));
+
+bundle.inject(Account.Id, config);
+```
+
+**`injectValue(path)` climbs, `injectChildValue(path)` descends.** In a
+self-referential hierarchy the same field token (`Account.ParentId`) is both the
+parent hop and the child hop — the method name is what fixes the direction, so
+there is nothing to disambiguate:
+
+<!-- sketch -->
+```apex
+XFTY_InjectConfig config = XFTY_InjectConfig.everything()
+    .injectValue(new List<SObjectField>{ Account.ParentId, Account.Name }, 'the parent')
+    .injectChildValue(Account.ParentId, Account.Name, 'a child');
+// enriched.Parent.Name == 'the parent';  enriched.ChildAccounts[0].Name == 'a child'
+```
+
+A forced `value` — record, ancestor or child — may be:
+
+- a **literal** (every record at that position gets it — the "they'd all compute
+  the same formula" case);
+- a **`List<Object>`** (one per record, in `getChildList` order; length-checked);
+- an **`XFTY_ValueExpressionIntf`**, resolved *fresh per record* — so
+  `new XFTY_IncrementingStringExpression('n')` gives each child a distinct value.
+
+It **cannot** be a context-aware expression — the pass has no generation context.
+A path that never reaches a record the graph produced (a typo, an ancestor or
+child that was not generated, a `parentDepth` / `childDepth` too shallow) is a
+**loud error**, not a silent no-op.
 
 ---
 
