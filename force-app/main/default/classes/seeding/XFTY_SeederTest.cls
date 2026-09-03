@@ -13,7 +13,7 @@ private class XFTY_SeederTest {
     static void testSeed_aGeneratedAncestorGraph_savesEveryRecord() {
         // Arrange - 3 Contacts, each with its own generated Account, nothing persisted yet
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.NEVER)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
                 .setQuantityPerTemplate(3)
                 .supplyBundle();
@@ -36,7 +36,7 @@ private class XFTY_SeederTest {
     static void testSeed_aDownwardChildGraph_wiresEachChildToItsNewParentId() {
         // Arrange - one Account with 2 child Contacts
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.NEVER)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
                 .withChildren(Contact.AccountId, 2)
                 .supplyBundle();
 
@@ -113,6 +113,36 @@ private class XFTY_SeederTest {
     }
 
     @IsTest
+    static void testSeed_whenManyPrimariesShareOneAncestor_insertsThatAncestorOnceAndWiresThemAll() {
+        // Arrange - 3 Contacts on one shared Account, generated but not persisted
+        XFTY_SharedAncestor.put('seed-hq', new Account(Name = 'Seed HQ'));
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('seed-hq'))
+                .setQuantityPerTemplate(3)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
+                .supplyBundle();
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isTrue(result.isFullySeeded(), String.valueOf(result.errors()));
+        Id sharedId = bundle.primaryRecords()[0].get('AccountId') != null
+                ? (Id) bundle.primaryRecords()[0].get('AccountId')
+                : null;
+        Assert.isNotNull(sharedId, 'the shared Account was inserted and wired');
+        for (SObject contact : bundle.primaryRecords()) {
+            Assert.areEqual(sharedId, contact.get('AccountId'), 'every Contact points at the one shared Account');
+        }
+    }
+
+    @IsTest
     static void testSeed_whenAPrimaryAlreadyHasAnId_doesNotCountItAsAttempted() {
         // Arrange - one anchor (pre-set Id), one to insert
         Contact anchor = new Contact(LastName = 'Anchor', Id = XFTY_IdMocker.generateId(Contact.SObjectType));
@@ -170,5 +200,37 @@ private class XFTY_SeederTest {
         // Assert
         Assert.areEqual(0, result.attemptedCount());
         Assert.isTrue(result.isFullySeeded(), 'nothing failed');
+    }
+
+    @IsTest
+    static void testSeed_fromARegularTestNotAnIntegrationTest_flagsItOnTheResult() {
+        // Arrange
+        XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectBundle();
+        bundle.putPrimaries(Contact.Id, new List<SObject>{ new Contact(LastName = 'Rolled Back') });
+
+        // Act
+        XFTY_SeedResult result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = XFTY_Seeder.seed(bundle);
+            Test.stopTest();
+        }
+
+        // Assert - the DML ran (and will roll back with this @IsTest transaction)
+        Assert.isFalse(result.ranInIntegrationTest(), 'a plain @IsTest is not an @IntegrationTest');
+        Assert.areEqual(1, result.savedCount(), 'the insert still happened in-transaction');
+    }
+
+    @IsTest
+    static void testIsInIntegrationTest_fromARegularTest_isFalse() {
+        // Arrange - running as a plain @IsTest method
+
+        // Act
+        Test.startTest();
+        Boolean inIntegrationTest = XFTY_Seeder.isInIntegrationTest();
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(inIntegrationTest);
     }
 }

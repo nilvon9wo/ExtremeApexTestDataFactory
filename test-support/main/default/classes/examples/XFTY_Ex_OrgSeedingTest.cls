@@ -14,7 +14,7 @@ private class XFTY_Ex_OrgSeedingTest {
     static void testSeed_persistsTheWholeGeneratedGraphAndReportsTheOutcome() {
         // Arrange
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-                .setInsertMode(XFTY_InsertModeEnum.NEVER)
+                .setInsertMode(XFTY_InsertModeEnum.LATER)
                 .withChildren(Contact.AccountId, 5)
                 .supplyBundle();
 

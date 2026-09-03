@@ -18,7 +18,7 @@ private class XFTY_SeedResultTest {
         System.runAs(TEST_ADMIN) {
             Test.startTest();
             Map<Integer, Database.SaveResult> outcomes = outcomesFor(records);
-            result = new XFTY_SeedResult(records, outcomes);
+            result = new XFTY_SeedResult(records, outcomes, true);
             Test.stopTest();
         }
 
@@ -38,7 +38,7 @@ private class XFTY_SeedResultTest {
         // Act
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = new XFTY_SeedResult(records, outcomesFor(records));
+            result = new XFTY_SeedResult(records, outcomesFor(records), true);
             Test.stopTest();
         }
 
@@ -57,7 +57,7 @@ private class XFTY_SeedResultTest {
         // Act
         System.runAs(TEST_ADMIN) {
             Test.startTest();
-            result = new XFTY_SeedResult(records, outcomesFor(records));
+            result = new XFTY_SeedResult(records, outcomesFor(records), true);
             Test.stopTest();
         }
 
@@ -71,7 +71,7 @@ private class XFTY_SeedResultTest {
     static void testEmptyOutcomes_readAsAFullySeededNoOp() {
         // Arrange
         XFTY_SeedResult result = new XFTY_SeedResult(
-                new List<SObject>(), new Map<Integer, Database.SaveResult>()
+                new List<SObject>(), new Map<Integer, Database.SaveResult>(), true
         );
 
         // Act
@@ -82,6 +82,22 @@ private class XFTY_SeedResultTest {
         // Assert
         Assert.isTrue(full);
         Assert.areEqual(0, result.attemptedCount());
+    }
+
+    @IsTest
+    static void testRanInIntegrationTest_carriesTheFlagItWasBuiltWith() {
+        // Arrange
+        XFTY_SeedResult outside = new XFTY_SeedResult(
+                new List<SObject>(), new Map<Integer, Database.SaveResult>(), false
+        );
+
+        // Act
+        Test.startTest();
+        Boolean ran = outside.ranInIntegrationTest();
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(ran);
     }
 
     private static Map<Integer, Database.SaveResult> outcomesFor(List<SObject> records) {

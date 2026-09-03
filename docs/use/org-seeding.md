@@ -20,6 +20,27 @@ Salesforce **Apex Integration Test** can: `@IntegrationTest` methods run real DM
 with **no automatic rollback**. `@IntegrationTest` classes cannot also be
 `@IsTest`, but they *can* call `@IsTest` code — so they can drive XFTY.
 
+## Do you even need `XFTY_Seeder`?
+
+Not strictly. Inside an `@IntegrationTest` method, a Provider run in
+`XFTY_InsertModeEnum.NOW` inserts its graph and — with no rollback — it stays.
+`XFTY_Seeder.seed(bundle)` adds two things `NOW` does not give you:
+
+- **best effort** — one record failing a validation rule, a duplicate rule or a
+  permission check does not abort the whole graph;
+- **an audit** — `XFTY_SeedResult` tells you exactly what landed and what did not.
+
+For a handful of clean records, `NOW` is fine. For a real seed, use the seeder.
+
+## Generate with `LATER`
+
+`XFTY_Seeder.seed` inserts the records itself, so the bundle it is handed must
+carry **no Ids** — `insert` rejects a record that already has one, real or mock.
+Generate with `XFTY_InsertModeEnum.LATER`: it builds the whole graph and inserts
+nothing (identical to `NEVER`), and the name says why — *something else will
+persist these*. `MOCK` (fake Ids), `NOW` and `DEFERRED` (real Ids) all leave Ids
+on the records and are the wrong input to the seeder.
+
 ▶ Runnable: `XFTY_Ex_OrgSeedingTest`
 
 <!-- sketch -->
@@ -32,7 +53,7 @@ private class SeedMyScratchOrg {
     @IntegrationTest
     static void seedAccountsAndContacts() {
         XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-            .setInsertMode(XFTY_InsertModeEnum.NEVER)
+            .setInsertMode(XFTY_InsertModeEnum.LATER)
             .setQuantityPerTemplate(50)
             .withChildren(Contact.AccountId, 5)
             .supplyBundle();
@@ -50,7 +71,7 @@ The seed call itself, minus the `@IntegrationTest` wrapper:
 
 ```apex
 XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
-    .setInsertMode(XFTY_InsertModeEnum.NEVER)
+    .setInsertMode(XFTY_InsertModeEnum.LATER)
     .withChildren(Contact.AccountId, 5)
     .supplyBundle();
 
@@ -68,15 +89,19 @@ It is **best effort**: a record that trips a validation rule, a required field, 
 duplicate rule or a permission check is *reported*, not thrown, and the rest of
 the graph still lands.
 
-It does **not** police the bundle. A mock Id, or a value you `inject`ed that a
-real `insert` rejects, is left for the platform to refuse — and `XFTY_SeedResult`
-tells you it did. Seed from a bundle generated in `NEVER` mode (real structure,
-no Ids, no injected read-only values) for the cleanest result.
+It does **not** police the bundle. A value you `inject`ed that a real `insert`
+rejects (a formula field, a system field) is left for the platform to refuse —
+and `XFTY_SeedResult` tells you it did. A `LATER` bundle with no enrichment gives
+the cleanest result.
 
-A record that already carries an Id (a pre-resolved
-[shared ancestor](shared-ancestors.md), or one you seeded earlier) is treated as
-an anchor: children point at it, it is not re-inserted, and it is not in the
-counts.
+A record that already carries an Id (one you seeded earlier, or a
+[shared ancestor](shared-ancestors.md) you pre-inserted and registered with
+`XFTY_SharedAncestor.put(name, insertedRecord)`) is treated as an anchor:
+children point at it, it is not re-inserted, and it is not in the counts.
+
+[Shared ancestors](shared-ancestors.md) declared the usual way —
+`.putRequired(field, XFTY_SharedAncestor.get(name))` — seed correctly: the shared
+record is inserted **once** and every dependent points at it.
 
 ## `XFTY_SeedResult`
 

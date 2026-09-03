@@ -11,10 +11,25 @@ public class XFTY_SeedResult {
 
     private final List<SObject> graphRecords;
     private final Map<Integer, Database.SaveResult> outcomeByIndex;
+    private final Boolean inIntegrationTest;
 
-    public XFTY_SeedResult(List<SObject> graphRecords, Map<Integer, Database.SaveResult> outcomeByIndex) {
+    public XFTY_SeedResult(
+            List<SObject> graphRecords,
+            Map<Integer, Database.SaveResult> outcomeByIndex,
+            Boolean inIntegrationTest
+    ) {
         this.graphRecords = graphRecords;
         this.outcomeByIndex = outcomeByIndex;
+        this.inIntegrationTest = inIntegrationTest;
+    }
+
+    /**
+     * Whether the seed ran inside an `@IntegrationTest` method - the only context
+     * where the saved records outlive the transaction. `false` means the DML rolled
+     * back and the counts below describe a run that left nothing behind.
+     */
+    public Boolean ranInIntegrationTest() {
+        return this.inIntegrationTest;
     }
 
     /** How many records were sent to the database (the graph minus any anchors). */
