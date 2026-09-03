@@ -81,11 +81,22 @@ public class XFTY_SObjectInjector {
             rawRecord.put(relationshipName, subqueryOf(this.childrenByRelationshipName.get(relationshipName)[row]));
         }
         for (SObjectField field : this.uniformValueByField.keySet()) {
-            rawRecord.put(fieldName(field), this.uniformValueByField.get(field));
+            rawRecord.put(fieldName(field), rawValue(this.uniformValueByField.get(field)));
         }
         for (SObjectField field : this.perRowValuesByField.keySet()) {
-            rawRecord.put(fieldName(field), this.perRowValuesByField.get(field)[row]);
+            rawRecord.put(fieldName(field), rawValue(this.perRowValuesByField.get(field)[row]));
         }
+    }
+
+    /** `Blob` fields cannot survive the typed `JSON.deserialize` - the platform rejects a base64 field there. */
+    private static Object rawValue(Object value) {
+        if (value instanceof Blob) {
+            throw new XFTY_DummySObjectFtyProviderException(
+                    'XFTY_SObjectInjector: a Blob field cannot be injected - JSON.deserialize rejects it. '
+                            + 'Insert the record with the Blob instead.'
+            );
+        }
+        return value;
     }
 
     private static Object rawOf(SObject record) {

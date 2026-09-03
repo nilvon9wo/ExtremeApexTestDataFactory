@@ -230,6 +230,60 @@ private class XFTY_SObjectInjectorTest {
     }
 
     @IsTest
+    static void testResult_whenAPolymorphicRelationshipIsGrafted_itRoundTripsWithItsType() {
+        // Arrange - Task.WhoId is polymorphic; the relationship name is 'Who'
+        List<Task> tasks = new List<Task>{ new Task(Subject = 'Call') };
+        List<SObject> whos = new List<SObject>{ new Contact(LastName = 'Lead') };
+
+        // Act
+        Test.startTest();
+        List<Task> enriched = (List<Task>) XFTY_SObjectInjector.inject(tasks)
+                .relationship('Who', whos)
+                .result();
+        Test.stopTest();
+
+        // Assert
+        Assert.isInstanceOfType(enriched[0].Who, Contact.class, 'the polymorphic parent keeps its concrete type');
+        Assert.areEqual('Lead', ((Contact) enriched[0].Who).LastName);
+    }
+
+    @IsTest
+    static void testResult_whenABlobFieldIsForced_throwsBecauseTheDeserializeCannotHydrateIt() {
+        // Arrange - JSON.deserialize rejects a base64 field on a real org; fail loud rather than silently
+        List<Attachment> attachments = new List<Attachment>{ new Attachment(Name = 'f.txt') };
+
+        // Act
+        XFTY_DummySObjectFtyProviderException thrown;
+        Test.startTest();
+        try {
+            XFTY_SObjectInjector.inject(attachments).value(Attachment.Body, Blob.valueOf('x')).result();
+        } catch (XFTY_DummySObjectFtyProviderException ex) {
+            thrown = ex;
+        }
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(thrown);
+        Assert.isTrue(thrown.getMessage().contains('Blob'));
+    }
+
+    @IsTest
+    static void testResult_whenACompoundFieldComponentIsForced_itRoundTrips() {
+        // Arrange - set the component (MailingCity), not the compound (MailingAddress)
+        List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'X') };
+
+        // Act
+        Test.startTest();
+        List<Contact> enriched = (List<Contact>) XFTY_SObjectInjector.inject(contacts)
+                .value(Contact.MailingCity, 'Springfield')
+                .result();
+        Test.stopTest();
+
+        // Assert
+        Assert.areEqual('Springfield', enriched[0].MailingCity);
+    }
+
+    @IsTest
     static void testResult_whenGraftsSpanAllThreeKinds_appliesEveryOneInOneRoundTrip() {
         // Arrange
         List<Contact> contacts = new List<Contact>{ new Contact(LastName = 'Solo') };
