@@ -71,7 +71,7 @@ One line per public entry point. Follow the links for detail.
 | `.primariesResolvingTo(relField, ancestorRow)` → `List<SObject>` (on the bundle) | the primary records generated pointing at that ancestor — the inverse alignment |
 | `XFTY_SObjectInjector.inject(records).relationship(name, parents).childRelationship(name, perRow).value(field, v).valuePerRow(field, vs).result()` | the JSON round-trip, standalone — one serialize + one deserialize; `Blob` values are carried across the round-trip, not serialized |
 
-`MOCK`-only (see [unit-vs-integration](../use/advanced/unit-vs-integration.md) point 4). Detail: [enrichment](../use/enrichment.md).
+`MOCK`-only in spirit — forced data is fiction a real `insert` overwrites (see [unit-vs-integration](../use/advanced/unit-vs-integration.md) point 4). Detail: [enrichment](../use/enrichment.md).
 
 ---
 
