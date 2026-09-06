@@ -9,9 +9,10 @@
  * `XFTY_DummySobjectProviderIntf.createBundle` contract. Bundling them:
  *
  * - shortens every signature in the engine;
- * - gives one place to apply the recursion transforms (`RELATED_ONLY` becomes
- *   `NOW` for related records, `PREVENT_CASCADE` becomes `NONE` one level down) -
- *   see {@link #forRelated};
+ * - gives one place to apply the recursion transform (`PREVENT_CASCADE` becomes
+ *   `NONE` one level down, and `primaryIdsExcluded` resets to `false` - an
+ *   ancestor is never the primary this call opted out of persisting) - see
+ *   {@link #forRelated};
  * - carries the `includeOptional(...)` paths down the graph;
  * - is what a context-aware expression reads (see
  *   {@link XFTY_ContextAwareExpressionIntf}, docs/roadmap/context-aware-values.md).
@@ -77,6 +78,15 @@ public class XFTY_GenerationContext {
     public final Boolean batchedInsertPending;
 
     /**
+     * True only for the top-level record(s) this call is itself generating -
+     * never for an ancestor, however it was set (see {@link #forRelated}). Keeps
+     * those specific records out of persistence - no mock Id, no insert, no
+     * `DEFERRED` registration for them - however the rest of the graph is being
+     * persisted. Set by `.excludePrimaryIds()` on the Provider.
+     */
+    public final Boolean primaryIdsExcluded;
+
+    /**
      * The Provider keys currently being generated up the ancestor chain, so
      * `XFTY_AncestorGenerator` can refuse to recurse into one already in progress
      * - see {@link XFTY_AncestorCycleGuard}. Configured by
@@ -92,7 +102,7 @@ public class XFTY_GenerationContext {
     ) {
         this(
                 providerLookup, insertMode, inclusivity, null, null, -1,
-                new List<List<SObjectField>>(), new List<XFTY_PathValue>(), false, null,
+                new List<List<SObjectField>>(), new List<XFTY_PathValue>(), false, false, null,
                 new XFTY_AncestorCycleGuard(false)
         );
     }
@@ -107,6 +117,7 @@ public class XFTY_GenerationContext {
             List<List<SObjectField>> forcedRelationshipPaths,
             List<XFTY_PathValue> pathValues,
             Boolean batchedInsertPending,
+            Boolean primaryIdsExcluded,
             XFTY_ValueFieldPass valueFieldPass,
             XFTY_AncestorCycleGuard cycleGuard
     ) {
@@ -124,6 +135,7 @@ public class XFTY_GenerationContext {
                 : forcedRelationshipPaths;
         this.pathValues = (pathValues == null) ? new List<XFTY_PathValue>() : pathValues;
         this.batchedInsertPending = (batchedInsertPending == true);
+        this.primaryIdsExcluded = (primaryIdsExcluded == true);
         this.valueFieldPass = valueFieldPass;
         this.cycleGuard = cycleGuard;
     }
@@ -133,7 +145,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, paths, this.pathValues,
-                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
+                this.batchedInsertPending, this.primaryIdsExcluded, this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -146,7 +158,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, newInclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, this.pathValues,
-                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
+                this.batchedInsertPending, this.primaryIdsExcluded, this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -163,7 +175,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, forced, pathValues,
-                this.batchedInsertPending, this.valueFieldPass, this.cycleGuard
+                this.batchedInsertPending, this.primaryIdsExcluded, this.valueFieldPass, this.cycleGuard
         );
     }
 
@@ -178,7 +190,8 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
-                this.pathValues, this.batchedInsertPending, this.valueFieldPass, new XFTY_AncestorCycleGuard(cyclesAllowed)
+                this.pathValues, this.batchedInsertPending, this.primaryIdsExcluded, this.valueFieldPass,
+                new XFTY_AncestorCycleGuard(cyclesAllowed)
         );
     }
 
@@ -187,7 +200,8 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths,
-                this.pathValues, this.batchedInsertPending, this.valueFieldPass, this.cycleGuard.descendingInto(providerKeyHash)
+                this.pathValues, this.batchedInsertPending, this.primaryIdsExcluded, this.valueFieldPass,
+                this.cycleGuard.descendingInto(providerKeyHash)
         );
     }
 
@@ -196,21 +210,36 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, this.pathValues, true,
-                this.valueFieldPass, this.cycleGuard
+                this.primaryIdsExcluded, this.valueFieldPass, this.cycleGuard
+        );
+    }
+
+    /**
+     * A copy carrying whether this call's own primary record(s) are excluded from
+     * persistence - `.excludePrimaryIds()` on the Provider (top-level entry point).
+     */
+    public XFTY_GenerationContext withPrimaryIdsExcluded(Boolean excluded) {
+        return new XFTY_GenerationContext(
+                this.providerLookup, this.insertMode, this.inclusivity,
+                this.recordBeingBuilt, this.bundleSoFar, this.rowIndex, this.forcedRelationshipPaths, this.pathValues,
+                this.batchedInsertPending, excluded, this.valueFieldPass, this.cycleGuard
         );
     }
 
     /**
      * The context for generating one level of related (ancestor) records:
      *
-     * - `RELATED_ONLY` becomes `NOW` - the parents of a not-inserted primary
-     *   record are still inserted;
      * - `PREVENT_CASCADE` becomes `NONE` - the direct relationships are generated
-     *   but they do not generate their own.
+     *   but they do not generate their own;
+     * - `primaryIdsExcluded` resets to `false`, always - excluding a primary from
+     *   persistence is a property of *this call's own output*, never of an
+     *   ancestor. An ancestor is persisted exactly as the configured insert mode
+     *   already says, whatever the record referencing it opted out of.
      *
-     * Every other mode / inclusivity is carried through unchanged; the per-record
-     * fields are cleared. Forced-relationship paths do not propagate through this
-     * overload - use {@link #forRelated(SObjectField)} from the recursion.
+     * The insert mode itself is *not* transformed here; every mode / inclusivity
+     * is carried through unchanged and the per-record fields are cleared.
+     * Forced-relationship paths do not propagate through this overload - use
+     * {@link #forRelated(SObjectField)} from the recursion.
      */
     public XFTY_GenerationContext forRelated() {
         return this.forRelated(null);
@@ -240,13 +269,11 @@ public class XFTY_GenerationContext {
         }
         return new XFTY_GenerationContext(
                 this.providerLookup,
-                XFTY_InsertModeEnum.RELATED_ONLY == this.insertMode
-                        ? XFTY_InsertModeEnum.NOW
-                        : this.insertMode,
+                this.insertMode,
                 XFTY_InsertInclusivityEnum.PREVENT_CASCADE == this.inclusivity
                         ? XFTY_InsertInclusivityEnum.NONE
                         : this.inclusivity,
-                null, null, -1, childPaths, childPathValues, this.batchedInsertPending, null, this.cycleGuard
+                null, null, -1, childPaths, childPathValues, this.batchedInsertPending, false, null, this.cycleGuard
         );
     }
 
@@ -258,8 +285,8 @@ public class XFTY_GenerationContext {
     public XFTY_GenerationContext forRecord(SObject record, XFTY_DummySObjectBundle bundleSoFar, Integer rowIndex) {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
-                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending, null,
-                this.cycleGuard
+                record, bundleSoFar, rowIndex, this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending,
+                this.primaryIdsExcluded, null, this.cycleGuard
         );
     }
 
@@ -272,7 +299,7 @@ public class XFTY_GenerationContext {
         return new XFTY_GenerationContext(
                 this.providerLookup, this.insertMode, this.inclusivity,
                 this.recordBeingBuilt, this.bundleSoFar, this.rowIndex,
-                this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending,
+                this.forcedRelationshipPaths, this.pathValues, this.batchedInsertPending, this.primaryIdsExcluded,
                 new XFTY_ValueFieldPass(fieldBeingBuilt, pendingContextAwareValues), this.cycleGuard
         );
     }

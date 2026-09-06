@@ -637,6 +637,48 @@ private class XFTY_DummySObjectProviderApiTest {
         Assert.isTrue(thrown.getMessage().contains('no relationship'), thrown.getMessage());
     }
 
+    // excludePrimaryIds / includePrimaryIds ----------------
+
+    @IsTest
+    static void testExcludePrimaryIds_underMock_leavesThePrimaryWithoutAnIdButIdsTheAncestor() {
+        // Arrange
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .excludePrimaryIds();
+
+        // Act
+        Test.startTest();
+        XFTY_DummySObjectBundle bundle = provider.supplyBundle();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNull(((Contact) bundle.getList(Contact.Id)[0]).Id, 'the primary is excluded from Id assignment');
+        Assert.isNotNull(bundle.getList(Contact.AccountId)[0].Id, 'the ancestor is still mock-Id\'d');
+        Assert.areEqual(
+                bundle.getList(Contact.AccountId)[0].Id,
+                ((Contact) bundle.getList(Contact.Id)[0]).AccountId,
+                'the un-Id\'d primary still points at the mock ancestor Id'
+        );
+    }
+
+    @IsTest
+    static void testIncludePrimaryIds_afterExcludePrimaryIds_persistsThePrimaryAgain() {
+        // Arrange - last call wins
+        XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, LOOKUP)
+                .setInsertMode(XFTY_InsertModeEnum.MOCK)
+                .excludePrimaryIds()
+                .includePrimaryIds();
+
+        // Act
+        Test.startTest();
+        SObject result = provider.supply();
+        Test.stopTest();
+
+        // Assert
+        Assert.isNotNull(result.Id, 'includePrimaryIds() restored the default');
+    }
+
     // supply / supplyList ----------------------------------
 
     @IsTest

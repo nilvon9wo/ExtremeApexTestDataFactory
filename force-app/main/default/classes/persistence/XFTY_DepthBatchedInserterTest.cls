@@ -111,6 +111,37 @@ private class XFTY_DepthBatchedInserterTest {
     }
 
     @IsTest
+    static void testInsertAll_withAnExcludedIndex_wiresItAsAnAnchorButNeverInsertsIt() {
+        // Arrange - index 0 is an excluded primary: its parent (1) is real, its own child (2) still inserts
+        Contact excludedPrimary = new Contact(LastName = 'Excluded');
+        Account ancestor = new Account(Name = 'Real Ancestor');
+        Contact childOfExcluded = new Contact(LastName = 'Child Of Excluded');
+        List<SObject> records = new List<SObject>{ excludedPrimary, ancestor, childOfExcluded };
+
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DepthBatchedInserter.insertAll(
+                    records,
+                    links(link(0, 1, Contact.AccountId), link(2, 0, Contact.ReportsToId)),
+                    new Set<Integer>{ 0 }
+            );
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(2, dml, 'the ancestor layer and the child layer - the excluded primary adds none');
+        Assert.isNull(excludedPrimary.Id, 'the excluded index is never inserted');
+        Assert.isNotNull(ancestor.Id, 'its parent is');
+        Assert.areEqual(ancestor.Id, excludedPrimary.AccountId, 'the excluded record is still wired to its parent');
+        Assert.isNotNull(childOfExcluded.Id, 'a child of the excluded record still inserts');
+        Assert.isNull(childOfExcluded.ReportsToId, 'with a null back-reference - the excluded parent has no Id');
+    }
+
+    @IsTest
     static void testInsertAll_forOneParentSharedByTwoChildren_insertsTheParentOnce() {
         // Arrange
         Account parent = new Account(Name = 'Shared');

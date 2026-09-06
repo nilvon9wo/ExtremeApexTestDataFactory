@@ -24,14 +24,47 @@ public class XFTY_DeferredInsertBuffer {
     private final List<SObject> pendingRecords = new List<SObject>();
     private final List<XFTY_PendingDeferredValue> pendingDeferredValues = new List<XFTY_PendingDeferredValue>();
 
+    /**
+     * Flat indices (into `pendingRecords`) of records to leave un-Id'd however the
+     * rest of the graph is persisted - the excluded primaries of a bundle added
+     * with `excludePrimaryIds` true. See {@link #add(XFTY_DummySObjectBundle, Boolean)}.
+     */
+    private final Set<Integer> pendingExcludedIndexes = new Set<Integer>();
+
     public static void insertGraph(XFTY_DummySObjectBundle bundle) {
+        insertGraph(bundle, false);
+    }
+
+    public static void insertGraph(XFTY_DummySObjectBundle bundle, Boolean excludePrimaryIds) {
         XFTY_DeferredInsertBuffer buffer = new XFTY_DeferredInsertBuffer();
-        buffer.add(bundle);
+        buffer.add(bundle, excludePrimaryIds);
         buffer.insertAll();
     }
 
     public void add(XFTY_DummySObjectBundle bundle) {
+        this.add(bundle, false);
+    }
+
+    /**
+     * Collects `bundle`'s records and parent links. `excludePrimaryIds` marks only
+     * `bundle`'s own top-level primaries - the first records this call appends,
+     * before any ancestor or child it recurses into - as never to receive an Id,
+     * however the rest of this (and any other buffered) bundle ends up persisted.
+     */
+    public void add(XFTY_DummySObjectBundle bundle, Boolean excludePrimaryIds) {
+        Integer startIndex = this.pendingRecords.size();
+        Integer primaryCount = primaryCountOf(bundle);
         this.collect(bundle);
+        if (excludePrimaryIds == true) {
+            for (Integer i = 0; i < primaryCount; i++) {
+                this.pendingExcludedIndexes.add(startIndex + i);
+            }
+        }
+    }
+
+    private static Integer primaryCountOf(XFTY_DummySObjectBundle bundle) {
+        List<SObject> primaries = primaryRecordsOf(bundle);
+        return (primaries == null) ? 0 : primaries.size();
     }
 
     public Integer pendingCount() {
@@ -40,13 +73,14 @@ public class XFTY_DeferredInsertBuffer {
 
     public void insertAll() {
         this.resolveUpFlowValues();
-        XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks);
+        XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks, this.pendingExcludedIndexes);
     }
 
     /** Depth-batched resolution of every buffered bundle honouring `mode` (NOW / MOCK / NEVER). */
     public void resolveAll(XFTY_InsertModeEnum mode) {
         this.resolveUpFlowValues();
-        XFTY_DepthBatchedInserter.resolveAll(this.pendingRecords, this.pendingLinks, mode);
+        XFTY_DepthBatchedInserter.resolveAll(
+                this.pendingRecords, this.pendingLinks, mode, this.pendingExcludedIndexes);
     }
 
     /** Fill every {@link XFTY_CopyFromDescendantExpression} value from its now-generated descendants. */

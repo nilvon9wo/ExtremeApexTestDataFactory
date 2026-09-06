@@ -67,7 +67,7 @@ private class XFTY_Ex_InsertModesTest {
     }
 
     @IsTest
-    static void testSupply_inRelatedOnlyMode_insertsTheParentsButNotThePrimaries() {
+    static void testSupply_inNowModeWithExcludePrimaryIds_insertsTheParentsButNotThePrimaries() {
         // Arrange
         // nothing to arrange
 
@@ -77,7 +77,8 @@ private class XFTY_Ex_InsertModesTest {
             Test.startTest();
             result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
                     .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                    .setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY)
+                    .setInsertMode(XFTY_InsertModeEnum.NOW)
+                    .excludePrimaryIds()
                     .supply();
             Test.stopTest();
         }

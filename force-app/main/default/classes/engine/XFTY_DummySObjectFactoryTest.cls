@@ -5,8 +5,8 @@
  *   - insert mode:              NEVER / LATER / MOCK
  *
  * MOCK / NEVER mode throughout - no DML, so no `System.runAs` (the one test that
- * queries record counts is the exception). The DML-backed modes (NOW /
- * RELATED_ONLY) live in `XFTY_DummySObjectFactoryDmlTest`.
+ * queries record counts is the exception). The DML-backed paths (NOW,
+ * `.excludePrimaryIds()`, `.depthBatched()`) live in `XFTY_DummySObjectFactoryDmlTest`.
  */
 @IsTest
 private class XFTY_DummySObjectFactoryTest {

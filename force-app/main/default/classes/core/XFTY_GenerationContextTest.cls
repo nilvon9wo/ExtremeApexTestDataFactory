@@ -94,12 +94,42 @@ private class XFTY_GenerationContextTest {
         Assert.areEqual(-1, ctx.rowIndex);
     }
 
+    @IsTest
+    static void testConstructor_leavesPrimaryIdsExcludedFalse() {
+        // Arrange
+        // nothing to arrange
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext ctx = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE);
+        Test.stopTest();
+
+        // Assert
+        Assert.isFalse(ctx.primaryIdsExcluded, 'the primary is persisted by default');
+    }
+
+    @IsTest
+    static void testWithPrimaryIdsExcluded_carriesTheFlagOnACopy() {
+        // Arrange
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.MOCK, XFTY_InsertInclusivityEnum.NONE);
+
+        // Act
+        Test.startTest();
+        XFTY_GenerationContext excluded = base.withPrimaryIdsExcluded(true);
+        Test.stopTest();
+
+        // Assert
+        Assert.isTrue(excluded.primaryIdsExcluded, 'the copy carries the flag');
+        Assert.isFalse(base.primaryIdsExcluded, 'the original is untouched');
+    }
+
     // forRelated() --------------------------------------------------
 
     @IsTest
-    static void testForRelated_whenTheModeIsRelatedOnly_becomesNow() {
-        // Arrange
-        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.RELATED_ONLY, XFTY_InsertInclusivityEnum.REQUIRED);
+    static void testForRelated_alwaysResetsPrimaryIdsExcludedToFalse() {
+        // Arrange - primaryIdsExcluded means "this call's own primary", never an ancestor
+        XFTY_GenerationContext base = context(XFTY_InsertModeEnum.NOW, XFTY_InsertInclusivityEnum.REQUIRED)
+                .withPrimaryIdsExcluded(true);
 
         // Act
         Test.startTest();
@@ -107,7 +137,8 @@ private class XFTY_GenerationContextTest {
         Test.stopTest();
 
         // Assert
-        Assert.areEqual(XFTY_InsertModeEnum.NOW, related.insertMode, 'ancestors of a RELATED_ONLY run are inserted');
+        Assert.isFalse(related.primaryIdsExcluded, 'an ancestor is persisted regardless of the primary opt-out');
+        Assert.areEqual(XFTY_InsertModeEnum.NOW, related.insertMode, 'the insert mode itself is unchanged');
         Assert.areEqual(XFTY_InsertInclusivityEnum.REQUIRED, related.inclusivity, 'inclusivity is unchanged');
     }
 

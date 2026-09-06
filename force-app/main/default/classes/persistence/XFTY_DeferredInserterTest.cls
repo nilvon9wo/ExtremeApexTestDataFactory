@@ -231,6 +231,93 @@ private class XFTY_DeferredInserterTest {
         Assert.areEqual(XFTY_SharedAncestor.getId('hq'), result.AccountId);
     }
 
+    // .excludePrimaryIds() -----------------------------------
+
+    @IsTest
+    static void testFlush_afterDeferredWithExcludePrimaryIds_insertsTheAncestorButNotTheExcludedPrimary() {
+        // Arrange - the capability RELATED_ONLY could never express: the ancestor tree registers for
+        // the batched flush, the primary that relates to it stays un-Id'd even after the flush runs
+        XFTY_DummySObjectBundle bundle;
+        System.runAs(TEST_ADMIN) {
+            bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .setOverrideTemplate(new Contact(LastName = 'Deferred Excluded'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                    .excludePrimaryIds()
+                    .supplyBundle();
+        }
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isNull(contactOf(bundle).Id, 'the excluded Contact primary is never inserted');
+        Assert.isNotNull(accountOf(bundle).Id, 'its Account ancestor is really inserted by the flush');
+        Assert.areEqual(accountOf(bundle).Id, contactOf(bundle).get(Contact.AccountId), 'the FK is still wired');
+        Assert.areEqual(1, [SELECT COUNT() FROM Account]);
+        Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
+    }
+
+    @IsTest
+    static void testFlush_withExcludePrimaryIdsOnOneOfTwoCalls_excludesOnlyThatCallsPrimary() {
+        // Arrange - one plain deferred Account, one deferred Contact whose own primary is excluded;
+        // both share the one registry, and only the Contact primary is held back
+        XFTY_DummySObjectBundle keptAccount;
+        XFTY_DummySObjectBundle excludedContact;
+        System.runAs(TEST_ADMIN) {
+            keptAccount = deferredAccount('Kept');
+            excludedContact = new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .setOverrideTemplate(new Contact(LastName = 'Held Back'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                    .excludePrimaryIds()
+                    .supplyBundle();
+        }
+
+        // Act
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isNotNull(accountOf(keptAccount).Id, 'the plain deferred Account is inserted');
+        Assert.isNotNull(accountOf(excludedContact).Id, 'the excluded Contact\'s own ancestor is inserted');
+        Assert.isNull(contactOf(excludedContact).Id, 'only the excluded Contact primary is held back');
+        Assert.areEqual(2, [SELECT COUNT() FROM Account]);
+        Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
+    }
+
+    @IsTest
+    static void testSupply_inDeferredModeWithExcludePrimaryIds_resolvesASharedAncestorUpFront() {
+        // Arrange
+        XFTY_SharedAncestor.put('hq', new Account(Name = 'Shared HQ'));
+
+        // Act
+        Contact result;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, LOOKUP)
+                    .putRequired(Contact.AccountId, XFTY_SharedAncestor.get('hq'))
+                    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+                    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+                    .excludePrimaryIds()
+                    .supply();
+            XFTY_DeferredInserter.flush();
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.isNull(result.Id, 'the excluded Contact primary is never inserted');
+        Assert.areEqual(XFTY_SharedAncestor.getId('hq'), result.AccountId, 'it still points at the shared Account');
+        Assert.areEqual(0, [SELECT COUNT() FROM Contact]);
+    }
+
     // Helpers -----------------------------------------------
 
     private static XFTY_DummySObjectBundle deferredContactWithAccount(String lastName) {

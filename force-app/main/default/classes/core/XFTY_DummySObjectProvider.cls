@@ -85,6 +85,7 @@ public class XFTY_DummySObjectProvider {
     private Boolean hasCustomMasterTemplate = false;
     private Boolean depthBatched = false;
     private Boolean ancestorCyclesAllowed = false;
+    private Boolean primaryIdsExcluded = false;
 
     // `sObjectType` is set non-null by every constructor and never reassigned; the
     // class is not subclassable. So the code below never sees a null type - no
@@ -220,6 +221,27 @@ public class XFTY_DummySObjectProvider {
      */
     public XFTY_DummySObjectProvider allowAncestorCycles() {
         this.ancestorCyclesAllowed = true;
+        return this;
+    }
+
+    /**
+     * This call's own primary record(s) are never persisted - no mock Id, no
+     * insert, no `DEFERRED` registration for them specifically - while every
+     * ancestor they need still is, exactly as the configured insert mode says.
+     * For a not-yet-inserted record that must reference real (or realistically
+     * Id'd) ancestors. Composes with every mode: `NOW` inserts the ancestors one
+     * at a time as they generate; `MOCK` mock-Ids them with no DML; `DEFERRED`
+     * registers the whole tree for the batched flush. Ancestors are
+     * never affected, no matter how deep - only this call's own top-level output.
+     */
+    public XFTY_DummySObjectProvider excludePrimaryIds() {
+        this.primaryIdsExcluded = true;
+        return this;
+    }
+
+    /** Undoes {@link #excludePrimaryIds} - persist the primary like everything else (the default). */
+    public XFTY_DummySObjectProvider includePrimaryIds() {
+        this.primaryIdsExcluded = false;
         return this;
     }
 
@@ -523,9 +545,9 @@ public class XFTY_DummySObjectProvider {
 
     private void persist(XFTY_DummySObjectBundle bundle) {
         if (this.flushesGraphWhenThisCallEnds()) {
-            XFTY_DeferredInsertBuffer.insertGraph(bundle);
+            XFTY_DeferredInsertBuffer.insertGraph(bundle, this.primaryIdsExcluded);
         } else if (this.deferredToRegistry()) {
-            XFTY_DeferredInserter.register(bundle);
+            XFTY_DeferredInserter.register(bundle, this.primaryIdsExcluded);
         }
     }
 
@@ -534,7 +556,8 @@ public class XFTY_DummySObjectProvider {
         XFTY_GenerationContext context = new XFTY_GenerationContext(this.sObjectProviderLookup, mode, this.inclusivity)
                 .withForcedRelationshipPaths(this.forcedRelationshipPaths)
                 .withPathValues(this.pathValues)
-                .withAncestorCycleGuard(this.ancestorCyclesAllowed);
+                .withAncestorCycleGuard(this.ancestorCyclesAllowed)
+                .withPrimaryIdsExcluded(this.primaryIdsExcluded);
         return this.buildsStructurallyForBatchedInsert()
                 ? context.forBatchedInsert()
                 : context;

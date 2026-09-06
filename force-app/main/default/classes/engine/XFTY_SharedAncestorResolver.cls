@@ -18,7 +18,7 @@ public class XFTY_SharedAncestorResolver {
     private final XFTY_DummySObjectProviderLookupIntf lookup;
     private final XFTY_InsertModeEnum mode;
 
-    /** `mode` is the triggering call's insert mode; `DEFERRED` / `RELATED_ONLY` resolve eagerly, as `NOW`. */
+    /** `mode` is the triggering call's insert mode; `DEFERRED` resolves eagerly, as `NOW`. */
     public XFTY_SharedAncestorResolver(XFTY_DummySObjectProviderLookupIntf lookup, XFTY_InsertModeEnum mode) {
         this.lookup = lookup;
         this.mode = eager(mode);
@@ -154,8 +154,7 @@ public class XFTY_SharedAncestorResolver {
 
     private static XFTY_InsertModeEnum eager(XFTY_InsertModeEnum callMode) {
         Boolean resolveEagerly = callMode == null
-                || callMode == XFTY_InsertModeEnum.DEFERRED
-                || callMode == XFTY_InsertModeEnum.RELATED_ONLY;
+                || callMode == XFTY_InsertModeEnum.DEFERRED;
         return resolveEagerly ? XFTY_InsertModeEnum.NOW : callMode;
     }
 

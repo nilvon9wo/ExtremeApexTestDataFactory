@@ -1,6 +1,6 @@
 /**
- * The DML-backed insert modes of `XFTY_DummySObjectFactory` - `NOW` and
- * `RELATED_ONLY` - and `.depthBatched()`, split out from
+ * The DML-backed persistence paths of `XFTY_DummySObjectFactory` - `NOW`,
+ * `.excludePrimaryIds()`, and `.depthBatched()` - split out from
  * `XFTY_DummySObjectFactoryTest` so the unit suite can skip them. All real DML,
  * so `System.runAs`.
  */
@@ -24,7 +24,7 @@ private class XFTY_DummySObjectFactoryDmlTest {
                 .setInsertMode(XFTY_InsertModeEnum.NOW);
     }
 
-    // NOW / RELATED_ONLY --------------------------------------
+    // NOW / .excludePrimaryIds() ------------------------------
 
     @IsTest
     static void testSupplyBundle_inNowMode_insertsEveryGeneratedRecordAndPersistsTheFk() {
@@ -49,12 +49,13 @@ private class XFTY_DummySObjectFactoryDmlTest {
     }
 
     @IsTest
-    static void testSupplyBundle_inRelatedOnlyMode_insertsTheParentsButNotThePrimaryRecords() {
-        // Arrange
+    static void testSupplyBundle_inNowModeWithExcludePrimaryIds_insertsTheParentsButNotThePrimaryRecords() {
+        // Arrange - a not-yet-inserted Contact related to a real, inserted Account
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Contact.SObjectType, DEFAULT_LOOKUP)
                 .setOverrideTemplate(new Contact(LastName = 'Factory Test'))
                 .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
-                .setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY);
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .excludePrimaryIds();
 
         // Act
         XFTY_DummySObjectBundle bundle;
@@ -71,7 +72,58 @@ private class XFTY_DummySObjectFactoryDmlTest {
         Assert.areEqual(1, [SELECT COUNT() FROM Account]);
         Assert.areEqual(
                 bundle.getList(Contact.AccountId)[0].Id,
-                ((Contact) bundle.getList(Contact.Id)[0]).AccountId
+                ((Contact) bundle.getList(Contact.Id)[0]).AccountId,
+                'the uninserted Contact still points at the real Account Id'
+        );
+    }
+
+    @IsTest
+    static void testSupplyList_inNowModeWithExcludePrimaryIds_insertsAncestorsOneAtATimeNotBatched() {
+        // Arrange - two parent types: NOW inserts each as its own recursion ends, so 2 inserts
+        // (the excluded Task primary adds none). .excludePrimaryIds() must not trigger batching.
+        XFTY_DummySObjectProvider provider = nowTaskProvider(new TwoParentTaskProvider()).excludePrimaryIds();
+
+        // Act
+        Integer inserts;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            provider.supplyList();
+            inserts = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(2, inserts, 'one insert per ancestor Provider, primary excluded, nothing batched');
+    }
+
+    @IsTest
+    static void testSupplyBundle_inNowModeWithExcludePrimaryIdsAndDepthBatched_batchesAncestorsButStillExcludesThePrimary() {
+        // Arrange - .depthBatched() is an explicit opt-in to batching; it composes with the exclusion
+        XFTY_DummySObjectProvider provider = nowTaskProvider(new TwoParentTaskProvider())
+                .excludePrimaryIds()
+                .depthBatched();
+
+        // Act
+        XFTY_DummySObjectBundle bundle;
+        Integer inserts;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            bundle = provider.supplyBundle();
+            inserts = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, inserts, 'both ancestor types batch into one insert at depth 0');
+        Assert.isNull(bundle.getList(Task.Id)[0].Id, 'the Task primary is still excluded');
+        Assert.isNotNull(bundle.getList(Task.WhatId)[0].Id, 'the Account ancestor is inserted');
+        Assert.isNotNull(bundle.getList(Task.WhoId)[0].Id, 'the Contact ancestor is inserted');
+        Assert.areEqual(
+                bundle.getList(Task.WhatId)[0].Id,
+                bundle.getList(Task.Id)[0].get(Task.WhatId),
+                'the excluded Task still gets its lookup wired to the real ancestor Id'
         );
     }
 

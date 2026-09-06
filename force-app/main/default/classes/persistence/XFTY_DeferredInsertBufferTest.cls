@@ -85,6 +85,32 @@ private class XFTY_DeferredInsertBufferTest {
         Assert.isNotNull(onlyRecord.Id);
     }
 
+    @IsTest
+    static void testInsertGraph_withExcludePrimaryIds_insertsTheParentButNotThePrimary() {
+        // Arrange
+        Account parent = new Account(Name = 'Kept Parent');
+        Contact child = new Contact(LastName = 'Excluded Primary');
+        XFTY_DummySObjectBundle childBundle = bundleOf(Contact.Id, child);
+        childBundle.put(Contact.AccountId, bundleOf(Account.Id, parent));
+        childBundle.put(Contact.AccountId, new List<SObject>{ parent });
+
+        // Act
+        Integer dml;
+        System.runAs(TEST_ADMIN) {
+            Test.startTest();
+            Integer before = Limits.getDmlStatements();
+            XFTY_DeferredInsertBuffer.insertGraph(childBundle, true);
+            dml = Limits.getDmlStatements() - before;
+            Test.stopTest();
+        }
+
+        // Assert
+        Assert.areEqual(1, dml, 'only the parent is inserted');
+        Assert.isNotNull(parent.Id, 'the parent is a real row');
+        Assert.isNull(child.Id, 'the excluded primary is not inserted');
+        Assert.areEqual(parent.Id, child.AccountId, 'the excluded primary is still wired to the parent');
+    }
+
     // Helpers -----------------------------------------------
 
     private static XFTY_DummySObjectBundle bundleOf(SObjectField primaryField, SObject record) {

@@ -472,11 +472,13 @@ private class XFTY_DummySObjectProviderChildGenTest {
     }
 
     @IsTest
-    static void testSupplyBundle_whenTheParentIsRelatedOnly_doesNotPersistItsChildren() {
-        // Arrange - RELATED_ONLY does not insert the primaries, so from a child's point of
-        // view there is no persisted parent and RELATED_ONLY flows down
+    static void testSupplyBundle_whenTheParentExcludesPrimaryIds_childrenAreStillPersistedWithANullBackReference() {
+        // Arrange - .excludePrimaryIds() only excludes the call's own primary; a child inherits the
+        // parent's insert mode (NOW), not its exclusion, so it is still inserted - just with nothing
+        // to point its back-reference at, since the parent it would reference was never given an Id
         XFTY_DummySObjectProvider provider = new XFTY_DummySObjectProvider(Account.SObjectType, lookup())
-                .setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY)
+                .setInsertMode(XFTY_InsertModeEnum.NOW)
+                .excludePrimaryIds()
                 .withChildren(Contact.AccountId, 2);
 
         // Act
@@ -488,9 +490,15 @@ private class XFTY_DummySObjectProviderChildGenTest {
         }
 
         // Assert
+        Assert.isNull(bundle.primaryRecords()[0].Id, 'the excluded Account primary is not inserted');
         Assert.areEqual(2, bundle.getChildList(Contact.AccountId).size());
-        Assert.isNull(bundle.getChildList(Contact.AccountId)[0].Id, 'children are not inserted');
-        Assert.areEqual(0, [SELECT COUNT() FROM Contact], 'nothing at the child level reaches the database');
+        Assert.isNotNull(bundle.getChildList(Contact.AccountId)[0].Id, 'the children are still inserted');
+        Assert.isNull(
+                bundle.getChildList(Contact.AccountId)[0].get(Contact.AccountId),
+                'their back-reference is null - the excluded parent has no Id to point at'
+        );
+        Assert.areEqual(2, [SELECT COUNT() FROM Contact]);
+        Assert.areEqual(0, [SELECT COUNT() FROM Account]);
     }
 
     // Bundle getters ---------------------------------

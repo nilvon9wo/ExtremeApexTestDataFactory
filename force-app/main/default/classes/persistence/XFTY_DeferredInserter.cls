@@ -20,6 +20,18 @@ public class XFTY_DeferredInserter {
         buffer.add(bundle);
     }
 
+    /**
+     * As {@link #register(XFTY_DummySObjectBundle)}, but `excludePrimaryIds` marks
+     * only this bundle's own top-level primary record(s) - never anything it
+     * pulled in as an ancestor - as never to be given an Id, even once
+     * `flush()` runs. Lets a not-yet-inserted record relate to ancestors this
+     * same registry resolves for real, alongside everything else registered
+     * before the flush.
+     */
+    public static void register(XFTY_DummySObjectBundle bundle, Boolean excludePrimaryIds) {
+        buffer.add(bundle, excludePrimaryIds);
+    }
+
     public static Integer pendingCount() {
         return buffer.pendingCount();
     }

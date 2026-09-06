@@ -61,7 +61,15 @@ public class XFTY_DummySObjectFactory {
         bundle.deferValues(this.template.deferredExpressionBySObjectFieldMap);
     }
 
+    /**
+     * `primaryIdsExcluded` always wins - it means "this call's own primary", and
+     * this method only ever runs for the record(s) the call owns; an ancestor
+     * never carries the flag (see {@link XFTY_GenerationContext#forRelated}).
+     */
     private void persist(List<SObject> records) {
+        if (this.context.primaryIdsExcluded) {
+            return;
+        }
         switch on this.context.insertMode {
             when NOW {
                 insert records;

@@ -30,31 +30,61 @@ public class XFTY_DepthBatchedInserter {
     private final List<SObject> records;
     private final XFTY_InsertModeEnum mode;
 
-    private XFTY_DepthBatchedInserter(List<SObject> records, List<ParentLink> links, XFTY_InsertModeEnum mode) {
+    // Indices into `records` that never receive an Id, whatever the mode - the
+    // excluded primaries of a `.excludePrimaryIds()` call (see
+    // XFTY_DeferredInsertBuffer.add). Still wired to their own resolved parents,
+    // and still what unblocks anything waiting on them, exactly as if they landed.
+    private final Set<Integer> excludedIndexes;
+
+    private XFTY_DepthBatchedInserter(
+            List<SObject> records,
+            List<ParentLink> links,
+            XFTY_InsertModeEnum mode,
+            Set<Integer> excludedIndexes
+    ) {
         this.records = records;
         this.mode = mode;
+        this.excludedIndexes = (excludedIndexes == null) ? new Set<Integer>() : excludedIndexes;
         Integer recordCount = records.size();
         this.linksByChild = groupLinksByChild(recordCount, links);
     }
 
     /** Depth-batched real DML. */
     public static void insertAll(List<SObject> records, List<ParentLink> links) {
-        resolveAll(records, links, XFTY_InsertModeEnum.NOW);
+        resolveAll(records, links, XFTY_InsertModeEnum.NOW, new Set<Integer>());
+    }
+
+    /** Depth-batched real DML, leaving `excludedIndexes` un-Id'd (still wired as anchors). */
+    public static void insertAll(List<SObject> records, List<ParentLink> links, Set<Integer> excludedIndexes) {
+        resolveAll(records, links, XFTY_InsertModeEnum.NOW, excludedIndexes);
     }
 
     /**
      * Depth-batched resolution honouring the mode:
      * `NOW` inserts each depth layer, `MOCK` gives it mock Ids - either way the
-     * child lookups are pointed at the layer above as it lands. `NEVER` does nothing.
+     * child lookups are pointed at the layer above as it lands. `NEVER` does
+     * nothing. `excludedIndexes` never receive an Id whatever the mode (see
+     * `XFTY_DeferredInsertBuffer.add`'s `excludePrimaryIds`) - still wired to
+     * their own resolved parents, and still what unblocks anything waiting on
+     * them, exactly as if they genuinely landed.
      */
     public static void resolveAll(List<SObject> records, List<ParentLink> links, XFTY_InsertModeEnum mode) {
+        resolveAll(records, links, mode, new Set<Integer>());
+    }
+
+    public static void resolveAll(
+            List<SObject> records,
+            List<ParentLink> links,
+            XFTY_InsertModeEnum mode,
+            Set<Integer> excludedIndexes
+    ) {
         Boolean nothingToDo = records == null
                 || records.isEmpty()
                 || mode == XFTY_InsertModeEnum.NEVER;
         if (nothingToDo) {
             return;
         }
-        new XFTY_DepthBatchedInserter(records, links, mode)
+        new XFTY_DepthBatchedInserter(records, links, mode, excludedIndexes)
                 .insertLayerByLayer();
     }
 
@@ -94,8 +124,10 @@ public class XFTY_DepthBatchedInserter {
             this.pointAtParents(index);
             SObject record = this.records[index];
             // A record already carrying an Id is a pre-existing anchor (e.g. an
-            // already-resolved shared ancestor) - point children at it, don't re-insert.
-            if (record.Id == null) {
+            // already-resolved shared ancestor) - point children at it, don't
+            // re-insert. An excluded primary is the same: wired as an anchor
+            // (its own lookups already pointed above), never given an Id itself.
+            if (record.Id == null && !this.excludedIndexes.contains(index)) {
                 layer.add(record);
             }
         }
