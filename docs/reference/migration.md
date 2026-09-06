@@ -178,6 +178,26 @@ The value-producing types dropped their `DummyDefault` prefix and took an
 `use/value-expressions.md`, `extend/custom-value-strategies.md` →
 `extend/custom-value-expressions.md`.
 
+## 9. `RELATED_ONLY` insert mode removed → `.excludePrimaryIds()`
+
+`XFTY_InsertModeEnum.RELATED_ONLY` is gone. "Generate this call's primary but do
+not persist it, while its ancestors are persisted normally" is now an orthogonal
+per-call toggle, not a mode — so it composes with `DEFERRED` too.
+
+```apex
+// before
+.setInsertMode(XFTY_InsertModeEnum.RELATED_ONLY)
+// after — same one-at-a-time ancestor inserts as before
+.setInsertMode(XFTY_InsertModeEnum.NOW).excludePrimaryIds()
+```
+
+`MOCK + .excludePrimaryIds()` is the no-DML variant (mock-Id'd ancestors);
+`DEFERRED + .excludePrimaryIds()` registers a deep ancestor tree for one batched
+`XFTY_DeferredInserter.flush()` while the primary stays un-Id'd — a combination
+`RELATED_ONLY` could not express. One behaviour change: a child collection under
+an excluded primary is now persisted (with a `null` back-reference) rather than
+suppressed. Detail: [use/insert-modes.md](../use/insert-modes.md#excluding-the-primary--excludeprimaryids).
+
 ---
 
 ## New in 4.0 — not required, but available
@@ -191,6 +211,7 @@ The value-producing types dropped their `DummyDefault` prefix and took an
 | `context.siblingValue(field)` for custom context-aware expressions — guarded sibling read, throws instead of returning a misleading `null` | [use/context-aware-values](../use/context-aware-values.md) |
 | Descendant (up-flowing) value reads — `XFTY_CopyFromDescendantExpression`, a parent field copied up from a generated child (`DEFERRED` / `.depthBatched()` only) | [use/context-aware-values](../use/context-aware-values.md#reading-up-from-a-child) |
 | Per-call relationship control (`includeOptional(field)`, `includeOptional(path)`, `excludeRelationship`) | [use/per-call-relationships](../use/per-call-relationships.md) |
+| `.excludePrimaryIds()` / `.includePrimaryIds()` — leave this call's own primary un-Id'd while its ancestors persist normally (composes with every insert mode) | [use/insert-modes](../use/insert-modes.md#excluding-the-primary--excludeprimaryids) |
 | Path-scoped value overrides — `put(List<SObjectField>, …)` sets a field on a generated ancestor for one call | [use/value-expressions](../use/value-expressions.md#setting-a-value-on-a-generated-ancestor) |
 | Downward generation — `with(...)` / `withChildren(...)` / `XFTY_SObjectChildProvider` generate the records *below* a primary, nested | [use/child-records](../use/child-records.md) |
 | Shared ancestors (`XFTY_SharedAncestor` — many children under one generated parent, flat or deep; `XFTY_SharedAncestorDefaultsIntf` for packaged defaults) | [use/shared-ancestors](../use/shared-ancestors.md) |

@@ -41,7 +41,7 @@ Implemented (`XFTY_SharedAncestor`, `XFTY_SharedAncestorResolver`):
   resolve themselves; a live cycle across that boundary still throws.
 - S1 generate `NEVER` / `REQUIRED`; S2 depth-batched persist **per ancestor
   sub-graph**, honouring the mode (`NOW` insert / `MOCK` mock-Id / `NEVER` no-op;
-  `DEFERRED` / `RELATED_ONLY` → `NOW` so the shared Id is ready), not re-inserting
+  `DEFERRED` → `NOW` so the shared Id is ready), not re-inserting
   already-resolved anchors.
 - The main build wires the pre-resolved record; shared ancestors now work with
   `.depthBatched()` / `DEFERRED` on the referencing call (previously refused).
@@ -169,7 +169,8 @@ the list points at an un-inserted record in the *same* list.
 This is the same batching the main factory could use for the whole graph, not
 just shared ancestors - see "Wider applicability" below.
 
-`RELATED_ONLY` / `LATER` interact here - S2 respects the top-level call's mode.
+`LATER` interacts here - S2 respects the top-level call's mode. (`.excludePrimaryIds()`
+is orthogonal: it never touches ancestor resolution, only the referencing call's own primary.)
 
 ### Phase S3 - main build
 

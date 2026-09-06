@@ -60,7 +60,7 @@ examples compile and behave as documented.
 | `bundle.getList` / `getBundle` / navigation | [bundles](bundles.md) | `XFTY_Ex_BundlesTest` |
 | `bundle.inject(field, config)` / `injectAll*`, `XFTY_InjectConfig` | [enrichment](enrichment.md) | `XFTY_Ex_EnrichmentTest` |
 | `XFTY_SObjectInjector` — standalone round-trip (parents, subqueries, values, compound, `Blob`) | [sobject-injector](sobject-injector.md) | `XFTY_Ex_SObjectInjectorTest` |
-| insert modes `NEVER` / `MOCK` / `RELATED_ONLY` / `NOW` / `LATER` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
+| insert modes `NEVER` / `MOCK` / `NOW` / `LATER` / `DEFERRED`, plus the orthogonal `.excludePrimaryIds()` / `.includePrimaryIds()` | [insert-modes](insert-modes.md) | `XFTY_Ex_InsertModesTest` |
 | `DEFERRED` + `XFTY_DeferredInserter.flush()`, `.depthBatched()` | [deferred-insert](deferred-insert.md) | `XFTY_Ex_DeferredInsertTest` |
 | `withVariant` / lookup-key ctor (flavour keys) | [provider-variants](provider-variants.md) | `XFTY_Ex_ProviderVariantsTest` |
 | record-type override template | [provider-variants](provider-variants.md) | `XFTY_RecordTypeRealRtTest` (org-only) |

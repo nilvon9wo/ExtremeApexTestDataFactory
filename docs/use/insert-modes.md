@@ -16,12 +16,13 @@ controls how much of the graph is generated. The two are independent.
 |------|-----------|
 | `NEVER` | Generate records without Ids. |
 | `MOCK` | Generate realistic Salesforce Ids **without DML**. |
-| `RELATED_ONLY` | Insert only the generated related records; leave the primary records uninserted. |
 | `NOW` | Insert every generated record. |
 | `LATER` | Behaves exactly like `NEVER`; documents that the caller will insert later. |
 | `DEFERRED` | Generate like `NEVER`, but register every record so one `XFTY_DeferredInserter.flush()` inserts the whole set — see [deferred-insert](deferred-insert.md). |
 
 The generated data is identical regardless of mode; only persistence changes.
+[`.excludePrimaryIds()`](#excluding-the-primary--excludeprimaryids) is a separate,
+orthogonal setting — not a mode of its own — that composes with any of the five.
 
 ---
 
@@ -47,15 +48,72 @@ related records. Use for tests that touch the database.
 
 ---
 
-## `RELATED_ONLY`
+## Excluding the primary — `.excludePrimaryIds()`
 
-Inserts the generated parents but not the primary records — a test that needs
-valid lookup targets but wants to insert the primaries itself. Internally XFTY
-upgrades relationship generation to `NOW` while leaving the primaries untouched.
+For a not-yet-inserted primary that must still relate to a **real, or
+realistically Id'd, ancestor** — an Account that genuinely exists (or will), not a
+placeholder Id nothing points at. `.excludePrimaryIds()` leaves this call's own
+primary record(s) un-Id'd — no mock Id, no insert, no `DEFERRED` registration for
+them specifically — while every ancestor they need is persisted exactly as the
+configured insert mode already says. Ancestors are never affected, no matter how
+deep the chain; only this call's own top-level output is excluded.
+`.includePrimaryIds()` undoes it, back to the default.
 
-It only inserts a Provider's **ancestors**. Child collections
-([`with` / `withChildren`](child-records.md)) are not ancestors, so under
-`RELATED_ONLY` they are generated but not inserted.
+It composes with any mode — each combination answers a different version of "how
+real does the ancestor need to be":
+
+**`NOW` + `.excludePrimaryIds()`** — the ancestor is genuinely inserted, one at a
+time as it is generated (so real trigger order is preserved). This is the exact
+behaviour the old `RELATED_ONLY` mode gave.
+
+```apex
+Contact result = (Contact) new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .setInsertMode(XFTY_InsertModeEnum.NOW)
+    .excludePrimaryIds()
+    .supply();
+
+Assert.areEqual(null, result.Id, 'the primary Contact is left uninserted');
+Assert.isNotNull(result.AccountId, 'but it points at a real, inserted Account');
+```
+
+**`MOCK` + `.excludePrimaryIds()`** — the same shape, but the ancestor only gets a
+**mock** Id; no DML at all.
+
+**`DEFERRED` + `.excludePrimaryIds()`** — the capability no single mode could
+express before: a primary with a deep ancestor tree (or several Providers' worth
+of ancestors, across separate calls sharing one registry) built and flushed
+together, depth-batched, while the primary that relates to it stays un-Id'd for
+the whole lifetime of the call.
+
+```apex
+XFTY_DummySObjectBundle bundle = new XFTY_DummySObjectProvider(Contact.SObjectType, lookup)
+    .setInclusivity(XFTY_InsertInclusivityEnum.REQUIRED)
+    .setInsertMode(XFTY_InsertModeEnum.DEFERRED)
+    .excludePrimaryIds()
+    .supplyBundle();
+
+XFTY_DeferredInserter.flush();
+// bundle's Contact primary is still un-Id'd after the flush; its Account
+// ancestor (and anything else registered before the flush) is really inserted
+```
+
+`NOW` inserts ancestors one at a time as each is generated — right when insert
+order matters, but not batched. `.depthBatched()` (an explicit opt-in) or
+`DEFERRED` batch the ancestor tree instead; the excluded primary is held back
+either way.
+
+It only ever affects a Provider's own **primary**. Child collections
+([`with` / `withChildren`](child-records.md)) are not primaries of this call, so
+`.excludePrimaryIds()` does not touch them — they are still persisted under
+whatever mode they inherit or set, just with a `null` back-reference when the
+parent they would point at was excluded.
+
+### `.includePrimaryIds()`
+
+Undoes `.excludePrimaryIds()` — the last call wins. Rarely needed explicitly
+(it is already the default), but real for a helper deciding dynamically, or for
+a caller who would rather spell the default out than lean on it silently.
 
 ---
 
@@ -79,7 +137,9 @@ whole subtree flushes together.
 | Testing object construction only | `NEVER` |
 | Test inserts the records itself | `LATER` |
 | Data built over several calls, one insert phase | `DEFERRED` |
-| Needs inserted lookup targets only | `RELATED_ONLY` |
+| Primary relates to a real, inserted ancestor, one at a time, but is not inserted itself | `NOW` + `.excludePrimaryIds()` |
+| Same, but the ancestor only needs a valid-looking Id | `MOCK` + `.excludePrimaryIds()` |
+| Same as the `NOW` row, but the ancestor tree is deep and wants batched insertion | `DEFERRED` + `.excludePrimaryIds()` |
 | Integration test | `NOW` |
 
 Most tests start with `MOCK` + `REQUIRED` inclusivity — no DML, realistic Ids,

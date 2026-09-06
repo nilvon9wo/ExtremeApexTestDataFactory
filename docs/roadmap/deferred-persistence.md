@@ -27,7 +27,7 @@ generates a `Task` with an `Account` parent (`WhatId`) and a `Contact` parent
 Task - not 2.
 
 `MOCK` / `NEVER` / `LATER` are already free (empty inserts cost nothing), so this
-only matters for `NOW` / `RELATED_ONLY`.
+only matters for `NOW`.
 
 ---
 

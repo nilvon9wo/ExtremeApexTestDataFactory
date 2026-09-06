@@ -130,12 +130,18 @@ level unless a child overrides them.
 | `MOCK` | everything gets mock Ids; FKs wired |
 | `NEVER` | nothing persisted; children have a `null` back-reference (no primary Id to point at) — a child can still `setInsertMode(NOW)` to insert itself |
 | `LATER` | identical to `NEVER` — the children are generated, nothing is inserted, the back-reference is `null` |
-| `RELATED_ONLY` | the primaries (the parents here) are **not** inserted, so the children have a `null` back-reference and are not inserted either — `RELATED_ONLY` inserts a Provider's *ancestors*, and children are not ancestors. Not a useful mode for downward generation. |
 | `DEFERRED` / `.depthBatched()` | the **whole** child subtree joins the same deferred graph; `XFTY_DeferredInserter.flush()` (or the end of the `depthBatched` call) inserts every level in dependency order and back-fills the FKs. A per-child `setInsertMode(...)` override is **ignored** here — the subtree is structural until the flush. |
 
 Each child still generates its **own** other required parents (at its
 inclusivity) — a `Case` child that needs a `Contact` gets one, and that Contact
 gets its Account.
+
+**`.excludePrimaryIds()` on the parent does not flow down to children** the way
+`setInsertMode` / `setInclusivity` do — it excludes only the Provider it is
+called on. A child collection under an excluded parent is still generated and
+persisted under whatever mode it inherits (or sets itself); it just has a `null`
+back-reference, because the parent it points at was never given an Id. See
+[insert-modes](insert-modes.md#excluding-the-primary--excludeprimaryids).
 
 ### A child cannot mix mock Ids with real DML
 
@@ -144,8 +150,7 @@ A child collection may raise or lower its own insert mode
 child `NOW` is the common case. The one forbidden combination is mixing mock
 Ids with real rows in either direction: parent `MOCK` + child `NOW`, or parent
 `NOW` + child `MOCK`, throws `XFTY_SObjectChildProvider.SanityException`. Every
-other pairing is allowed (though `MOCK` parent + `RELATED_ONLY` child, for
-instance, is rarely what you want).
+other pairing is allowed.
 
 ▶ Runnable: `XFTY_DummySObjectProviderChildGenTest`
 

@@ -27,6 +27,7 @@ One line per public entry point. Follow the links for detail.
 | `.includeOptional(SObjectField)` / `.includeOptional(List<SObjectField>)` | force one optional relationship / path, this call only |
 | `.put(List<SObjectField> path, value)` / `.putRequired(path, rel)` / `.putOptional(path, rel)` | set a field on a generated ancestor (last path element = target); follows inclusivity |
 | `.excludeRelationship(SObjectField)` | skip one relationship, this call only |
+| `.excludePrimaryIds()` / `.includePrimaryIds()` | this call's own primary is never persisted, however its ancestors are ([insert modes](../use/insert-modes.md#excluding-the-primary--excludeprimaryids)); `includePrimaryIds()` is the default |
 | `.with(XFTY_SObjectChildProvider)` / `.withChildren(field, n)` / `.withChild(field)` | downward � generate child records; read via `bundle.getChild/getChildList/getChildBundle(field)` |
 | `.depthBatched()` | one `insert` per depth instead of per Provider (`NOW` only) |
 | `.allowAncestorCycles()` | suppress the guard that throws on a self-referential relationship chain |
@@ -41,7 +42,7 @@ One line per public entry point. Follow the links for detail.
 
 ## Enums
 
-| `XFTY_InsertModeEnum` | `NEVER` · `MOCK` · `RELATED_ONLY` · `NOW` · `LATER` · `DEFERRED` |
+| `XFTY_InsertModeEnum` | `NEVER` · `MOCK` · `NOW` · `LATER` · `DEFERRED` |
 | `XFTY_InsertInclusivityEnum` | `NONE` · `REQUIRED` · `ALL` · `PREVENT_CASCADE` |
 
 ---

@@ -209,16 +209,20 @@ XFTY_DummySObjectBundle opportunityBundle = bundle.getBundle(OpportunityLineItem
 
 Generating objects and inserting objects are separate concerns.
 
-XFTY supports six insert modes.
+XFTY supports five insert modes, plus one orthogonal setting that composes with
+any of them.
 
 | Mode | Description |
 |------|-------------|
 | NEVER | Generate records without Ids. |
 | MOCK | Generate realistic Salesforce Ids without DML. |
-| RELATED_ONLY | Insert only related records. |
 | NOW | Insert every generated record. |
 | LATER | Behaves like NEVER while documenting that insertion will happen later. |
 | DEFERRED | Generate like NEVER over many calls; `XFTY_DeferredInserter.flush()` inserts them all at once. |
+
+`.excludePrimaryIds()` leaves just this call's own primary un-Id'd, whatever mode
+it is combined with, while every ancestor it needs is still persisted normally —
+see [insert-modes](insert-modes.md#excluding-the-primary--excludeprimaryids).
 
 For most tests:
 

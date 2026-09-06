@@ -11,8 +11,28 @@ All notable changes to XFTY are recorded here. The format follows
 - **Predicate combinators** — `XFTY_Predicates.allOf(list)` / `anyOf(list)` /
   `negate(one)` build AND / OR / NOT trees of `XFTY_SObjectPredicateIntf` for a
   flavoured lookup key, beyond the implicit AND of repeated `.matching(...)`.
+- **`.excludePrimaryIds()` / `.includePrimaryIds()`** — an orthogonal per-call
+  toggle on `XFTY_DummySObjectProvider`: this call's own primary record(s) are
+  never persisted (no mock Id, no insert, no `DEFERRED` registration) while every
+  ancestor is persisted exactly as the configured insert mode says. Composes with
+  every mode — `NOW` for one-at-a-time ancestor inserts, `MOCK` for no DML,
+  `DEFERRED` to register a deep ancestor tree for one batched
+  `XFTY_DeferredInserter.flush()` while the primary stays un-Id'd.
 
 ### Changed
+
+- **`XFTY_InsertModeEnum.RELATED_ONLY` removed**, replaced by
+  `setInsertMode(NOW).excludePrimaryIds()` (and now combinable with `DEFERRED`,
+  which `RELATED_ONLY` could not be). This *removed* special-casing rather than
+  adding it: `XFTY_GenerationContext.forRelated()` no longer transforms the
+  insert mode at all — an ancestor inherits it unchanged, like every other mode —
+  and `primaryIdsExcluded` resets to `false` for every ancestor context so it
+  can never leak past the one call that set it. `XFTY_DummySObjectFactory.persist`
+  gained one guard clause; `XFTY_DeferredInsertBuffer` / `XFTY_DepthBatchedInserter`
+  gained an excluded-index set threaded through the existing depth-batched
+  machinery. One behaviour change: a child collection under an excluded primary
+  is now persisted (with a `null` back-reference) rather than suppressed. See
+  [docs/reference/migration.md](docs/reference/migration.md) §9.
 
 - **Predicate internals split out.** `XFTY_FieldPredicate` and `XFTY_Predicates`
   are now thin facades over one small, directly-usable class per condition:

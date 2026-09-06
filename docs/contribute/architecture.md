@@ -236,8 +236,8 @@ For one Provider's records:
    `XFTY_SharedAncestor` configured this test method is collected
    (dependency-ordered, following nested shared ancestors), generated in memory
    (`NEVER`), and persisted one depth-batched pass per sub-graph, **before**
-   step 1, honouring the call's insert mode (`DEFERRED` / `RELATED_ONLY` → `NOW`
-   so the shared Id is ready). Flat ancestors (Provider has no relationships)
+   step 1, honouring the call's insert mode (`DEFERRED` → `NOW` so the shared Id
+   is ready). Flat ancestors (Provider has no relationships)
    collapse to a single record. One configured after this ran (a later
    `supply*()` call) resolves itself the same way when first referenced.
 1. **Ancestors** (`XFTY_AncestorGenerator`) — recursively generate one level of
@@ -250,7 +250,10 @@ For one Provider's records:
    (`NOW`), given mock Ids (`MOCK`), or left Id-less. Doing this as a separate
    phase lets every record at a level be inserted in one DML operation rather
    than one per type. `.depthBatched()` / `DEFERRED` move this out of the
-   recursion entirely (`XFTY_DepthBatchedInserter`).
+   recursion entirely (`XFTY_DepthBatchedInserter`). `.excludePrimaryIds()`
+   (`context.primaryIdsExcluded`) skips this phase for that one call's own
+   primaries — `XFTY_DummySObjectFactory.persist` early-returns; the batched
+   paths keep the record as a wired anchor but never give it an Id.
 3. **Lookup wiring** (`XFTY_LookupWiring`) — once parents have Ids, point each
    child's lookup fields at them.
 4. **Plain value pass** (`XFTY_PlainValueFiller`).
@@ -307,14 +310,20 @@ rather than as separate arguments. During the value pass a derived context also
 carries the record being built, the bundle so far, the row index, and the field
 currently being generated (`valueFieldPass`); everywhere else those are null.
 
-The context is also where the two **recursion transforms** live, in
-`context.forRelated()` - the context handed to a child (ancestor) build:
+The context is also where `context.forRelated()`'s **recursion transform**
+lives - the context handed to a child (ancestor) build:
 
 | Parent context | Child context | Why |
 |----------------|---------------|-----|
-| `insertMode = RELATED_ONLY` | `insertMode = NOW` | The parents of a not-inserted primary record must still be inserted, or the primary can't reference them. |
 | `inclusivity = PREVENT_CASCADE` | `inclusivity = NONE` | The direct relationships are generated, but they do not generate their own - the cascade stops one level down. |
+| `primaryIdsExcluded = true` | `primaryIdsExcluded = false`, always | Excluding a primary from persistence is a property of *this call's own output*, never an ancestor - an ancestor is persisted exactly as the configured insert mode says, whatever the record referencing it opted out of. |
 | anything else | unchanged | |
+
+The insert mode itself is **not** transformed here. It used to be: `RELATED_ONLY`
+was an insert-mode value that this transform mapped to `NOW` for ancestors.
+Pulling "exclude this call's own primary" out into its own orthogonal flag
+(`.excludePrimaryIds()`) removed the substitution - an ancestor now inherits the
+insert mode unchanged, the same as every other mode always did.
 
 Because the transform is in one method, "what does `PREVENT_CASCADE` actually
 prevent" has a single, readable answer.
