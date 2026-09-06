@@ -46,11 +46,6 @@ PARAM_LIMIT_EXEMPT = {
     # constructor inherently takes one argument per field - the pattern is the
     # point (see docs/contribute/architecture.md, "Immutability").
     "XFTY_GenerationContext.XFTY_GenerationContext",
-    # Internal depth-batched-insert plumbing: a flat record list, its parent
-    # links, the insert mode, and the excluded-index set travel together through
-    # one call. Called only from XFTY_DeferredInsertBuffer - not public API.
-    "XFTY_DepthBatchedInserter.XFTY_DepthBatchedInserter",
-    "XFTY_DepthBatchedInserter.resolveAll",
     # Recursive dependency-order DFS that threads its accumulators (the ordered
     # output, the done set, the on-path set, the depth) as explicit arguments
     # rather than as mutable instance fields. Pre-existing; a cleanup candidate.

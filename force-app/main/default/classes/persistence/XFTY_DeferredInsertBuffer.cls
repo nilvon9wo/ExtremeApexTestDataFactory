@@ -76,11 +76,15 @@ public class XFTY_DeferredInsertBuffer {
         XFTY_DepthBatchedInserter.insertAll(this.pendingRecords, this.pendingLinks, this.pendingExcludedIndexes);
     }
 
-    /** Depth-batched resolution of every buffered bundle honouring `mode` (NOW / MOCK / NEVER). */
+    /**
+     * Depth-batched resolution of every buffered bundle honouring `mode` (NOW /
+     * MOCK / NEVER). Only the shared-ancestor pre-phase calls this, and it never
+     * adds a bundle with excluded primaries - so `pendingExcludedIndexes` is
+     * always empty here and there is nothing to thread through.
+     */
     public void resolveAll(XFTY_InsertModeEnum mode) {
         this.resolveUpFlowValues();
-        XFTY_DepthBatchedInserter.resolveAll(
-                this.pendingRecords, this.pendingLinks, mode, this.pendingExcludedIndexes);
+        XFTY_DepthBatchedInserter.resolveAll(this.pendingRecords, this.pendingLinks, mode);
     }
 
     /** Fill every {@link XFTY_CopyFromDescendantExpression} value from its now-generated descendants. */
